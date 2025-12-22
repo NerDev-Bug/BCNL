@@ -1,18 +1,63 @@
-# React + Vite
+# BCNL — React + Vite + Tailwind
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Simple starter for a React app using Vite with Tailwind CSS and ESLint. This project includes HMR (fast refresh), Tailwind configuration, and common dev scripts.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Prerequisites:
+- Node.js 16+ (recommended)
+- Git
 
-## React Compiler
+1) Clone the repository
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+```bash
+git clone <repository-url>
+cd <repository-folder>
+```
 
-Note: This will impact Vite dev & build performances.
+Replace `<repository-url>` with your repository's git URL and `<repository-folder>` with the created folder name.
 
-## Expanding the ESLint configuration
+2) Install dependencies
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+```
+
+3) Run the dev server (hot reloading)
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173 (Vite default) in your browser.
+
+4) Build for production
+
+```bash
+npm run build
+```
+
+5) Preview the production build locally
+
+```bash
+npm run preview
+```
+
+6) Lint the codebase
+
+```bash
+npm run lint
+```
+
+## What’s included
+- Vite (dev server & build): configured in `vite.config.js`
+- React (JSX) application entry: `src/main.jsx` and `src/App.jsx`
+- Tailwind CSS: configured via `tailwind.config.js` and `postcss.config.js`
+
+## Code Quality
+
+The project uses:
+
+- ESLint — Code linting (Antfu's config)
+- Prettier — Code formatting
+- Stylelint — CSS/SCSS linting
