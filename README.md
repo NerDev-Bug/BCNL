@@ -37,17 +37,6 @@ Open http://localhost:5173 (Vite default) in your browser.
 npm run build
 ```
 
-5) Preview the production build locally
-
-```bash
-npm run preview
-```
-
-6) Lint the codebase
-
-```bash
-npm run lint
-```
 
 ## What’s included
 - Vite (dev server & build): configured in `vite.config.js`
