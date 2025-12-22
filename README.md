@@ -66,5 +66,3 @@ To test locally:
 ```bash
 npm run dev
 ```
-
-Open DevTools → Application to inspect the manifest, service worker, and cached resources. To publish a fully offline-capable PWA, replace the placeholder icons with real PNG/SVG assets and refine caching strategies in `service-worker.js`.
