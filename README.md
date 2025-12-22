@@ -50,3 +50,21 @@ The project uses:
 - ESLint — Code linting (Antfu's config)
 - Prettier — Code formatting
 - Stylelint — CSS/SCSS linting
+
+## PWA (Progressive Web App)
+
+This project includes basic PWA starter files. Files to review or customize:
+
+- `public/manifest.json` — app metadata, icons, colors, display mode
+- `public/service-worker.js` — service worker with simple cache & network fallback
+- `public/icons/` — app icons (placeholder SVGs added: `icon-192.svg`, `icon-512.svg`)
+- `index.html` — manifest is linked and `theme-color` meta is set
+- `src/main.jsx` — service worker is registered on load
+
+To test locally:
+
+```bash
+npm run dev
+```
+
+Open DevTools → Application to inspect the manifest, service worker, and cached resources. To publish a fully offline-capable PWA, replace the placeholder icons with real PNG/SVG assets and refine caching strategies in `service-worker.js`.
