@@ -29,10 +29,18 @@ function Navbar() {
             <NavLink to="/menu">Menu</NavLink>
             <NavLink to="/our-story">Our Story</NavLink>
           </div>
-          <div className='flex flex-row'>
-            <img src="./images/favorite.png" alt="favorite" className='w-5 h-5 mr-4' />
-            <img src="./images/user.png" alt="user" className='w-5 h-5 mr-4' />
-            <img src="./images/cart.png" alt="cart" className='w-5 h-5' />
+          <div className='flex flex-row items-center'>
+            <Link to="/favorites" aria-label="Favorites" title="Favorites" className="mr-4">
+              <img src="./images/favorite.png" alt="favorite" className='w-5 h-5 hover:opacity-80 cursor-pointer' />
+            </Link>
+
+            <Link to="/account" aria-label="Account" title="Account" className="mr-4">
+              <img src="./images/user.png" alt="user" className='w-5 h-5 hover:opacity-80 cursor-pointer' />
+            </Link>
+
+            <Link to="/cart" aria-label="Cart" title="Cart">
+              <img src="./images/cart.png" alt="cart" className='w-5 h-5 hover:opacity-80 cursor-pointer' />
+            </Link>
           </div>
         </div>
       </nav>
