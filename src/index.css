@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url("https://use.typekit.net/okc7wli.css");
+
+.font-cooper{
+    font-family: "cooper-black-std";
+    font-weight: 700;
+    font-style: normal;
+}

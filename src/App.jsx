@@ -1,9 +1,20 @@
+import { Routes, Route } from 'react-router-dom'
+import Home from './pages/Home.jsx'
+import Order from './pages/Order.jsx'
+import Menu from './pages/Menu.jsx'
+import OurStory from './pages/OurStory.jsx'
+import Navbar from './components/Navbar.jsx'
+
 function App() {
   return (
-    <div className="flex items-center justify-center h-screen">
-      <h1 className="text-1xl font-bold text-blue-600">
-        Testing the Tailwind
-      </h1>
+    <div>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/order" element={<Order />} />
+        <Route path="/menu" element={<Menu />} />
+        <Route path="/our-story" element={<OurStory />} />
+      </Routes>
     </div>
   )
 }
