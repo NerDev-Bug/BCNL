@@ -3,6 +3,7 @@ import Home from './pages/Home.jsx'
 import Order from './pages/Order.jsx'
 import Menu from './pages/Menu.jsx'
 import OurStory from './pages/OurStory.jsx'
+import Cart from './components/Cart.jsx'
 import Navbar from './components/Navbar.jsx'
 
 function App() {

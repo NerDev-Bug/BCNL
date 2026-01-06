@@ -1,11 +1,12 @@
+/* 1️⃣ IMPORTS FIRST */
+@import url("https://use.typekit.net/okc7wli.css");
+
+/* 2️⃣ THEN TAILWIND */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://use.typekit.net/okc7wli.css");
-
-.font-cooper{
-    font-family: "cooper-black-std";
-    font-weight: 700;
-    font-style: normal;
+/* 3️⃣ CUSTOM CLASSES LAST */
+.font-cooper {
+  font-family: "cooper-black-std", serif;
 }
