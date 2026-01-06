@@ -1,6 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { loginUser } from "../services/authService";
 
 function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   // Close modal on ESC key
   useEffect(() => {
     const handleEsc = (e) => {
@@ -12,10 +18,25 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
 
   if (!isOpen) return null;
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await loginUser(email, password);
+      onClose(); // close modal on success
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex">
-        
+
         {/* Close button */}
         <button
           onClick={onClose}
@@ -32,27 +53,45 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
             className="h-10 mb-6"
           />
 
-          <div className="mb-4">
-            <label className="block text-sm mb-1">Login</label>
-            <input
-              type="email"
-              className="w-full border rounded px-3 py-2"
-              placeholder="Email"
-            />
-          </div>
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label className="block text-sm mb-1">Email</label>
+              <input
+                type="email"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
 
-          <div className="mb-4">
-            <label className="block text-sm mb-1">Password</label>
-            <input
-              type="password"
-              className="w-full border rounded px-3 py-2"
-              placeholder="Password"
-            />
-          </div>
+            <div className="mb-4">
+              <label className="block text-sm mb-1">Password</label>
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
-          <button className="w-full bg-[#7B2220] text-white py-2 rounded hover:opacity-90">
-            Login
-          </button>
+            {error && (
+              <p className="text-red-600 text-sm mb-3">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#7B2220] text-white py-2 rounded hover:opacity-90 disabled:opacity-60"
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
 
           <div className="flex justify-between text-sm mt-3">
             <label className="flex items-center gap-2">
@@ -61,7 +100,7 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
             </label>
             <span
               className="text-[#7B2220] cursor-pointer"
-              onClick={() => console.log("Forgot password clicked")}
+              onClick={() => alert("Forgot password coming soon")}
             >
               Forgot password
             </span>
