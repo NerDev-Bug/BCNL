@@ -4,6 +4,7 @@ import Order from './pages/Order.jsx'
 import Menu from './pages/Menu.jsx'
 import OurStory from './pages/OurStory.jsx'
 import Navbar from './components/Navbar.jsx'
+import FooterNavbar from './components/layouts/footer.jsx'
 import Wishlist from './components/Wishlist'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/our-story" element={<OurStory />} />
         <Route path="/wishlist" element={<Wishlist />} />
       </Routes>
+      <FooterNavbar />
     </div>
   )
 }
