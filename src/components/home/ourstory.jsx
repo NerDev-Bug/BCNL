@@ -29,7 +29,7 @@ function OurStory() {
   return (
     <section className="max-w-7xl mx-auto px-4 py-16">
       {/* Heading */}
-      <h2 className="text-4xl font-bold text-center text-[#5B1E5D] mb-16">
+      <h2 className="text-4xl font-bold text-center font-cooper text-[#5B1E5D] mb-16">
         Our Story
       </h2>
 
@@ -60,7 +60,7 @@ function OurStory() {
         </section>
 
         {/* Section 2 */}
-        <section className="flex flex-col md:flex-row items-center mb-16">
+        <section className="flex flex-col-reverse md:flex-row items-center mb-16">
             <div className="md:w-2/3 relative md:pr-8">
                 <img
                     src="./images/bg_purple.png"
@@ -74,7 +74,7 @@ function OurStory() {
                     className="absolute inset-0 m-auto w-90 h-80 rounded-md shadow-lg z-10"
                 />
             </div>
-            <div className="md:w-1/2 mb-8 md:mb-0 md:pl-8">
+            <div className="md:w-1/2 mb-8 md:mb-0 md:pl-8 py-8">
                 <div>
                     <h1 className="text-2xl font-bold mb-4">Lorem Ipsum is simply dummy text of</h1>
                     <div>
