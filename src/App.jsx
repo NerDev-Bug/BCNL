@@ -2,7 +2,6 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Order from "./pages/Order";
 import Menu from "./pages/Menu";
-import OurStory from "./pages/OurStory";
 import Wishlist from "./components/Wishlist";
 import AdminDashboard from "./pages/admin/dashboard";
 import UsersPage from "./pages/admin/users";
@@ -23,7 +22,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/order" element={<Order />} />
         <Route path="/menu" element={<Menu />} />
-        <Route path="/our-story" element={<OurStory />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/profile" element={<Profile />} />
 

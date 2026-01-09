@@ -1,15 +1,17 @@
+import { Link } from "react-router-dom"
+
 function Favorites() {
     return (
         <div className="bg-cover bg-center" style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}>
             <div className="py-8 px-4 max-w-6xl mx-auto relative">
                 <h1 className="text-4xl font-bold text-[#502455] font-cooper text-center">Favorites</h1>
 
-                <button className="absolute left-6 top-8 bg-[#7a2d2d] text-white rounded-md px-4 py-2 text-sm flex items-center gap-2 hover:opacity-90">
+                <Link to="/menu" className="absolute left-6 top-8 bg-[#7a2d2d] text-white rounded-md px-4 py-2 text-sm flex items-center gap-2 hover:opacity-90">
                     Go to Menu
                     <span className="ml-1 bg-[#7a2d2d] rounded-sm w-6 h-6 flex items-center justify-center shadow-sm">
                         <img src="./images/Farword-Arrow.png" alt="" className="w-4 h-3" />
                     </span>
-                </button>
+                </Link>
 
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[{

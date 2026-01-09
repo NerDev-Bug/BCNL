@@ -64,7 +64,7 @@ function Navbar() {
             <NavLink to="/">Home</NavLink>
             <NavLink to="/order">Order</NavLink>
             <NavLink to="/menu">Menu</NavLink>
-            <NavLink to="/our-story">Our Story</NavLink>
+            <NavLink to="/#our-story">Our Story</NavLink>
           </div>
 
           {/* ICONS */}

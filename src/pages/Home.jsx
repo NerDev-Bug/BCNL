@@ -1,9 +1,13 @@
+import { Link } from "react-router-dom";
 import Favorites from "../components/home/favorites";
 import OurStory from "../components/home/ourstory";
+import useScrollToHash from "../hooks/useScrollToHash";
 
 function Home() {
+  useScrollToHash();
   return (
     <>
+        {/* Hero Section */}
         <section className="relative min-h-screen overflow-hidden">
           <div className="w-full">
               <div className="flex flex-col md:flex-row">
@@ -18,15 +22,23 @@ function Home() {
 
                       <div className="mt-8 flex justify-center items-center space-x-4 px-4 py-4">
                         <button className="px-6 py-3 rounded-md border border-[#7B2220] text-[#7B2220] bg-white">Contact us</button>
-                        <button className="px-6 py-3 rounded-md bg-[#7B2220] text-white">Order Now</button>
+                        <Link to="/menu" className="px-6 py-3 rounded-md bg-[#7B2220] text-white">Order Now</Link>
                       </div>
                     </div>
                   </div>
               </div>
           </div>
       </section>
-      <Favorites />
-      <OurStory />
+      
+      {/* Favorites Section */}
+      <section>
+        <Favorites />
+      </section>
+
+      {/* Our Story Section / Scroll Target */}
+      <section id="our-story">
+        <OurStory />
+      </section>
     </>
   );
 }
