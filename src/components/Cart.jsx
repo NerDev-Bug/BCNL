@@ -114,4 +114,4 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
   );
 }
 
-export default Cart;
+export default Cart; 

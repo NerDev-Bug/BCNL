@@ -1,43 +1,44 @@
-import { useEffect, useState } from "react";
-import { loginUser } from "../services/authService";
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { loginUser } from "../services/authService"
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
 
 function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  // Close modal on ESC key
+  const navigate = useNavigate()
+
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", handleEsc)
+    return () => window.removeEventListener("keydown", handleEsc)
+  }, [onClose])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
 
     try {
-      await loginUser(email, password);
-      onClose(); // close modal on success
-    } catch (err) {
-      setError(err.message);
+      const { role } = await loginUser(email.trim(), password.trim())
+      onClose()
+      if (role === "admin") navigate("/admin/dashboard")
+      else navigate("/")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex">
 
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-2 right-4 text-gray-500 hover:text-black text-2xl"
@@ -45,7 +46,7 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
           ×
         </button>
 
-        {/* Left: Login Form */}
+        {/* LEFT */}
         <div className="w-1/2 p-8">
           <img
             src="./images/bcnl_logo.png"
@@ -53,58 +54,50 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
             className="h-10 mb-6"
           />
 
-          <form onSubmit={handleLogin}>
-            <div className="mb-4">
+          <form onSubmit={handleLogin} className="space-y-4">
+
+            <div>
               <label className="block text-sm mb-1">Email</label>
               <input
                 type="email"
                 className="w-full border rounded px-3 py-2"
-                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
 
-            <div className="mb-4">
+            <div>
               <label className="block text-sm mb-1">Password</label>
-              <input
-                type="password"
-                className="w-full border rounded px-3 py-2"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="w-full border rounded px-3 py-2"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
 
-            {error && (
-              <p className="text-red-600 text-sm mb-3">
-                {error}
-              </p>
-            )}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-2 text-gray-500"
+                >
+                  {showPassword
+                    ? <EyeSlashIcon className="w-5 h-5" />
+                    : <EyeIcon className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#7B2220] text-white py-2 rounded hover:opacity-90 disabled:opacity-60"
+              className="w-full bg-[#7B2220] text-white py-2 rounded"
             >
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
-
-          <div className="flex justify-between text-sm mt-3">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" />
-              Remember me
-            </label>
-            <span
-              className="text-[#7B2220] cursor-pointer"
-              onClick={() => alert("Forgot password coming soon")}
-            >
-              Forgot password
-            </span>
-          </div>
 
           <p className="text-sm mt-4">
             Don’t have an account?{" "}
@@ -117,16 +110,14 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
           </p>
         </div>
 
-        {/* Right: Image */}
+        {/* RIGHT */}
         <div
           className="w-1/2 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('./images/login-bg.png')",
-          }}
+          style={{ backgroundImage: "url('./images/login-bg.png')" }}
         />
       </div>
     </div>
-  );
+  )
 }
 
-export default LoginModal;
+export default LoginModal

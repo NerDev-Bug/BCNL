@@ -8,6 +8,8 @@ import AdminDashboard from "./pages/admin/dashboard";
 import UsersPage from "./pages/admin/users";
 import ProductsPage from "./pages/admin/products";
 import OrdersPage from "./pages/admin/orders";
+import Profile from "./pages/Profile";
+
 
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -23,6 +25,8 @@ function App() {
         <Route path="/menu" element={<Menu />} />
         <Route path="/our-story" element={<OurStory />} />
         <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/profile" element={<Profile />} />
+
       </Route>
 
       {/* ADMIN PAGES */}
