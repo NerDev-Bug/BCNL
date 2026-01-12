@@ -1,175 +1,388 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    updateDoc,
+} from "firebase/firestore";
 
 function ProductsPage() {
     const [products, setProducts] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [newProduct, setNewProduct] = useState({ name: "", price: "", imageFile: null });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [uploading, setUploading] = useState(false);
 
-    const productsCollection = collection(db, "products");
-    const storage = getStorage();
+    const [newProduct, setNewProduct] = useState({
+        name: "",
+        price: "",
+        description: "",
+        category: "",
+        imageFile: null,
+    });
 
-    // Fetch products from Firestore
+    const productsCollection = collection(db, "products");
+
+    // 🔹 Cloudinary config
+    const CLOUD_NAME = "drgjco3qx";
+    const UPLOAD_PRESET = "products_unsigned";
+
+    // 🔹 Upload image
+    const uploadToCloudinary = async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", UPLOAD_PRESET);
+
+        const res = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+            {
+                method: "POST",
+                body: formData,
+            }
+        );
+
+        const data = await res.json();
+        if (!data.secure_url) throw new Error("Upload failed");
+
+        return data.secure_url;
+    };
+
+    // 🔹 Fetch products
     useEffect(() => {
         const fetchProducts = async () => {
             const snapshot = await getDocs(productsCollection);
-            const productsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            setProducts(productsData);
+            setProducts(
+                snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }))
+            );
         };
+
         fetchProducts();
     }, []);
 
+    // 🔹 Add product
     const handleAddProduct = async () => {
-        if (!newProduct.name || !newProduct.price || !newProduct.imageFile) {
-            alert("Please fill in all fields");
+        if (
+            !newProduct.name ||
+            !newProduct.price ||
+            !newProduct.description ||
+            !newProduct.category ||
+            !newProduct.imageFile
+        ) {
+            alert("Fill all fields");
             return;
         }
 
         try {
             setUploading(true);
+            const imageUrl = await uploadToCloudinary(newProduct.imageFile);
 
-            // Upload image to Firebase Storage
-            const imageRef = ref(storage, `products/${newProduct.imageFile.name}-${Date.now()}`);
-            await uploadBytes(imageRef, newProduct.imageFile);
-            const imageUrl = await getDownloadURL(imageRef);
-
-            // Add product to Firestore
             const docRef = await addDoc(productsCollection, {
                 name: newProduct.name,
                 price: Number(newProduct.price),
                 image: imageUrl,
+                description: newProduct.description,
+                category: newProduct.category,
+                available: true,
             });
 
-            setProducts([
-                ...products,
-                { id: docRef.id, name: newProduct.name, price: Number(newProduct.price), image: imageUrl },
+            setProducts((prev) => [
+                ...prev,
+                {
+                    id: docRef.id,
+                    name: newProduct.name,
+                    price: Number(newProduct.price),
+                    image: imageUrl,
+                    description: newProduct.description,
+                    category: newProduct.category,
+                    available: true,
+                },
             ]);
 
-            setNewProduct({ name: "", price: "", imageFile: null });
-            setShowModal(false);
-        } catch (error) {
-            console.error("Error adding product:", error);
+            resetModal();
+        } catch (err) {
+            console.error(err);
             alert("Failed to add product");
         } finally {
             setUploading(false);
         }
     };
 
-    const handleDelete = async (product) => {
-        if (window.confirm(`Are you sure you want to delete ${product.name}?`)) {
-            try {
-                await deleteDoc(doc(db, "products", product.id));
-                setProducts(products.filter((p) => p.id !== product.id));
-            } catch (error) {
-                console.error("Error deleting product:", error);
-                alert("Failed to delete product");
+    // 🔹 Update product
+    const handleUpdateProduct = async () => {
+        if (
+            !newProduct.name ||
+            !newProduct.price ||
+            !newProduct.description ||
+            !newProduct.category
+        ) {
+            alert("Fill all fields");
+            return;
+        }
+
+        try {
+            setUploading(true);
+
+            let updatedData = {
+                name: newProduct.name,
+                price: Number(newProduct.price),
+                description: newProduct.description,
+                category: newProduct.category,
+            };
+
+            if (newProduct.imageFile) {
+                updatedData.image = await uploadToCloudinary(
+                    newProduct.imageFile
+                );
             }
+
+            await updateDoc(doc(db, "products", editingId), updatedData);
+
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === editingId ? { ...p, ...updatedData } : p
+                )
+            );
+
+            resetModal();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update product");
+        } finally {
+            setUploading(false);
         }
     };
 
+    // 🔹 Edit product
     const handleEdit = (product) => {
-        alert(`Edit product: ${product.name}`); // later can open modal
+        setIsEditing(true);
+        setEditingId(product.id);
+        setNewProduct({
+            name: product.name,
+            price: product.price,
+            description: product.description,
+            category: product.category,
+            imageFile: null,
+        });
+        setShowModal(true);
+    };
+
+    // 🔹 Delete product
+    const handleDelete = async (product) => {
+        if (!window.confirm(`Delete ${product.name}?`)) return;
+
+        await deleteDoc(doc(db, "products", product.id));
+        setProducts((prev) => prev.filter((p) => p.id !== product.id));
+    };
+
+    // 🔹 Toggle availability
+    const toggleAvailability = async (product) => {
+        await updateDoc(doc(db, "products", product.id), {
+            available: !product.available,
+        });
+
+        setProducts((prev) =>
+            prev.map((p) =>
+                p.id === product.id
+                    ? { ...p, available: !p.available }
+                    : p
+            )
+        );
+    };
+
+    const resetModal = () => {
+        setShowModal(false);
+        setIsEditing(false);
+        setEditingId(null);
+        setNewProduct({
+            name: "",
+            price: "",
+            description: "",
+            category: "",
+            imageFile: null,
+        });
     };
 
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-6">Admin Products Page</h1>
+            <h1 className="text-2xl font-bold mb-6">
+                Admin Products Page
+            </h1>
 
             <button
                 onClick={() => setShowModal(true)}
-                className="mb-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                className="mb-4 bg-green-500 text-white px-4 py-2 rounded"
             >
                 Add Product
             </button>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-200">
-                    <thead>
-                        <tr className="bg-gray-100 text-left">
-                            <th className="py-2 px-4 border-b">ID</th>
-                            <th className="py-2 px-4 border-b">Image</th>
-                            <th className="py-2 px-4 border-b">Name</th>
-                            <th className="py-2 px-4 border-b">Price</th>
-                            <th className="py-2 px-4 border-b">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {products.map((product) => (
-                            <tr key={product.id} className="hover:bg-gray-50">
-                                <td className="py-2 px-4 border-b">{product.id}</td>
-                                <td className="py-2 px-4 border-b">
-                                    <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        className="w-16 h-16 object-cover rounded"
-                                    />
-                                </td>
-                                <td className="py-2 px-4 border-b">{product.name}</td>
-                                <td className="py-2 px-4 border-b">₱{product.price}</td>
-                                <td className="py-2 px-4 border-b">
-                                    <button
-                                        onClick={() => handleEdit(product)}
-                                        className="bg-blue-500 text-white px-3 py-1 rounded mr-2 hover:bg-blue-600"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(product)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            {/* 🔹 PRODUCTS TABLE */}
+            <table className="w-full border">
+                <thead className="bg-gray-100">
+                    <tr>
+                        <th className="border px-4 py-2">Image</th>
+                        <th className="border px-4 py-2">Name</th>
+                        <th className="border px-4 py-2">Price</th>
+                        <th className="border px-4 py-2">Category</th>
+                        <th className="border px-4 py-2">Status</th>
+                        <th className="border px-4 py-2">Actions</th>
+                    </tr>
+                </thead>
 
-            {/* Add Product Modal */}
+                <tbody>
+                    {products.map((product) => (
+                        <tr key={product.id}>
+                            <td className="border px-4 py-2">
+                                <img
+                                    src={product.image}
+                                    className="w-16 h-16 object-cover rounded"
+                                />
+                            </td>
+                            <td className="border px-4 py-2">
+                                {product.name}
+                            </td>
+                            <td className="border px-4 py-2">
+                                ₱{product.price}
+                            </td>
+                            <td className="border px-4 py-2">
+                                {product.category}
+                            </td>
+                            <td className="border px-4 py-2">
+                                {product.available
+                                    ? "Available"
+                                    : "Not Available"}
+                            </td>
+                            <td className="border px-4 py-2 space-x-2">
+                                <button
+                                    onClick={() => handleEdit(product)}
+                                    className="bg-blue-500 text-white px-3 py-1 rounded"
+                                >
+                                    Edit
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        toggleAvailability(product)
+                                    }
+                                    className={`px-3 py-1 rounded text-white ${
+                                        product.available
+                                            ? "bg-yellow-500"
+                                            : "bg-gray-500"
+                                    }`}
+                                >
+                                    {product.available
+                                        ? "Disable"
+                                        : "Enable"}
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        handleDelete(product)
+                                    }
+                                    className="bg-red-500 text-white px-3 py-1 rounded"
+                                >
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            {/* 🔹 MODAL */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-                    <div className="bg-white p-6 rounded shadow-lg w-96">
-                        <h2 className="text-xl font-bold mb-4">Add New Product</h2>
-                        <div className="flex flex-col gap-3">
-                            <input
-                                type="text"
-                                placeholder="Product Name"
-                                value={newProduct.name}
-                                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                className="border px-3 py-2 rounded w-full"
-                            />
-                            <input
-                                type="number"
-                                placeholder="Price"
-                                value={newProduct.price}
-                                onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                className="border px-3 py-2 rounded w-full"
-                            />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setNewProduct({ ...newProduct, imageFile: e.target.files[0] })}
-                                className="border px-3 py-2 rounded w-full"
-                            />
-                        </div>
-                        <div className="mt-4 flex justify-end gap-2">
+                <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
+                    <div className="bg-white p-6 rounded w-96">
+                        <h2 className="text-xl font-bold mb-4">
+                            {isEditing ? "Edit Product" : "Add Product"}
+                        </h2>
+
+                        <input
+                            className="border w-full mb-2 px-3 py-2"
+                            placeholder="Name"
+                            value={newProduct.name}
+                            onChange={(e) =>
+                                setNewProduct({
+                                    ...newProduct,
+                                    name: e.target.value,
+                                })
+                            }
+                        />
+
+                        <input
+                            type="number"
+                            className="border w-full mb-2 px-3 py-2"
+                            placeholder="Price"
+                            value={newProduct.price}
+                            onChange={(e) =>
+                                setNewProduct({
+                                    ...newProduct,
+                                    price: e.target.value,
+                                })
+                            }
+                        />
+
+                        <input
+                            className="border w-full mb-2 px-3 py-2"
+                            placeholder="Category (e.g. cookies)"
+                            value={newProduct.category}
+                            onChange={(e) =>
+                                setNewProduct({
+                                    ...newProduct,
+                                    category: e.target.value,
+                                })
+                            }
+                        />
+
+                        <textarea
+                            className="border w-full mb-2 px-3 py-2"
+                            placeholder="Description"
+                            value={newProduct.description}
+                            onChange={(e) =>
+                                setNewProduct({
+                                    ...newProduct,
+                                    description: e.target.value,
+                                })
+                            }
+                        />
+
+                        <input
+                            type="file"
+                            onChange={(e) =>
+                                setNewProduct({
+                                    ...newProduct,
+                                    imageFile: e.target.files[0],
+                                })
+                            }
+                        />
+
+                        <div className="flex justify-end gap-2 mt-4">
                             <button
-                                onClick={() => setShowModal(false)}
-                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                                disabled={uploading}
+                                onClick={resetModal}
+                                className="px-4 py-2 bg-gray-300 rounded"
                             >
                                 Cancel
                             </button>
+
                             <button
-                                onClick={handleAddProduct}
-                                className="px-4 py-2 rounded bg-green-500 text-white hover:bg-green-600"
+                                onClick={
+                                    isEditing
+                                        ? handleUpdateProduct
+                                        : handleAddProduct
+                                }
+                                className="px-4 py-2 bg-green-500 text-white rounded"
                                 disabled={uploading}
                             >
-                                {uploading ? "Uploading..." : "Add"}
+                                {uploading
+                                    ? "Saving..."
+                                    : isEditing
+                                    ? "Update"
+                                    : "Add"}
                             </button>
                         </div>
                     </div>

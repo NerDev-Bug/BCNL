@@ -8,6 +8,8 @@ import UsersPage from "./pages/admin/users";
 import ProductsPage from "./pages/admin/products";
 import OrdersPage from "./pages/admin/orders";
 import Profile from "./pages/Profile";
+import ProductDetail from "./pages/ProductDetails";
+
 
 
 import UserLayout from "./layouts/UserLayout";
@@ -24,6 +26,7 @@ function App() {
         <Route path="/menu" element={<Menu />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
 
       </Route>
 
@@ -36,7 +39,8 @@ function App() {
       </Route>
 
     </Routes>
+    
   );
 }
 
-export default App;
+export default App; 
