@@ -98,7 +98,7 @@ function OurStory() {
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
           {testimonials.map((item, index) => (
-            <div key={index} className="min-w-full px-6">
+            <div key={index} className="min-w-full px-12">
               <span className="text-6xl font-bold block mb-6">“</span>
               <p className="text-black max-w-3xl mx-auto mb-6 leading-relaxed">
                 {item.text}

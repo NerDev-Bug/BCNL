@@ -60,23 +60,24 @@ export default function Menu() {
     if (cartItems.length > 0) syncCart();
   }, [cartItems]);
 
+  // Only changes shown in comments and small tweaks
   const handleAddToCart = (product) => {
-    const existing = cartItems.find((item) => item.id === product.id);
-
-    if (existing) {
-      setCartItems((prev) =>
-        prev.map((item) =>
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
+      if (existing) {
+        return prev.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
-        )
-      );
-    } else {
-      setCartItems((prev) => [...prev, { ...product, quantity: 1 }]);
-    }
+        );
+      } else {
+        return [...prev, { ...product, quantity: 1 }];
+      }
+    });
 
-    setCartOpen(true);
+    setCartOpen(true); // ensure cart opens
   };
+
 
   const handleRemoveItem = (id) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
@@ -95,17 +96,17 @@ export default function Menu() {
 
       {/* 🔹 MENU HEADER BANNER */}
       <div
-  className="w-full border-y-2 border-black min-h-[250px] flex items-center justify-center"
-  style={{
-    backgroundImage: "url('/images/menubanner.png')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-  }}
->
-  <h1 className="text-4xl md:text-5xl font-bold text-[#502455] font-cooper text-center translate-y-8">
-    Menu
-  </h1>
-</div>
+        className="w-full border-y-2 border-black min-h-[250px] flex items-center justify-center"
+        style={{
+          backgroundImage: "url('/images/menubanner.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <h1 className="text-4xl md:text-5xl font-bold text-[#502455] font-cooper text-center translate-y-8">
+          Menu
+        </h1>
+      </div>
 
       {/* 🔹 PAGE CONTENT */}
       <div
@@ -115,39 +116,39 @@ export default function Menu() {
         <div className="py-8 px-4 max-w-6xl mx-auto">
 
           {/* 🔹 SEARCH + CATEGORY BAR */}
-          <div  className="border border-[#7B2220] rounded-md p-2 bg-[#502455] sticky z-50"
-  style={{ top: '100px' }} // custom spacing from top
->
-  <div className="flex flex-col md:flex-row gap-4 items-center">
-    <div className="relative w-full md:flex-1">
-      <Search
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-        size={18}
-      />
-      <input
-        type="text"
-        placeholder="Search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
-      />
-    </div>
+          <div  className="border border-[#7B2220] rounded-md p-2 bg-[#502455] sticky z-20"
+            style={{ top: '100px' }} // custom spacing from top
+          >
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="relative w-full md:flex-1">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                />
+              </div>
 
-    <div className="w-full md:w-56">
-      <select
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
-      >
-        <option>All Categories</option>
-        <option>Cakes</option>
-        <option>Cookies</option>
-        <option>Pastries</option>
-        <option>Drinks</option>
-      </select>
-    </div>
-  </div>
-</div>
+              <div className="w-full md:w-56">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                >
+                  <option>All Categories</option>
+                  <option>Cakes</option>
+                  <option>Cookies</option>
+                  <option>Pastries</option>
+                  <option>Drinks</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
           {/* 🔹 PRODUCTS GRID */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">

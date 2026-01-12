@@ -45,7 +45,7 @@ function Favorites() {
                                 </div>
                                 <div className="mt-4 flex justify-center gap-4">
                                     <button className="border border-[#7B2220] text-[#7a2d2d] rounded-md px-3 py-2 text-sm hover:bg-gray-50">Add to Wishlist</button>
-                                    <button className="border border-[#7B2220] bg-white text-[#7a2d2d] rounded-md px-3 py-2 text-sm hover:bg-gray-50">Order Now</button>
+                                    <button className="border border-[#7B2220] bg-[#7B2220] text-white rounded-md px-8 py-2 text-sm font-bold hover:bg-[#502455]">Order Now</button>
                                 </div>
                             </div>
                         </div>

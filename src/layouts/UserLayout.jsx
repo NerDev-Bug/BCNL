@@ -9,7 +9,7 @@ function UserLayout() {
     <>
       <ScrollToTop />
       <Navbar />
-      <Outlet />
+        <Outlet />
       <FooterNavbar />
     </>
   );

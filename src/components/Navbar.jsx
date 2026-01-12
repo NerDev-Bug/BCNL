@@ -9,14 +9,15 @@ import RegisterModal from "./RegisterModal"
 import Cart from "./Cart"
 
 /* ---------------- NAV LINK ---------------- */
-function NavLink({ to, children }) {
+function NavLink({ to, children, onClick }) {
   const location = useLocation()
   const isActive = location.pathname === to
 
   return (
     <Link
       to={to}
-      className={`mr-10 pb-1 ${
+      onClick={onClick}
+      className={`block md:inline-block md:mr-10 py-2 ${
         isActive ? "border-b-4 border-[#7B2220]" : ""
       }`}
     >
@@ -31,36 +32,47 @@ function Navbar() {
   const [showRegister, setShowRegister] = useState(false)
   const [showCart, setShowCart] = useState(false)
   const [user, setUser] = useState(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navigate = useNavigate()
 
   // 🔐 Listen to auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser)
-    })
+    const unsubscribe = onAuthStateChanged(auth, setUser)
     return unsubscribe
   }, [])
 
   // Prevent body scroll when cart is open
   useEffect(() => {
-    document.body.style.overflow = showCart ? "hidden" : "auto"
-  }, [showCart])
+    const shouldLockScroll = showCart || isMobileMenuOpen
+    document.body.style.overflow = shouldLockScroll ? "hidden" : "auto"
+
+    return () => {
+      document.body.style.overflow = "auto"
+    }
+
+  }, [showCart, isMobileMenuOpen])
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false)
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 p-3 bg-gray-100 z-50">
-        <div className="flex items-center justify-between">
+    {isMobileMenuOpen && (
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+        onClick={closeMobileMenu}
+      />
+    )}
+      <nav className="fixed top-0 left-0 right-0 bg-gray-100 z-50">
+        <div className="flex items-center justify-between p-3">
 
           {/* LOGO */}
-          <img
-            src="./images/bcnl_logo.png"
-            alt="Logo"
-            className="w-17 h-10"
-          />
+          <Link to="/" className="flex items-center">
+            <img src="./images/bcnl_logo.png" alt="Logo" className="w-17 h-10" />
+          </Link>
 
-          {/* NAV LINKS */}
-          <div className="text-black font-semibold">
+          {/* DESKTOP NAV LINKS */}
+          <div className="hidden md:flex text-black font-semibold">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/order">Order</NavLink>
             <NavLink to="/menu">Menu</NavLink>
@@ -69,35 +81,64 @@ function Navbar() {
 
           {/* ICONS */}
           <div className="flex items-center">
-            <Link to="/wishlist" className="mr-4">
+
+            {/* HAMBURGER (MOBILE ONLY) */}
+            <button
+              className="md:hidden mr-3 text-xl font-bold"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              ☰
+            </button>
+
+            <Link to="/wishlist" className="mr-4 hidden md:block">
               <img src="./images/favorite.png" alt="Wishlist" className="w-5 h-5" />
             </Link>
 
-            {/* ACCOUNT BUTTON */}
+            {/* ACCOUNT */}
             <button
-              onClick={() => {
-                if (user) {
-                  navigate("/profile")
-                } else {
-                  setShowLogin(true)
-                }
-              }}
-              className="mr-4"
+              onClick={() => (user ? navigate("/profile") : setShowLogin(true))}
+              className="mr-4 hidden md:block"
             >
               <img src="./images/user.png" alt="Account" className="w-5 h-5" />
             </button>
 
             {/* CART */}
-            <button onClick={() => setShowCart(true)} className="mr-2">
+            <button onClick={() => setShowCart(true)}>
               <img src="./images/cart.png" alt="Cart" className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* MOBILE MENU */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-gray-100 border-t pt-4 text-black font-semibold px-4 pb-4 animate-slideDown">
+            <NavLink to="/" onClick={closeMobileMenu}>Home</NavLink>
+            <NavLink to="/order" onClick={closeMobileMenu}>Order</NavLink>
+            <NavLink to="/menu" onClick={closeMobileMenu}>Menu</NavLink>
+            <NavLink to="/#our-story" onClick={closeMobileMenu}>Our Story</NavLink>
+
+            <hr className="border-1 border-gray-300 mt-2" />
+
+            <div className="mt-4 flex flex-col gap-3">
+              <Link to="/wishlist" onClick={closeMobileMenu} className="block">Wishlist</Link>
+              <button
+                className="text-left"
+                onClick={() => {
+                  closeMobileMenu()
+                  user ? navigate("/profile") : setShowLogin(true)
+                }}
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!isMobileMenuOpen && <DeliveryLayout />}
       </nav>
 
-      <DeliveryLayout />
-
-      {/* LOGIN MODAL */}
+      {/* MODALS */}
       <LoginModal
         isOpen={showLogin}
         onClose={() => setShowLogin(false)}
@@ -107,7 +148,6 @@ function Navbar() {
         }}
       />
 
-      {/* REGISTER MODAL */}
       <RegisterModal
         isOpen={showRegister}
         onClose={() => setShowRegister(false)}
@@ -117,7 +157,6 @@ function Navbar() {
         }}
       />
 
-      {/* CART */}
       <Cart isOpen={showCart} onClose={() => setShowCart(false)} />
     </>
   )

@@ -7,10 +7,11 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
   useEffect(() => {
     const newQuantities = {};
     cartItems.forEach((item) => {
-      newQuantities[item.id] = quantities[item.id] ?? item.quantity;
+      newQuantities[item.id] = item.quantity; // always take cartItem quantity
     });
     setQuantities(newQuantities);
   }, [cartItems]);
+
 
   const totalPrice = cartItems.reduce(
     (acc, item) => acc + item.price * (quantities[item.id] || 0),
