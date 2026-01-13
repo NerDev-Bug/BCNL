@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { loginUser } from "../services/authService"
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
+import { toast } from "react-toastify"
 
 function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
   const [email, setEmail] = useState("")
@@ -27,16 +28,22 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
 
     try {
       const { role } = await loginUser(email.trim(), password.trim())
+
       onClose()
+      toast.success("Logged in successfully!");
+
       if (role === "admin") navigate("/admin/dashboard")
       else navigate("/")
+    } catch(error) {
+      console.error(error);
+      toast.error("Login failed. Please check your credentials.");
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex">
 
         <button

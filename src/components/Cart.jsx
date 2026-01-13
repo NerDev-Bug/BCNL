@@ -1,31 +1,17 @@
-import { useState, useEffect } from "react";
-
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
-  const [quantities, setQuantities] = useState({});
-
-  // Sync quantities whenever cartItems change
-  useEffect(() => {
-    const newQuantities = {};
-    cartItems.forEach((item) => {
-      newQuantities[item.id] = item.quantity; // always take cartItem quantity
-    });
-    setQuantities(newQuantities);
-  }, [cartItems]);
-
-
+  // Compute total price directly
   const totalPrice = cartItems.reduce(
-    (acc, item) => acc + item.price * (quantities[item.id] || 0),
+    (acc, item) => acc + item.price * item.quantity,
     0
   );
 
   const handleQuantityChange = (id, value) => {
     if (value < 1) return;
-    setQuantities((prev) => ({ ...prev, [id]: value }));
-    if (onUpdateQuantity) onUpdateQuantity(id, value);
+    onUpdateQuantity?.(id, value);
   };
 
   const handleRemove = (id) => {
-    if (onRemoveItem) onRemoveItem(id);
+    onRemoveItem?.(id);
   };
 
   return (
@@ -70,7 +56,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
                       <input
                         type="number"
                         min={1}
-                        value={quantities[item.id] || 1}
+                        value={item.quantity}
                         onChange={(e) =>
                           handleQuantityChange(item.id, parseInt(e.target.value))
                         }
@@ -82,7 +68,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
                   {/* Price + Remove Button */}
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-[#7B2220]">
-                      ₱{item.price * (quantities[item.id] || 1)}
+                      ₱{item.price * item.quantity}
                     </p>
                     <button
                       onClick={() => handleRemove(item.id)}

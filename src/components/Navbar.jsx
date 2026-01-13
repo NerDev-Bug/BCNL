@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "../firebase"
+import { useCart } from "../context/CartContext"
 
 import DeliveryLayout from "./layouts/delivery"
 import LoginModal from "./LoginModal"
@@ -30,7 +31,7 @@ function NavLink({ to, children, onClick }) {
 function Navbar() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
-  const [showCart, setShowCart] = useState(false)
+  const [showCart] = useState(false)
   const [user, setUser] = useState(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -54,6 +55,15 @@ function Navbar() {
   }, [showCart, isMobileMenuOpen])
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false)
+
+  const {
+  cartItems,
+  isCartOpen,
+  setIsCartOpen,
+  removeItem,
+  updateQuantity,
+} = useCart()
+
 
   return (
     <>
@@ -104,7 +114,7 @@ function Navbar() {
             </button>
 
             {/* CART */}
-            <button onClick={() => setShowCart(true)}>
+            <button onClick={() => setIsCartOpen(true)} id="cart-icon">
               <img src="./images/cart.png" alt="Cart" className="w-5 h-5" />
             </button>
           </div>
@@ -157,7 +167,14 @@ function Navbar() {
         }}
       />
 
-      <Cart isOpen={showCart} onClose={() => setShowCart(false)} />
+      <Cart
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onRemoveItem={removeItem}
+        onUpdateQuantity={updateQuantity}
+      />
+
     </>
   )
 }
