@@ -8,14 +8,18 @@ import UsersPage from "./pages/admin/users";
 import ProductsPage from "./pages/admin/products";
 import OrdersPage from "./pages/admin/orders";
 import Profile from "./pages/Profile";
-import ProductDetails from "./pages/ProductDetails";
+import ProductDetail from "./pages/ProductDetails";
+
+
 
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
 function App() {
   return (
-    <Routes>
+    <>
+      {/* ROUTES */}
+      <Routes>
 
       {/* USER PAGES */}
       <Route element={<UserLayout />}>
@@ -24,20 +28,32 @@ function App() {
         <Route path="/menu" element={<Menu />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/product/:id" element={<ProductDetails />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
 
-      </Route>
+        </Route>
 
-      {/* ADMIN PAGES */}
-      <Route element={<AdminLayout />}>
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<UsersPage />} />
-        <Route path="/admin/products" element={<ProductsPage />} />
-        <Route path="/admin/orders" element={<OrdersPage />} />
-      </Route>
+        {/* ADMIN PAGES */}
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UsersPage />} />
+          <Route path="/admin/products" element={<ProductsPage />} />
+          <Route path="/admin/orders" element={<OrdersPage />} />
+        </Route>
 
-    </Routes>
+      </Routes>
     
+      {/* TOAST CONTAINER */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+        pauseOnFocusLoss
+      />
+    </>
   );
 }
 

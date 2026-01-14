@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { registerUser } from "../services/authService";
+import { toast } from "react-toastify";
 
 function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
   const [username, setUsername] = useState("");
@@ -38,15 +39,17 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
       setLoading(true);
       await registerUser(email, password, username);
       onClose(); // close modal on success
+      toast.success("Account created successfully!, Login Successful");
     } catch (err) {
       setError(err.message);
+      toast.error("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="relative bg-white w-full max-w-4xl rounded-lg overflow-hidden flex">
 
         {/* Close */}

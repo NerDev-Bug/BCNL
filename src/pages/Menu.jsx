@@ -1,19 +1,44 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Heart, Search } from "lucide-react";
-import Cart from "../components/Cart";
 import { db } from "../firebase";
-import { doc, setDoc, collection, getDocs } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { collection, getDocs } from "firebase/firestore";
+import { useCart } from "../context/CartContext";
 
-export default function Menu() {
-  const [products, setProducts] = useState([]);
-  const [cartItems, setCartItems] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All Categories");
+  export default function Menu() {
+    const [products, setProducts] = useState([]);
+    const [search, setSearch] = useState("");
+    const [category, setCategory] = useState("All Categories");
+    const { addToCart } = useCart();
 
-  const auth = getAuth();
+    const flyToCart = (img) => {
+    const cartIcon = document.querySelector("#cart-icon")
+    if (!img || !cartIcon) return
+
+    const imgRect = img.getBoundingClientRect()
+    const cartRect = cartIcon.getBoundingClientRect()
+
+    const clone = img.cloneNode(true)
+    clone.style.position = "fixed"
+    clone.style.left = imgRect.left + "px"
+    clone.style.top = imgRect.top + "px"
+    clone.style.width = imgRect.width + "px"
+    clone.style.height = imgRect.height + "px"
+    clone.style.transition = "all 0.8s ease-in-out"
+    clone.style.zIndex = 9999
+
+    document.body.appendChild(clone)
+
+    requestAnimationFrame(() => {
+      clone.style.left = cartRect.left + "px"
+      clone.style.top = cartRect.top + "px"
+      clone.style.width = "20px"
+      clone.style.height = "20px"
+      clone.style.opacity = "0"
+    })
+
+    setTimeout(() => clone.remove(), 800)
+  }
 
   // 🔹 FETCH PRODUCTS
   useEffect(() => {
@@ -27,69 +52,6 @@ export default function Menu() {
     };
     fetchProducts();
   }, []);
-
-  // 🔹 LOAD CART
-  useEffect(() => {
-    const storedCart = localStorage.getItem("cartItems");
-    if (storedCart) setCartItems(JSON.parse(storedCart));
-  }, []);
-
-  // 🔹 SAVE CART
-  useEffect(() => {
-    localStorage.setItem("cartItems", JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  // 🔹 AUTO CLOSE CART
-  useEffect(() => {
-    if (cartItems.length === 0) setCartOpen(false);
-  }, [cartItems]);
-
-  // 🔹 SYNC CART TO FIREBASE
-  useEffect(() => {
-    const syncCart = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      await setDoc(
-        doc(db, "users", user.uid),
-        { cartItems },
-        { merge: true }
-      );
-    };
-
-    if (cartItems.length > 0) syncCart();
-  }, [cartItems]);
-
-  // Only changes shown in comments and small tweaks
-  const handleAddToCart = (product) => {
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        return [...prev, { ...product, quantity: 1 }];
-      }
-    });
-
-    setCartOpen(true); // ensure cart opens
-  };
-
-
-  const handleRemoveItem = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleUpdateQuantity = (id, quantity) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      )
-    );
-  };
 
   return (
     <div className="w-full">
@@ -215,7 +177,14 @@ export default function Menu() {
                       </button>
 
                       <button
-                        onClick={() => handleAddToCart(product)}
+                        onClick={(e) => {
+                          const img = e.currentTarget
+                            .closest(".group")
+                            .querySelector("img")
+
+                          flyToCart(img)
+                          addToCart(product)
+                        }}
                         disabled={!product.available}
                         className={`flex-1 rounded-md py-2 font-bold ${
                           product.available
@@ -232,15 +201,6 @@ export default function Menu() {
           </div>
         </div>
       </div>
-
-      {/* 🔹 CART */}
-      <Cart
-        isOpen={cartOpen}
-        onClose={() => setCartOpen(false)}
-        cartItems={cartItems}
-        onRemoveItem={handleRemoveItem}
-        onUpdateQuantity={handleUpdateQuantity}
-      />
     </div>
   );
 } 
