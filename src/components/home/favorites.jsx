@@ -93,14 +93,21 @@ function Favorites() {
                       const img = e.currentTarget
                         .closest(".group")
                         .querySelector("img")
-                      flyToCart(img)
-                      addToCart({
+
+                      const success = addToCart({
                         id: p.id,
                         name: p.title,
                         price: p.price,
                         image: p.img,
-                        category: "Favorites"
+                        category: "Favorites",
                       })
+
+                      if (!success) {
+                        window.openLoginModal?.()
+                        return // ❌ stop here, no animation
+                      }
+
+                      flyToCart(img) // ✅ only when logged in
                     }}
                     className="border border-[#7B2220] bg-[#7B2220] text-white rounded-md px-8 py-2 text-sm font-bold hover:bg-[#502455]"
                   >

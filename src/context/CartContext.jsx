@@ -64,38 +64,42 @@ export function CartProvider({ children }) {
     await deleteDoc(itemDocRef(uid, id));
   };
 
-  // ✅ Called by Menu.jsx
-  const addToCart = (product) => {
-    if (!user) {
-      alert("Please log in to add items to your cart.");
-      return;
-    }
+  // CartContext.jsx
+const addToCart = (product) => {
+  if (!user) {
+    return false; // 👈 tell caller login is required
+  }
 
-    setCartItems((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
+  setCartItems((prev) => {
+    const existing = prev.find((i) => i.id === product.id);
 
-      const next = existing
-        ? prev.map((i) =>
-            i.id === product.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i
-          )
-        : [
-            ...prev,
-            {
-              id: product.id,
-              name: product.name,
-              price: product.price,
-              image: product.image || null,
-              category: product.category || null,
-              quantity: 1,
-            },
-          ];
+    const next = existing
+      ? prev.map((i) =>
+          i.id === product.id
+            ? { ...i, quantity: (i.quantity || 1) + 1 }
+            : i
+        )
+      : [
+          ...prev,
+          {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image || null,
+            category: product.category || null,
+            quantity: 1,
+          },
+        ];
 
-      const itemToSave = next.find((i) => i.id === product.id);
-      upsertToFirestore(user.uid, itemToSave).catch(console.error);
+    const itemToSave = next.find((i) => i.id === product.id);
+    upsertToFirestore(user.uid, itemToSave).catch(console.error);
 
-      return next;
-    });
-  };
+    return next;
+  });
+
+  return true; // 👈 success
+};
+
 
   // ✅ Called by Cart.jsx via onUpdateQuantity
   const updateQuantity = (id, quantity) => {
@@ -119,7 +123,7 @@ export function CartProvider({ children }) {
     deleteFromFirestore(user.uid, id).catch(console.error);
   };
 
-  const value = useMemo(
+  const value = useMemo( 
     () => ({
       cartItems,
       addToCart,
@@ -132,12 +136,14 @@ export function CartProvider({ children }) {
 
       user,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cartItems, isCartOpen, user]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCart() {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error("useCart must be used inside CartProvider");

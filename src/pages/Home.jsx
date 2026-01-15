@@ -9,7 +9,7 @@ function Home() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative min-h-screen overflow-hidden">
+      <section className="relative max-w-9xl mx-auto min-h-screen overflow-hidden">
         <div className="w-full">
           <div className="flex flex-col md:flex-row">
             {/* LEFT IMAGE SIDE */}

@@ -180,10 +180,16 @@ import { useCart } from "../context/CartContext";
                         onClick={(e) => {
                           const img = e.currentTarget
                             .closest(".group")
-                            .querySelector("img")
+                            .querySelector("img");
 
-                          flyToCart(img)
-                          addToCart(product)
+                          const success = addToCart(product);
+
+                          if (!success) {
+                            window.openLoginModal?.();
+                            return; // ❌ NO flyToCart
+                          }
+
+                          flyToCart(img); // ✅ only when logged in
                         }}
                         disabled={!product.available}
                         className={`flex-1 rounded-md py-2 font-bold ${

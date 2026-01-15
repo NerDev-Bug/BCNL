@@ -39,7 +39,12 @@ function Navbar() {
   // ✅ Cart context (PUT THIS HERE)
   const { cartItems, isCartOpen, setIsCartOpen, removeItem, updateQuantity } =
     useCart()
-   const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
+
+  useEffect(() => {
+    window.openLoginModal = () => setShowLogin(true);
+  }, []);
+
+  const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
 
   // 🔐 Listen to auth state
   useEffect(() => {
@@ -78,9 +83,9 @@ function Navbar() {
           {/* DESKTOP NAV LINKS */}
           <div className="hidden md:flex text-black font-semibold">
             <NavLink to="/">Home</NavLink>
-            <NavLink to="/order">Order</NavLink>
-            <NavLink to="/menu">Menu</NavLink>
             <NavLink to="/#our-story">Our Story</NavLink>
+            <NavLink to="/menu">Menu</NavLink>
+            <NavLink to="/order">Order</NavLink>
           </div>
 
           {/* ICONS */}
@@ -134,14 +139,14 @@ function Navbar() {
             <NavLink to="/" onClick={closeMobileMenu}>
               Home
             </NavLink>
-            <NavLink to="/order" onClick={closeMobileMenu}>
-              Order
+            <NavLink to="/#our-story" onClick={closeMobileMenu}>
+              Our Story
             </NavLink>
             <NavLink to="/menu" onClick={closeMobileMenu}>
               Menu
             </NavLink>
-            <NavLink to="/#our-story" onClick={closeMobileMenu}>
-              Our Story
+            <NavLink to="/order" onClick={closeMobileMenu}>
+              Order
             </NavLink>
 
             <hr className="border-1 border-gray-300 mt-2" />
