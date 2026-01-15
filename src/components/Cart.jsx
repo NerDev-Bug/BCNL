@@ -1,5 +1,4 @@
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
-  // Compute total price directly
   const totalPrice = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
@@ -16,19 +15,21 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
 
   return (
     <>
-      {/* OVERLAY */}
-      {isOpen && <div onClick={onClose} className="fixed inset-0 bg-black/40 z-40" />}
+      {isOpen && (
+        <div onClick={onClose} className="fixed inset-0 bg-black/40 z-40" />
+      )}
 
-      {/* SIDEBAR */}
       <div
         className={`fixed top-0 right-0 h-full w-[380px] bg-white z-50 transform transition-transform duration-300
           ${isOpen ? "translate-x-0" : "translate-x-full"}
         `}
       >
-        {/* HEADER */}
         <div className="flex items-center justify-between p-5 border-b">
           <h2 className="text-lg font-semibold text-[#7B2220]">Shopping cart</h2>
-          <button onClick={onClose} className="text-2xl text-gray-500 hover:text-black">
+          <button
+            onClick={onClose}
+            className="text-2xl text-gray-500 hover:text-black"
+          >
             ×
           </button>
         </div>
@@ -45,7 +46,6 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
           </div>
         ) : (
           <>
-            {/* Cart Items */}
             <div className="overflow-y-auto h-[calc(100%-80px)] p-5 space-y-4">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex justify-between items-center">
@@ -65,7 +65,6 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
                     </p>
                   </div>
 
-                  {/* Price + Remove Button */}
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-[#7B2220]">
                       ₱{item.price * item.quantity}
@@ -81,7 +80,6 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
               ))}
             </div>
 
-            {/* Total + Checkout Button */}
             <div className="fixed bottom-0 right-0 w-[380px] bg-white border-t p-5 flex items-center justify-between shadow-lg z-50">
               <p className="font-semibold text-lg text-[#502455]">
                 Total: ₱{totalPrice}

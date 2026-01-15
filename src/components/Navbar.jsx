@@ -31,11 +31,15 @@ function NavLink({ to, children, onClick }) {
 function Navbar() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
-  const [showCart] = useState(false)
   const [user, setUser] = useState(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navigate = useNavigate()
+
+  // ✅ Cart context (PUT THIS HERE)
+  const { cartItems, isCartOpen, setIsCartOpen, removeItem, updateQuantity } =
+    useCart()
+   const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
 
   // 🔐 Listen to auth state
   useEffect(() => {
@@ -43,39 +47,29 @@ function Navbar() {
     return unsubscribe
   }, [])
 
-  // Prevent body scroll when cart is open
+  const closeMobileMenu = () => setIsMobileMenuOpen(false)
+
+  // ✅ Prevent body scroll when cart or mobile menu is open
   useEffect(() => {
-    const shouldLockScroll = showCart || isMobileMenuOpen
+    const shouldLockScroll = isCartOpen || isMobileMenuOpen
     document.body.style.overflow = shouldLockScroll ? "hidden" : "auto"
 
     return () => {
       document.body.style.overflow = "auto"
     }
-
-  }, [showCart, isMobileMenuOpen])
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false)
-
-  const {
-  cartItems,
-  isCartOpen,
-  setIsCartOpen,
-  removeItem,
-  updateQuantity,
-} = useCart()
-
+  }, [isCartOpen, isMobileMenuOpen])
 
   return (
     <>
-    {isMobileMenuOpen && (
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
-        onClick={closeMobileMenu}
-      />
-    )}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+          onClick={closeMobileMenu}
+        />
+      )}
+
       <nav className="fixed top-0 left-0 right-0 bg-gray-100 z-50">
         <div className="flex items-center justify-between p-3">
-
           {/* LOGO */}
           <Link to="/" className="flex items-center">
             <img src="./images/bcnl_logo.png" alt="Logo" className="w-17 h-10" />
@@ -91,7 +85,6 @@ function Navbar() {
 
           {/* ICONS */}
           <div className="flex items-center">
-
             {/* HAMBURGER (MOBILE ONLY) */}
             <button
               className="md:hidden mr-3 text-xl font-bold"
@@ -102,7 +95,11 @@ function Navbar() {
             </button>
 
             <Link to="/wishlist" className="mr-4 hidden md:block">
-              <img src="./images/favorite.png" alt="Wishlist" className="w-5 h-5" />
+              <img
+                src="./images/favorite.png"
+                alt="Wishlist"
+                className="w-5 h-5"
+              />
             </Link>
 
             {/* ACCOUNT */}
@@ -113,9 +110,20 @@ function Navbar() {
               <img src="./images/user.png" alt="Account" className="w-5 h-5" />
             </button>
 
-            {/* CART */}
-            <button onClick={() => setIsCartOpen(true)} id="cart-icon">
+                        {/* CART */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              id="cart-icon"
+              className="relative"
+              aria-label="Open cart"
+            >
               <img src="./images/cart.png" alt="Cart" className="w-5 h-5" />
+
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2220] text-white text-[11px] font-bold flex items-center justify-center leading-none">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -123,15 +131,25 @@ function Navbar() {
         {/* MOBILE MENU */}
         {isMobileMenuOpen && (
           <div className="md:hidden bg-gray-100 border-t pt-4 text-black font-semibold px-4 pb-4 animate-slideDown">
-            <NavLink to="/" onClick={closeMobileMenu}>Home</NavLink>
-            <NavLink to="/order" onClick={closeMobileMenu}>Order</NavLink>
-            <NavLink to="/menu" onClick={closeMobileMenu}>Menu</NavLink>
-            <NavLink to="/#our-story" onClick={closeMobileMenu}>Our Story</NavLink>
+            <NavLink to="/" onClick={closeMobileMenu}>
+              Home
+            </NavLink>
+            <NavLink to="/order" onClick={closeMobileMenu}>
+              Order
+            </NavLink>
+            <NavLink to="/menu" onClick={closeMobileMenu}>
+              Menu
+            </NavLink>
+            <NavLink to="/#our-story" onClick={closeMobileMenu}>
+              Our Story
+            </NavLink>
 
             <hr className="border-1 border-gray-300 mt-2" />
 
             <div className="mt-4 flex flex-col gap-3">
-              <Link to="/wishlist" onClick={closeMobileMenu} className="block">Wishlist</Link>
+              <Link to="/wishlist" onClick={closeMobileMenu} className="block">
+                Wishlist
+              </Link>
               <button
                 className="text-left"
                 onClick={() => {
@@ -167,6 +185,7 @@ function Navbar() {
         }}
       />
 
+      {/* ✅ CART SIDEBAR (ONLY HERE) */}
       <Cart
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -174,7 +193,6 @@ function Navbar() {
         onRemoveItem={removeItem}
         onUpdateQuantity={updateQuantity}
       />
-
     </>
   )
 }

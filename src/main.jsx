@@ -1,27 +1,33 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import './index.css'
-import App from './App.jsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import "./index.css";
+import App from "./App.jsx";
+
+// ✅ add this
+import { CartProvider } from "./context/CartContext";
 
 // Register Service Worker for PWA (only in production to avoid dev cache issues)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register('/service-worker.js')
+      .register("/service-worker.js")
       .then((registration) => {
-        console.log('[PWA] Service Worker registered:', registration);
+        console.log("[PWA] Service Worker registered:", registration);
       })
       .catch((error) => {
-        console.error('[PWA] Service Worker registration failed:', error);
+        console.error("[PWA] Service Worker registration failed:", error);
       });
   });
 }
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      {/* ✅ wrap App so useCart() works everywhere */}
+      <CartProvider>
+        <App />
+      </CartProvider>
     </BrowserRouter>
-  </StrictMode>,
-)
+  </StrictMode>
+);
