@@ -9,7 +9,7 @@ function Home() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative max-w-9xl mx-auto min-h-screen overflow-hidden">
+      <section className="relative max-w-screen-2xl mx-auto mx-auto min-h-screen overflow-hidden">
         <div className="w-full">
           <div className="flex flex-col md:flex-row">
             {/* LEFT IMAGE SIDE */}
@@ -30,9 +30,9 @@ function Home() {
             </div>
 
             {/* RIGHT TEXT SIDE */}
-            <div className="flex items-center justify-center bg-white flex-1 p-10 md:p-0">
-              <div className="pl-5 max-w-6xl">
-                <p className="text-4xl md:text-6xl text-[#502455] leading-tight font-semibold font-cooper mr-20">
+            <div className="flex items-center justify-center bg-white md:w-1/2 flex-1 px-6 md:px-12">
+              <div className="max-w-xl">
+                <p className="text-4xl md:text-6xl text-[#502455] leading-tight font-semibold font-cooper">
                   Homemade cakes and pastries{" "}
                   <span className="text-base align-bottom font-normal">
                     est. 2019

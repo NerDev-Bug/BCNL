@@ -1,8 +1,18 @@
+import {  useState } from "react";
+import CheckOutModal from "./modals/CheckOutModal";
+
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
+  const [showCheckout, setShowCheckout] = useState(false);
+
   const totalPrice = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
   );
+
+  const handleSaveOrder = (orderData) => {
+    console.log("ORDER SAVED:", orderData);
+    // TODO: send to backend
+  };
 
   const handleQuantityChange = (id, value) => {
     if (value < 1) return;
@@ -86,7 +96,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
               </p>
 
               <button
-                onClick={() => alert("Checkout clicked")}
+                onClick={() => setShowCheckout(true)}
                 className="bg-[#7B2220] text-white px-3 py-1.5 rounded-md hover:bg-[#502455] transition text-sm"
               >
                 Checkout
@@ -95,6 +105,14 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
           </>
         )}
       </div>
+
+      <CheckOutModal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        cartItems={cartItems}
+        totalPrice={totalPrice}
+        onSaveOrder={handleSaveOrder}
+      />
     </>
   );
 }
