@@ -1,8 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "../firebase"
+import { auth, db } from "../firebase"
 import { useCart } from "../context/CartContext"
+
+// ✅ Wishlist badge needs these
+import { collection, getDocs } from "firebase/firestore"
 
 import DeliveryLayout from "./layouts/delivery"
 import LoginModal from "./LoginModal"
@@ -34,6 +37,9 @@ function Navbar() {
   const [user, setUser] = useState(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  // ✅ Wishlist badge count
+  const [wishlistCount, setWishlistCount] = useState(0)
+
   const navigate = useNavigate()
 
   // ✅ Cart context (PUT THIS HERE)
@@ -41,8 +47,8 @@ function Navbar() {
     useCart()
 
   useEffect(() => {
-    window.openLoginModal = () => setShowLogin(true);
-  }, []);
+    window.openLoginModal = () => setShowLogin(true)
+  }, [])
 
   const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
 
@@ -63,6 +69,59 @@ function Navbar() {
       document.body.style.overflow = "auto"
     }
   }, [isCartOpen, isMobileMenuOpen])
+
+  // ✅ Load wishlist count (Firestore if logged in, else localStorage)
+  useEffect(() => {
+    const loadWishlistCount = async () => {
+      const local = JSON.parse(localStorage.getItem("wishlist")) || []
+
+      // not logged in → localStorage count
+      if (!user) {
+        setWishlistCount(local.length)
+        return
+      }
+
+      try {
+        const snap = await getDocs(collection(db, "users", user.uid, "wishlist"))
+        setWishlistCount(snap.size)
+
+        // keep localStorage in sync (optional)
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        localStorage.setItem("wishlist", JSON.stringify(items))
+      } catch (err) {
+        console.error("Failed to load wishlist count from Firestore:", err)
+        setWishlistCount(local.length) // fallback
+      }
+    }
+
+    loadWishlistCount()
+  }, [user])
+
+  // ✅ OPTIONAL: instantly update badge when other pages add/remove wishlist
+  // Call this anywhere after add/remove:
+  // window.dispatchEvent(new Event("wishlistUpdated"))
+  useEffect(() => {
+    const handler = async () => {
+      const local = JSON.parse(localStorage.getItem("wishlist")) || []
+
+      if (!auth.currentUser) {
+        setWishlistCount(local.length)
+        return
+      }
+
+      try {
+        const snap = await getDocs(
+          collection(db, "users", auth.currentUser.uid, "wishlist")
+        )
+        setWishlistCount(snap.size)
+      } catch {
+        setWishlistCount(local.length)
+      }
+    }
+
+    window.addEventListener("wishlistUpdated", handler)
+    return () => window.removeEventListener("wishlistUpdated", handler)
+  }, [])
 
   return (
     <>
@@ -99,12 +158,23 @@ function Navbar() {
               ☰
             </button>
 
-            <Link to="/wishlist" className="mr-4 hidden md:block">
+            {/* ✅ WISHLIST (WITH BADGE) */}
+            <Link
+              to="/wishlist"
+              className="relative mr-4 hidden md:block"
+              aria-label="Wishlist"
+            >
               <img
                 src="./images/favorite.png"
                 alt="Wishlist"
                 className="w-5 h-5"
               />
+
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2220] text-white text-[11px] font-bold flex items-center justify-center leading-none">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
             </Link>
 
             {/* ACCOUNT */}
@@ -115,7 +185,7 @@ function Navbar() {
               <img src="./images/user.png" alt="Account" className="w-5 h-5" />
             </button>
 
-                        {/* CART */}
+            {/* CART */}
             <button
               onClick={() => setIsCartOpen(true)}
               id="cart-icon"
