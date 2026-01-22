@@ -4,8 +4,8 @@ import { onAuthStateChanged } from "firebase/auth"
 import { auth, db } from "../firebase"
 import { useCart } from "../context/CartContext"
 
-// ✅ Wishlist badge needs these
-import { collection, getDocs } from "firebase/firestore"
+// ✅ Realtime wishlist badge
+import { collection, onSnapshot } from "firebase/firestore"
 
 import DeliveryLayout from "./layouts/delivery"
 import LoginModal from "./LoginModal"
@@ -43,7 +43,7 @@ function Navbar() {
 
   const navigate = useNavigate()
 
-  // ✅ Cart context (PUT THIS HERE)
+  // ✅ Cart context
   const { cartItems, isCartOpen, setIsCartOpen, removeItem, updateQuantity } =
     useCart()
 
@@ -71,58 +71,39 @@ function Navbar() {
     }
   }, [isCartOpen, isMobileMenuOpen])
 
-  // ✅ Load wishlist count (Firestore if logged in, else localStorage)
+  // ✅ REALTIME: Wishlist badge listener
   useEffect(() => {
-    const loadWishlistCount = async () => {
+    let unsub = null
+
+    // not logged in → localStorage count
+    if (!user) {
       const local = JSON.parse(localStorage.getItem("wishlist")) || []
+      setWishlistCount(local.length)
+      return
+    }
 
-      // not logged in → localStorage count
-      if (!user) {
-        setWishlistCount(local.length)
-        return
-      }
+    const colRef = collection(db, "users", user.uid, "wishlist")
 
-      try {
-        const snap = await getDocs(collection(db, "users", user.uid, "wishlist"))
+    unsub = onSnapshot(
+      colRef,
+      (snap) => {
         setWishlistCount(snap.size)
 
-        // keep localStorage in sync (optional)
+        // optional: keep localStorage in sync
         const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         localStorage.setItem("wishlist", JSON.stringify(items))
-      } catch (err) {
-        console.error("Failed to load wishlist count from Firestore:", err)
-        setWishlistCount(local.length) // fallback
+      },
+      (err) => {
+        console.error("Wishlist realtime badge error:", err)
+        const local = JSON.parse(localStorage.getItem("wishlist")) || []
+        setWishlistCount(local.length)
       }
-    }
+    )
 
-    loadWishlistCount()
+    return () => {
+      if (unsub) unsub()
+    }
   }, [user])
-
-  // ✅ OPTIONAL: instantly update badge when other pages add/remove wishlist
-  // Call this anywhere after add/remove:
-  // window.dispatchEvent(new Event("wishlistUpdated"))
-  useEffect(() => {
-    const handler = async () => {
-      const local = JSON.parse(localStorage.getItem("wishlist")) || []
-
-      if (!auth.currentUser) {
-        setWishlistCount(local.length)
-        return
-      }
-
-      try {
-        const snap = await getDocs(
-          collection(db, "users", auth.currentUser.uid, "wishlist")
-        )
-        setWishlistCount(snap.size)
-      } catch {
-        setWishlistCount(local.length)
-      }
-    }
-
-    window.addEventListener("wishlistUpdated", handler)
-    return () => window.removeEventListener("wishlistUpdated", handler)
-  }, [])
 
   return (
     <>

@@ -1,47 +1,58 @@
 import { Link } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { db, auth } from "../firebase"
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore"
+import { collection, doc, deleteDoc, onSnapshot } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([])
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubWishlist = null
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // cleanup old listener when user changes/logs out
+      if (unsubWishlist) {
+        unsubWishlist()
+        unsubWishlist = null
+      }
+
       if (!user) {
-        // ✅ if you want wishlist to disappear after logout:
         setWishlist([])
         localStorage.removeItem("wishlist")
         return
       }
 
-      const local = JSON.parse(localStorage.getItem("wishlist")) || []
-
-      try {
-        const snap = await getDocs(collection(db, "users", user.uid, "wishlist"))
-        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-        setWishlist(items)
-        localStorage.setItem("wishlist", JSON.stringify(items))
-      } catch (err) {
-        console.error("Failed to load wishlist from Firestore:", err)
-        setWishlist(local)
-      }
+      // ✅ Realtime listener
+      const colRef = collection(db, "users", user.uid, "wishlist")
+      unsubWishlist = onSnapshot(
+        colRef,
+        (snap) => {
+          const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+          setWishlist(items)
+          localStorage.setItem("wishlist", JSON.stringify(items))
+        },
+        (err) => {
+          console.error("Wishlist realtime listener failed:", err)
+          const local = JSON.parse(localStorage.getItem("wishlist")) || []
+          setWishlist(local)
+        }
+      )
     })
 
-    return () => unsub()
+    return () => {
+      if (unsubWishlist) unsubWishlist()
+      unsubAuth()
+    }
   }, [])
 
   async function removeFromWishlist(id) {
-    const updated = wishlist.filter((item) => item.id !== id)
-    setWishlist(updated)
-    localStorage.setItem("wishlist", JSON.stringify(updated))
-
     const user = auth.currentUser
     if (!user) return
 
     try {
       await deleteDoc(doc(db, "users", user.uid, "wishlist", id))
+      // ✅ no need to manually set state; onSnapshot updates automatically
     } catch (err) {
       console.error("Remove from wishlist failed:", err)
     }

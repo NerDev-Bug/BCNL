@@ -4,8 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.jsx";
 
-// ✅ add this
 import { CartProvider } from "./context/CartContext";
+import { WishlistProvider } from "./context/WishlistContext"; // ✅ add this
 
 // Register Service Worker for PWA (only in production to avoid dev cache issues)
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
@@ -24,9 +24,10 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      {/* ✅ wrap App so useCart() works everywhere */}
       <CartProvider>
-        <App />
+        <WishlistProvider> {/* ✅ add this */}
+          <App />
+        </WishlistProvider>
       </CartProvider>
     </BrowserRouter>
   </StrictMode>
