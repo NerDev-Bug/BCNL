@@ -78,6 +78,7 @@ function Navbar() {
     // not logged in → localStorage count
     if (!user) {
       const local = JSON.parse(localStorage.getItem("wishlist")) || []
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWishlistCount(local.length)
       return
     }

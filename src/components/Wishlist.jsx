@@ -3,15 +3,16 @@ import { useEffect, useState } from "react"
 import { db, auth } from "../firebase"
 import { collection, doc, deleteDoc, onSnapshot } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
+import ProductSkeleton from "../context/ProductSkeleton"
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     let unsubWishlist = null
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      // cleanup old listener when user changes/logs out
       if (unsubWishlist) {
         unsubWishlist()
         unsubWishlist = null
@@ -19,23 +20,28 @@ function Wishlist() {
 
       if (!user) {
         setWishlist([])
+        setLoading(false)
         localStorage.removeItem("wishlist")
         return
       }
 
-      // ✅ Realtime listener
+      // 🔑 only set loading if there might be data
+      setLoading(true)
+
       const colRef = collection(db, "users", user.uid, "wishlist")
       unsubWishlist = onSnapshot(
         colRef,
         (snap) => {
           const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
           setWishlist(items)
+          setLoading(false)
           localStorage.setItem("wishlist", JSON.stringify(items))
         },
         (err) => {
           console.error("Wishlist realtime listener failed:", err)
           const local = JSON.parse(localStorage.getItem("wishlist")) || []
           setWishlist(local)
+          setLoading(false)
         }
       )
     })
@@ -52,7 +58,6 @@ function Wishlist() {
 
     try {
       await deleteDoc(doc(db, "users", user.uid, "wishlist", id))
-      // ✅ no need to manually set state; onSnapshot updates automatically
     } catch (err) {
       console.error("Remove from wishlist failed:", err)
     }
@@ -67,7 +72,8 @@ function Wishlist() {
       }}
     >
       <div className="max-w-5xl mx-auto px-4 flex justify-center">
-        {wishlist.length === 0 ? (
+        {/* ✅ EMPTY STATE FIRST */}
+        {!loading && wishlist.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-20 text-center shadow-lg w-full md:w-2/3">
             <img
               src="./images/favorite-empty.png"
@@ -87,15 +93,21 @@ function Wishlist() {
               .
             </p>
           </div>
+        ) : loading && wishlist.length > 0 ? (
+          /* ✅ SKELETON ONLY WHEN DATA EXISTS */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+            <ProductSkeleton count={wishlist.length || 3} />
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          /* ✅ WISHLIST GRID */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             {wishlist.map((item) => (
               <div key={item.id} className="bg-white p-4 rounded-lg shadow">
                 <Link to={`/product/${item.id}`} className="block">
                   <img
                     src={item.image}
                     alt={item.name}
-                    className="w-full h-40 object-cover rounded cursor-pointer"
+                    className="w-full h-60 object-cover rounded cursor-pointer"
                   />
                 </Link>
 
