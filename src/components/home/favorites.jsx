@@ -32,7 +32,7 @@ function Favorites() {
   return (
     <div className="bg-cover bg-center" style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}>
       <div className="py-8 px-4 max-w-6xl mx-auto relative">
-        <h1 className="text-4xl font-bold text-[#502455] font-cooper text-center">Favorites</h1>
+        <h1 className="text-4xl font-bold text-[#502455] font-cooper text-center pt-20 md:pt-0">Favorites</h1>
 
         <Link
           to="/menu"
