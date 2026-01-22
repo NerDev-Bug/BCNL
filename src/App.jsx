@@ -48,6 +48,7 @@ function App() {
       <ToastContainer
         position="top-right"
         autoClose={3000}
+        style={{ zIndex: 99999 }}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick

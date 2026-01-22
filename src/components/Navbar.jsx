@@ -11,6 +11,7 @@ import DeliveryLayout from "./layouts/delivery"
 import LoginModal from "./LoginModal"
 import RegisterModal from "./RegisterModal"
 import Cart from "./Cart"
+import WhatsAppIcon from "./layouts/WhatsAppIcon"
 
 /* ---------------- NAV LINK ---------------- */
 function NavLink({ to, children, onClick }) {
@@ -260,7 +261,7 @@ function Navbar() {
         }}
       />
 
-      {/* ✅ CART SIDEBAR (ONLY HERE) */}
+      {/* CART SIDEBAR (ONLY HERE) */}
       <Cart
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -268,6 +269,9 @@ function Navbar() {
         onRemoveItem={removeItem}
         onUpdateQuantity={updateQuantity}
       />
+
+      {/* WHATSAPP ICON (ONLY HERE) */}
+      <WhatsAppIcon />
     </>
   )
 }

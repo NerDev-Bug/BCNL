@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Heart, Search } from "lucide-react"
-import { db, auth } from "../firebase"
+import { db } from "../firebase"
 import {
   collection,
   getDocs,
-  doc,
-  setDoc,
-  serverTimestamp,
 } from "firebase/firestore"
 import { useCart } from "../context/CartContext"
+import { addToWishlist } from "../utils/addToWishlist"
+import { flyToCart } from "../utils/flyToCart"
 
 // ✅ Toastify
-import { toast, ToastContainer } from "react-toastify"
+import { toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 export default function Menu() {
@@ -21,79 +20,6 @@ export default function Menu() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All Categories")
   const { addToCart } = useCart()
-
-  /* ---------------- FLY TO CART ---------------- */
-  const flyToCart = (img) => {
-    const cartIcon = document.querySelector("#cart-icon")
-    if (!img || !cartIcon) return
-
-    const imgRect = img.getBoundingClientRect()
-    const cartRect = cartIcon.getBoundingClientRect()
-
-    const clone = img.cloneNode(true)
-    clone.style.position = "fixed"
-    clone.style.left = imgRect.left + "px"
-    clone.style.top = imgRect.top + "px"
-    clone.style.width = imgRect.width + "px"
-    clone.style.height = imgRect.height + "px"
-    clone.style.transition = "all 0.8s ease-in-out"
-    clone.style.zIndex = 9999
-
-    document.body.appendChild(clone)
-
-    requestAnimationFrame(() => {
-      clone.style.left = cartRect.left + "px"
-      clone.style.top = cartRect.top + "px"
-      clone.style.width = "20px"
-      clone.style.height = "20px"
-      clone.style.opacity = "0"
-    })
-
-    setTimeout(() => clone.remove(), 800)
-  }
-
-  /* ---------------- ADD TO WISHLIST ---------------- */
-  const addToWishlist = async (product) => {
-    const user = auth.currentUser
-
-    if (!user) {
-      toast.info("Please login to add items to wishlist ❤️")
-      window.openLoginModal?.()
-      return
-    }
-
-    const saved = JSON.parse(localStorage.getItem("wishlist")) || []
-    const exists = saved.some((p) => p.id === product.id)
-
-    if (exists) {
-      toast.info("Already in your wishlist 💖")
-      return
-    }
-
-    localStorage.setItem("wishlist", JSON.stringify([...saved, product]))
-
-    try {
-      const wishRef = doc(db, "users", user.uid, "wishlist", product.id)
-      await setDoc(
-        wishRef,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          category: product.category || "",
-          available: product.available ?? true,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      )
-
-      toast.success("Added to wishlist ❤️")
-    } catch (err) {
-      console.error(err)
-      toast.error("Failed to add to wishlist 😢")
-    }
-  }
 
   /* ---------------- FETCH PRODUCTS ---------------- */
   useEffect(() => {
@@ -116,13 +42,6 @@ export default function Menu() {
 
   return (
     <div className="w-full">
-      <ToastContainer
-        position="top-right"
-        autoClose={1500}
-        hideProgressBar
-        pauseOnHover={false}
-      />
-
       {/* ---------------- BANNER ---------------- */}
       <div
         className="w-full border-y-2 border-black min-h-[250px] flex items-center justify-center"
@@ -206,7 +125,16 @@ export default function Menu() {
 
                     <div className="mt-4 flex gap-4">
                       <button
-                        onClick={() => addToWishlist(product)}
+                        onClick={() =>
+                          addToWishlist({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            image: product.image,
+                            category: product.category,
+                            available: product.available,
+                          })
+                        }
                         className="flex-1 border rounded-md py-2"
                       >
                         Wishlist

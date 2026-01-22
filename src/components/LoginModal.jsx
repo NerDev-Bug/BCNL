@@ -29,8 +29,8 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
     try {
       const { role } = await loginUser(email.trim(), password.trim())
 
-      onClose()
       toast.success("Logged in successfully!");
+      onClose();
 
       if (role === "admin") navigate("/admin/dashboard")
       else navigate("/")

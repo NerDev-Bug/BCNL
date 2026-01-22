@@ -30,8 +30,8 @@ function Home() {
             </div>
 
             {/* RIGHT TEXT SIDE */}
-            <div className="flex items-center justify-center bg-white md:w-1/2 flex-1 px-6 md:px-12">
-              <div className="max-w-xl">
+            <div className="flex items-center justify-center md:w-1/2 flex-1 px-6 md:px-12">
+              <div className="max-w-xl pt-12 md:pt-0 text-center md:text-left">
                 <p className="text-4xl md:text-6xl text-[#502455] leading-tight font-semibold font-cooper">
                   Homemade cakes and pastries{" "}
                   <span className="text-base align-bottom font-normal">

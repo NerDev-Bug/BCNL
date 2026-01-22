@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom"
 import { useCart } from "../../context/CartContext"
+import { addToWishlist } from "../../utils/addToWishlist"
+import { flyToCart } from "../../utils/flyToCart"
 
 function Favorites() {
   const { addToCart } = useCart()
@@ -24,35 +26,6 @@ function Favorites() {
       img: "./images/silvanas.jpg",
     },
   ]
-
-  const flyToCart = (img) => {
-    const cartIcon = document.querySelector("#cart-icon")
-    if (!img || !cartIcon) return
-
-    const imgRect = img.getBoundingClientRect()
-    const cartRect = cartIcon.getBoundingClientRect()
-
-    const clone = img.cloneNode(true)
-    clone.style.position = "fixed"
-    clone.style.left = imgRect.left + "px"
-    clone.style.top = imgRect.top + "px"
-    clone.style.width = imgRect.width + "px"
-    clone.style.height = imgRect.height + "px"
-    clone.style.transition = "all 0.8s ease-in-out"
-    clone.style.zIndex = 9999
-
-    document.body.appendChild(clone)
-
-    requestAnimationFrame(() => {
-      clone.style.left = cartRect.left + "px"
-      clone.style.top = cartRect.top + "px"
-      clone.style.width = "20px"
-      clone.style.height = "20px"
-      clone.style.opacity = "0"
-    })
-
-    setTimeout(() => clone.remove(), 800)
-  }
 
   return (
     <div className="bg-cover bg-center" style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}>
@@ -86,7 +59,21 @@ function Favorites() {
                   <p className="text-center text-sm text-[#7B2220] font-semibold mt-2">₱{p.price}</p>
                 </div>
                 <div className="mt-4 flex justify-center gap-4">
-                  <button className="border border-[#7B2220] text-[#7a2d2d] rounded-md px-3 py-2 text-sm hover:bg-gray-50">Add to Wishlist</button>
+                  <button
+                    onClick={() =>
+                      addToWishlist({
+                        id: p.id,
+                        name: p.title,
+                        price: p.price,
+                        image: p.img,
+                        category: "Favorites",
+                        available: true,
+                      })
+                    }
+                    className="flex-1 border rounded-md py-2"
+                  >
+                    Wishlist
+                  </button>
 
                   <button
                     onClick={(e) => {
@@ -104,12 +91,12 @@ function Favorites() {
 
                       if (!success) {
                         window.openLoginModal?.()
-                        return // ❌ stop here, no animation
+                        return
                       }
 
-                      flyToCart(img) // ✅ only when logged in
+                      flyToCart(img)
                     }}
-                    className="border border-[#7B2220] bg-[#7B2220] text-white rounded-md px-8 py-2 text-sm font-bold hover:bg-[#502455]"
+                    className="flex-1 rounded-md py-2 font-bold bg-[#7B2220] text-white hover:bg-[#502455]"
                   >
                     Order Now
                   </button>

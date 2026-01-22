@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { auth } from "../firebase"
 import { signOut } from "firebase/auth"
 import { useNavigate } from "react-router-dom"
-import { toast, ToastContainer } from "react-toastify"
+import { toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 import UserInfo from "../components/profile/user-info"
@@ -32,8 +32,6 @@ function Profile() {
 
   return (
     <div className="flex pt-28 px-6 max-w-5xl mx-auto mb-4">
-      <ToastContainer position="top-right" autoClose={3000} />
-
       {/* Sidebar */}
       <div className="w-1/4 bg-gray-100 p-4 rounded-lg shadow mr-6 flex flex-col justify-between">
         <div>
