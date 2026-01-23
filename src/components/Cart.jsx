@@ -1,27 +1,48 @@
-import {  useState } from "react";
-import CheckOutModal from "./modals/CheckOutModal";
+// Cart.jsx (updated)
+import { useState } from "react"
+import CheckOutModal from "./modals/CheckOutModal"
+import OrderConfirmation from "./modals/OrderConfirmation"
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
-  const [showCheckout, setShowCheckout] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false) // ✅ added
+  const [pendingOrder, setPendingOrder] = useState(null) // ✅ added
 
-  const totalPrice = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  const totalPrice = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
 
+  // ✅ called after checkout form is submitted
   const handleSaveOrder = (orderData) => {
-    console.log("ORDER SAVED:", orderData);
-    // TODO: send to backend
-  };
+    setPendingOrder(orderData)   // store checkout info (name/address/etc)
+    setShowCheckout(false)       // close checkout modal
+    setShowConfirm(true)         // open confirmation modal
+  }
+
+  // ✅ final confirm
+  const handleConfirmOrder = () => {
+    const finalPayload = {
+      ...pendingOrder,
+      items: cartItems,
+      totalPrice,
+      createdAt: new Date(),
+      status: "pending",
+    }
+
+    console.log("ORDER CONFIRMED:", finalPayload)
+    // TODO: send to backend / firestore here
+
+    setShowConfirm(false)
+    setPendingOrder(null)
+    onClose?.()
+  }
 
   const handleQuantityChange = (id, value) => {
-    if (value < 1) return;
-    onUpdateQuantity?.(id, value);
-  };
+    if (value < 1) return
+    onUpdateQuantity?.(id, value)
+  }
 
   const handleRemove = (id) => {
-    onRemoveItem?.(id);
-  };
+    onRemoveItem?.(id)
+  }
 
   return (
     <>
@@ -113,8 +134,16 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
         totalPrice={totalPrice}
         onSaveOrder={handleSaveOrder}
       />
+
+      <OrderConfirmation
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        cartItems={cartItems}
+        totalPrice={totalPrice}
+        onConfirm={handleConfirmOrder}
+      />
     </>
-  );
+  )
 }
 
-export default Cart;
+export default Cart
