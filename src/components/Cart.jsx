@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 // Cart.jsx (updated)
 import { useState } from "react"
 import CheckOutModal from "./modals/CheckOutModal"
 import OrderConfirmation from "./modals/OrderConfirmation"
+=======
+import {  useState } from "react";
+import { ShoppingCart } from "lucide-react";
+import CheckOutModal from "./modals/CheckOutModal";
+>>>>>>> 5abdb81eae344db064facbe0f92fe1a5bc09e530
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
   const [showCheckout, setShowCheckout] = useState(false)
@@ -66,11 +72,19 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
         </div>
 
         {cartItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[70%] text-center">
-            <p className="text-[#7B2220] mb-6">Your cart is empty.</p>
+          <div className="flex flex-col items-center justify-center h-[70%] text-center px-6">
+            <ShoppingCart
+              size={64}
+              className="text-[#7B2220] opacity-60 mb-4"
+            />
+
+            <p className="text-[#7B2220] text-lg font-semibold mb-6">
+              Your cart is empty.
+            </p>
+
             <button
               onClick={onClose}
-              className="bg-[#7B2220] text-white px-6 py-3 rounded-md hover:opacity-90"
+              className="bg-[#7B2220] text-white px-6 py-3 rounded-md hover:opacity-90 transition"
             >
               Return to Shop
             </button>
