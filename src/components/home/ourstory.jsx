@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { db } from "../../firebase"
-import { collection, getDocs } from "firebase/firestore"
+import { doc, getDoc } from "firebase/firestore"
 
 function OurStory() {
-    const testimonials = [
+    const defaultTestimonials = [
     {
       text: "The experience was absolutely wonderful. Everything felt personal and thoughtful.",
       author: "– Anna Williams",
@@ -21,41 +21,49 @@ function OurStory() {
   const [current, setCurrent] = useState(0);
   const [storySection1, setStorySection1] = useState(null);
   const [storySection2, setStorySection2] = useState(null);
+  const [testimonials, setTestimonials] = useState(defaultTestimonials);
   const [loading, setLoading] = useState(true);
 
   // Default fallback data
   const defaultSection1 = {
     title: "Lorem Ipsum is simply dummy text of",
-    description: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.",
-    image: "./images/default_image.jpg"
+    body: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.",
+    frameImage: "./images/default_image.jpg"
   };
 
   const defaultSection2 = {
     title: "Lorem Ipsum is simply dummy text of",
-    description: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.",
-    image: "./images/default_image.jpg"
+    body: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.",
+    frameImage: "./images/default_image.jpg"
   };
 
   // Fetch story data from Firebase
   useEffect(() => {
     const fetchStoryData = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "ourStory"));
-        const data = {};
-        querySnapshot.forEach((doc) => {
-          data[doc.id] = doc.data();
-        });
-        setStorySection1(data.section1 || defaultSection1);
-        setStorySection2(data.section2 || defaultSection2);
+        const refDoc = doc(db, "pages", "ourStory")
+        const snap = await getDoc(refDoc)
+        
+        if (snap.exists()) {
+          const data = snap.data()
+          setStorySection1(data.section1 || defaultSection1)
+          setStorySection2(data.section2 || defaultSection2)
+          setTestimonials(Array.isArray(data.testimonials) ? data.testimonials : defaultTestimonials)
+        } else {
+          setStorySection1(defaultSection1)
+          setStorySection2(defaultSection2)
+          setTestimonials(defaultTestimonials)
+        }
       } catch (error) {
-        console.error("Error fetching story data:", error);
-        setStorySection1(defaultSection1);
-        setStorySection2(defaultSection2);
+        console.error("Error fetching story data:", error)
+        setStorySection1(defaultSection1)
+        setStorySection2(defaultSection2)
+        setTestimonials(defaultTestimonials)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    fetchStoryData();
+    }
+    fetchStoryData()
   }, []);
 
   // Auto slide
@@ -82,7 +90,7 @@ function OurStory() {
                       <h1 className="text-2xl font-bold mb-4">{storySection1.title}</h1>
                       {/* Description */}
                       <div>
-                          <p className="mb-4">{storySection1.description}</p>
+                          <p className="mb-4">{storySection1.body}</p>
                       </div>
                       <button className="bg-[#7B2220] text-white px-6 py-2 rounded-md mt-4">Contact Us</button>
                   </div>
@@ -96,7 +104,7 @@ function OurStory() {
 
                   {/* Image */}
                   <img
-                      src={storySection1.image}
+                      src={storySection1.frameImage}
                       alt="our story"
                       className="absolute inset-0 m-auto w-70 h-60 md:w-94 md:h-72 z-10"
                   />
@@ -121,7 +129,7 @@ function OurStory() {
 
                   {/* Image */}
                   <img
-                      src={storySection2.image}
+                      src={storySection2.frameImage}
                       alt="our story"
                       className="absolute inset-0 m-auto w-70 h-60 md:w-94 md:h-72 z-10"
                   />
@@ -137,7 +145,7 @@ function OurStory() {
                       <h1 className="text-2xl font-bold mb-4">{storySection2.title}</h1>
                       {/* Description */}
                       <div>
-                          <p className="mb-4">{storySection2.description}</p>
+                          <p className="mb-4">{storySection2.body}</p>
                       </div>
                       <button className="bg-[#7B2220] text-white px-6 py-2 rounded-md mt-4">Contact Us</button>
                   </div>
@@ -153,12 +161,14 @@ function OurStory() {
                    overflow-hidden"
       >
         {/* Slides */}
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${current * 100}%)` }}
-        >
+        <div className="relative min-h-48">
           {testimonials.map((item, index) => (
-            <div key={index} className="min-w-full px-12">
+            <div
+              key={index}
+              className={`absolute inset-0 transition-opacity duration-500 ${
+                current === index ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
               <span className="text-6xl font-bold block mb-6">“</span>
               <p className="text-black max-w-3xl mx-auto mb-6 leading-relaxed">
                 {item.text}
