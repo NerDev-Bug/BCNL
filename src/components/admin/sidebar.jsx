@@ -42,6 +42,10 @@ function AdminSidebar({ isOpen }) {
           <CubeIcon className="w-5 h-5" />
           Products
         </NavLink>
+        <NavLink to="/admin/pages" className={linkClass}>
+          <CubeIcon className="w-5 h-5" />
+          Pages
+        </NavLink>
       </nav>
     </aside>
   );

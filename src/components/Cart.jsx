@@ -1,13 +1,7 @@
-<<<<<<< HEAD
-// Cart.jsx (updated)
-import { useState } from "react"
-import CheckOutModal from "./modals/CheckOutModal"
-import OrderConfirmation from "./modals/OrderConfirmation"
-=======
 import {  useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import CheckOutModal from "./modals/CheckOutModal";
->>>>>>> 5abdb81eae344db064facbe0f92fe1a5bc09e530
+import OrderConfirmation from "./modals/OrderConfirmation"
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
   const [showCheckout, setShowCheckout] = useState(false)
