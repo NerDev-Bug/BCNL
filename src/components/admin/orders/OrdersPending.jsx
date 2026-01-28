@@ -6,7 +6,6 @@ import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import Pagination from "../../common/Pagination";
-import Loader from "../../common/Loader";
 
 function OrdersPending() {
   const [orders, setOrders] = useState([]);
