@@ -18,7 +18,6 @@ function CheckOutModal({
     country: "Netherlands",
     contactNumber: "",
     email: "",
-    paymentMethod: "cod"
   })
 
   const [loadingUser, setLoadingUser] = useState(true)
@@ -128,8 +127,8 @@ function CheckOutModal({
       country: form.country,
       contactNumber: form.contactNumber,
       email: form.email,
-      paymentMethod: form.paymentMethod
     })
+
     onClose()
   }
 
@@ -177,95 +176,47 @@ function CheckOutModal({
               </button>
             </div>
 
+            {/* fields */}
             <div>
               <label className="text-xs font-medium">Receiver Name</label>
-              <input
-                name="receiverName"
-                value={form.receiverName}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
+              <input name="receiverName" value={form.receiverName} onChange={handleChange} disabled={!isEditing} className={inputClass} />
             </div>
 
             <div>
               <label className="text-xs font-medium">Street Name</label>
-              <input
-                name="streetName"
-                value={form.streetName}
-                onChange={handleChange}
-                disabled={!isEditing}
-                placeholder="e.g., Amstelplein"
-                className={inputClass}
-              />
+              <input name="streetName" value={form.streetName} onChange={handleChange} disabled={!isEditing} className={inputClass} />
             </div>
 
             <div>
               <label className="text-xs font-medium">House Number</label>
-              <input
-                name="houseNumber"
-                value={form.houseNumber}
-                onChange={handleChange}
-                disabled={!isEditing}
-                placeholder="e.g., 150"
-                className={inputClass}
-              />
+              <input name="houseNumber" value={form.houseNumber} onChange={handleChange} disabled={!isEditing} className={inputClass} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium">Postal Code</label>
-                <input
-                  name="postalCode"
-                  value={form.postalCode}
-                  onChange={(e) => setForm({ ...form, postalCode: e.target.value.toUpperCase() })}
-                  disabled={!isEditing}
-                  placeholder="e.g., 1096 BC"
-                  className={inputClass}
-                />
+                <input name="postalCode" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value.toUpperCase() })} disabled={!isEditing} className={inputClass} />
               </div>
               <div>
                 <label className="text-xs font-medium">City</label>
-                <input
-                  name="city"
-                  value={form.city}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={inputClass}
-                />
+                <input name="city" value={form.city} onChange={handleChange} disabled={!isEditing} className={inputClass} />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-medium">Country</label>
-              <input
-                name="country"
-                value={form.country}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
+              <input name="country" value={form.country} onChange={handleChange} disabled={!isEditing} className={inputClass} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium">Contact Number</label>
-                <input
-                  name="contactNumber"
-                  value={form.contactNumber}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={inputClass}
-                />
+                <input name="contactNumber" value={form.contactNumber} onChange={handleChange} disabled={!isEditing} className={inputClass} />
               </div>
 
               <div>
                 <label className="text-xs font-medium">Email</label>
-                <input
-                  value={form.email}
-                  disabled
-                  className={`${inputClass} bg-gray-100`}
-                />
+                <input value={form.email} disabled className={`${inputClass} bg-gray-100`} />
               </div>
             </div>
           </div>
@@ -274,13 +225,8 @@ function CheckOutModal({
           <div className="border rounded-xl p-4 space-y-2">
             <h3 className="font-semibold text-sm">Order Summary</h3>
             {cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between text-sm text-gray-600"
-              >
-                <span>
-                  {item.name} × {item.quantity}
-                </span>
+              <div key={item.id} className="flex justify-between text-sm text-gray-600">
+                <span>{item.name} × {item.quantity}</span>
                 <span>€{item.price * item.quantity}</span>
               </div>
             ))}
@@ -290,48 +236,16 @@ function CheckOutModal({
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm">Payment Method</h3>
-
-            {["cod", "gcash"].map((method) => (
-              <label
-                key={method}
-                className={`flex items-center justify-between border rounded-lg px-4 py-3 cursor-pointer ${
-                  form.paymentMethod === method
-                    ? "border-[#7B2220] bg-[#7B2220]/5"
-                    : ""
-                }`}
-              >
-                <span className="text-sm">
-                  {method === "cod" ? "Cash on Delivery" : "GCash"}
-                </span>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method}
-                  checked={form.paymentMethod === method}
-                  onChange={handleChange}
-                />
-              </label>
-            ))}
-          </div>
-
           {/* Actions */}
           <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="w-1/3 border rounded-lg py-3 text-sm"
-            >
+            <button onClick={onClose} className="w-1/3 border rounded-lg py-3 text-sm">
               Cancel
             </button>
-            <button
-              onClick={handleSubmit}
-              className="w-2/3 bg-[#7B2220] text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90"
-            >
-              Place Order
+            <button onClick={handleSubmit} className="w-2/3 bg-[#7B2220] text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90">
+              Continue
             </button>
           </div>
+
         </div>
       </div>
     </>

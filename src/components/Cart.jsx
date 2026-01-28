@@ -3,7 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import { toast } from "react-toastify"
 import { useCart } from "../context/CartContext"
 import CheckOutModal from "./modals/CheckOutModal";
-import OrderConfirmation from "./modals/OrderConfirmation"
+import OrderConfirmation from "./modals/Payment"
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
   const { createOrder } = useCart() // ✅ NEW
