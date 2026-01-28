@@ -8,9 +8,13 @@ import {
     doc,
     updateDoc,
 } from "firebase/firestore";
+import DataTable from "../../components/common/DataTable";
+import { StatusBadge } from "../../components/common/StatusBadge";
+import { Trash2, Edit2 } from "lucide-react";
 
 function ProductsPage() {
     const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -53,13 +57,19 @@ function ProductsPage() {
     // 🔹 Fetch products
     useEffect(() => {
         const fetchProducts = async () => {
-            const snapshot = await getDocs(productsCollection);
-            setProducts(
-                snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }))
-            );
+            try {
+                const snapshot = await getDocs(productsCollection);
+                setProducts(
+                    snapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }))
+                );
+            } catch (err) {
+                console.error("Error fetching products:", err);
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchProducts();
@@ -208,102 +218,96 @@ function ProductsPage() {
         });
     };
 
+    const columns = [
+        {
+            key: "image",
+            header: "Image",
+            render: row => (
+                <img
+                    src={row.image}
+                    alt={row.name}
+                    className="w-12 h-12 object-cover rounded"
+                />
+            ),
+        },
+        {
+            key: "name",
+            header: "Name",
+            render: row => row.name,
+        },
+        {
+            key: "price",
+            header: "Price",
+            render: row => `€${row.price}`,
+        },
+        {
+            key: "category",
+            header: "Category",
+            render: row => row.category,
+        },
+        {
+            key: "available",
+            header: "Status",
+            render: row => (
+                <StatusBadge value={row.available ? "AVAILABLE" : "NOT AVAILABLE"} />
+            ),
+        },
+        {
+            key: "actions",
+            header: "Actions",
+            render: row => (
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => handleEdit(row)}
+                        className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
+                    >
+                        <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => toggleAvailability(row)}
+                        className={`px-3 py-2 rounded text-white transition ${
+                            row.available
+                                ? "bg-yellow-500 hover:bg-yellow-600"
+                                : "bg-gray-500 hover:bg-gray-600"
+                        }`}
+                    >
+                        {row.available ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row)}
+                        className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            ),
+        },
+    ];
+
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-6">
-                Admin Products Page
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Products</h1>
+                <button
+                    onClick={() => setShowModal(true)}
+                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                >
+                    Add Product
+                </button>
+            </div>
 
-            <button
-                onClick={() => setShowModal(true)}
-                className="mb-4 bg-green-500 text-white px-4 py-2 rounded"
-            >
-                Add Product
-            </button>
-
-            {/* 🔹 PRODUCTS TABLE */}
-            <table className="w-full border">
-                <thead className="bg-gray-100">
-                    <tr>
-                        <th className="border px-4 py-2">Image</th>
-                        <th className="border px-4 py-2">Name</th>
-                        <th className="border px-4 py-2">Price</th>
-                        <th className="border px-4 py-2">Category</th>
-                        <th className="border px-4 py-2">Status</th>
-                        <th className="border px-4 py-2">Actions</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {products.map((product) => (
-                        <tr key={product.id}>
-                            <td className="border px-4 py-2">
-                                <img
-                                    src={product.image}
-                                    className="w-16 h-16 object-cover rounded"
-                                />
-                            </td>
-                            <td className="border px-4 py-2">
-                                {product.name}
-                            </td>
-                            <td className="border px-4 py-2">
-                                €{product.price}
-                            </td>
-                            <td className="border px-4 py-2">
-                                {product.category}
-                            </td>
-                            <td className="border px-4 py-2">
-                                {product.available
-                                    ? "Available"
-                                    : "Not Available"}
-                            </td>
-                            <td className="border px-4 py-2 space-x-2">
-                                <button
-                                    onClick={() => handleEdit(product)}
-                                    className="bg-blue-500 text-white px-3 py-1 rounded"
-                                >
-                                    Edit
-                                </button>
-
-                                <button
-                                    onClick={() =>
-                                        toggleAvailability(product)
-                                    }
-                                    className={`px-3 py-1 rounded text-white ${
-                                        product.available
-                                            ? "bg-yellow-500"
-                                            : "bg-gray-500"
-                                    }`}
-                                >
-                                    {product.available
-                                        ? "Disable"
-                                        : "Enable"}
-                                </button>
-
-                                <button
-                                    onClick={() =>
-                                        handleDelete(product)
-                                    }
-                                    className="bg-red-500 text-white px-3 py-1 rounded"
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <DataTable columns={columns} data={products} loading={loading} />
 
             {/* 🔹 MODAL */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
-                    <div className="bg-white p-6 rounded w-96">
+                <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+                    <div className="bg-white p-6 rounded w-96 shadow-xl">
                         <h2 className="text-xl font-bold mb-4">
                             {isEditing ? "Edit Product" : "Add Product"}
                         </h2>
 
                         <input
-                            className="border w-full mb-2 px-3 py-2"
+                            className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Name"
                             value={newProduct.name}
                             onChange={(e) =>
@@ -316,7 +320,7 @@ function ProductsPage() {
 
                         <input
                             type="number"
-                            className="border w-full mb-2 px-3 py-2"
+                            className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Price"
                             value={newProduct.price}
                             onChange={(e) =>
@@ -328,7 +332,7 @@ function ProductsPage() {
                         />
 
                         <input
-                            className="border w-full mb-2 px-3 py-2"
+                            className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Category (e.g. cookies)"
                             value={newProduct.category}
                             onChange={(e) =>
@@ -340,7 +344,7 @@ function ProductsPage() {
                         />
 
                         <textarea
-                            className="border w-full mb-2 px-3 py-2"
+                            className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Description"
                             value={newProduct.description}
                             onChange={(e) =>
@@ -353,6 +357,7 @@ function ProductsPage() {
 
                         <input
                             type="file"
+                            className="border w-full mb-4 px-3 py-2 rounded"
                             onChange={(e) =>
                                 setNewProduct({
                                     ...newProduct,
@@ -361,10 +366,10 @@ function ProductsPage() {
                             }
                         />
 
-                        <div className="flex justify-end gap-2 mt-4">
+                        <div className="flex justify-end gap-2">
                             <button
                                 onClick={resetModal}
-                                className="px-4 py-2 bg-gray-300 rounded"
+                                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition"
                             >
                                 Cancel
                             </button>
@@ -375,7 +380,7 @@ function ProductsPage() {
                                         ? handleUpdateProduct
                                         : handleAddProduct
                                 }
-                                className="px-4 py-2 bg-green-500 text-white rounded"
+                                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition disabled:opacity-60"
                                 disabled={uploading}
                             >
                                 {uploading

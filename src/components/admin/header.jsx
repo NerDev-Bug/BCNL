@@ -2,6 +2,9 @@
 import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { signOut } from "firebase/auth"
+import { auth } from "../../firebase"
+import { toast } from "react-toastify"
 
 function AdminHeader({ toggleSidebar, sidebarOpen }) {
   const [open, setOpen] = useState(false)
@@ -20,16 +23,16 @@ function AdminHeader({ toggleSidebar, sidebarOpen }) {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  {/* Uncomment this when you are going to use logout */}
-  {/*
   const handleLogout = async () => {
     try {
+      await signOut(auth)
+      toast.success("Logged out successfully")
       navigate("/")
     } catch (err) {
       console.error("Logout failed", err)
+      toast.error("Failed to logout")
     }
   }
-  */}
 
   return (
     <header
@@ -90,8 +93,11 @@ function AdminHeader({ toggleSidebar, sidebarOpen }) {
 
             <div className="border-t my-1" />
 
-            {/* Add the onClick={handleLogout} when it have logout function*/}
             <button
+              onClick={() => {
+                handleLogout()
+                setOpen(false)
+              }}
               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
             >
               Logout

@@ -1,15 +1,15 @@
 import React from "react";
 
-function DataTable({ columns, data, rowKey = "id" }) {
+function DataTable({ columns, data, rowKey = "id", loading = false }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50">
+    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-white border-b border-gray-200">
           <tr>
             {columns.map(col => (
               <th
                 key={col.key}
-                className="px-4 py-3 text-left font-medium text-gray-500"
+                className="px-6 py-4 text-left text-sm font-semibold text-gray-700"
               >
                 {col.header}
               </th>
@@ -18,9 +18,20 @@ function DataTable({ columns, data, rowKey = "id" }) {
         </thead>
 
         <tbody className="divide-y divide-gray-100">
-          {(!data || data.length === 0) ? (
+          {loading ? (
+            // Loading skeleton rows
+            Array.from({ length: 5 }).map((_, idx) => (
+              <tr key={`skeleton-${idx}`} className="hover:bg-gray-50">
+                {columns.map(col => (
+                  <td key={`${col.key}-${idx}`} className="px-6 py-4">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (!data || data.length === 0) ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
+              <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500 text-sm">
                 No data available
               </td>
             </tr>
@@ -33,7 +44,7 @@ function DataTable({ columns, data, rowKey = "id" }) {
                 {columns.map(col => (
                   <td
                     key={col.key}
-                    className="px-4 py-3 text-gray-900"
+                    className="px-6 py-4 text-sm text-gray-900"
                   >
                     {col.render
                       ? col.render(row)

@@ -143,7 +143,6 @@ function OrdersPending() {
     },
   ];
 
-  if (loading) return <div className="p-6">Loading orders…</div>;
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
@@ -152,7 +151,7 @@ function OrdersPending() {
         Pending Orders
       </h2>
 
-      <DataTable columns={columns} data={paginatedOrders} />
+      <DataTable columns={columns} data={paginatedOrders} loading={loading} />
       <Pagination 
         currentPage={currentPage} 
         totalPages={totalPages} 

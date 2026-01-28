@@ -125,7 +125,6 @@ function OrdersToDelivered() {
         },
     ];
 
-    if (loading) return <div className="p-6">Loading orders…</div>;
     if (error) return <div className="p-6 text-red-500">{error}</div>;
 
     return (
@@ -134,7 +133,7 @@ function OrdersToDelivered() {
             Preparing Orders
         </h2>
 
-        <DataTable columns={columns} data={paginatedOrders} />
+        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
         <Pagination 
             currentPage={currentPage} 
             totalPages={totalPages} 

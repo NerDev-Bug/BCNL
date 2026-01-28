@@ -18,7 +18,7 @@ function AdminSidebar({ isOpen }) {
       transform transition-transform duration-300 z-20
       ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
     >
-      <div className="text-black p-6 text-xl font-bold border-b border-gray-300">
+      <div className="text-black p-[1.37rem] text-xl font-bold border-b border-gray-300">
         <NavLink to="/">Bake Corner NL</NavLink>
       </div>
 

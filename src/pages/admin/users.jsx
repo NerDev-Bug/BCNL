@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../../firebase"; // adjust path to your firebase.js
+import { db } from "../../firebase";
+import DataTable from "../../components/common/DataTable";
+import { StatusBadge } from "../../components/common/StatusBadge";
 
 function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -29,41 +31,70 @@ function UsersPage() {
     fetchUsers();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="w-16 h-16 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "—";
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }) + " " + date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const columns = [
+    {
+      key: "firstName",
+      header: "First Name",
+      render: row => row.firstName || "—",
+    },
+    {
+      key: "middleName",
+      header: "Middle Name",
+      render: row => row.middleName || "—",
+    },
+    {
+      key: "lastName",
+      header: "Last Name",
+      render: row => row.lastName || "—",
+    },
+    {
+      key: "email",
+      header: "Email",
+      render: row => row.email || "—",
+    },
+    {
+      key: "username",
+      header: "User Name",
+      render: row => row.username || "—",
+    },
+    {
+      key: "role",
+      header: "Role/s",
+      render: row => row.role || "User",
+    },
+    {
+      key: "createdAt",
+      header: "Created At",
+      render: row => formatDate(row.createdAt),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: row => <StatusBadge value={row.status || "ACTIVE"} />,
+    },
+  ];
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Admin Users Page</h1>
-      {users.length === 0 ? (
-        <p>No users found.</p>
-      ) : (
-        <table className="min-w-full bg-white border border-gray-200">
-          <thead>
-            <tr>
-              <th className="border px-4 py-2">ID</th>
-              <th className="border px-4 py-2">Username</th>
-              <th className="border px-4 py-2">Email</th>
-              <th className="border px-4 py-2">Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user, index) => (
-              <tr key={user.id}>
-                <td className="border px-4 py-2">{index + 1}</td>
-                <td className="border px-4 py-2">{user.username || "-"}</td>
-                <td className="border px-4 py-2">{user.email || "-"}</td>
-                <td className="border px-4 py-2">{user.role || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <h1 className="text-2xl font-bold mb-6">Users</h1>
+      <DataTable columns={columns} data={users} loading={loading} />
     </div>
   );
 }
