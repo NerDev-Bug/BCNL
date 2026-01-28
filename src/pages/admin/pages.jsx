@@ -95,6 +95,14 @@ export default function Pages() {
     return data.secure_url // ✅ final image URL
   }
 
+  const transformCloudinaryUrl = (url) => {
+    return url.replace(
+      "/upload/",
+      "/upload/c_fill,g_auto,w_1852,h_1536,q_auto,f_auto/"
+    )
+  }
+
+
   // Handle file input -> upload -> store URL into form
   const handleUpload = async (e, fieldPath) => {
     const file = e.target.files?.[0]
@@ -103,7 +111,11 @@ export default function Pages() {
     setUploading(true)
     try {
       const imageUrl = await uploadToCloudinary(file)
-      update(fieldPath, imageUrl)
+
+      // ✅ Apply forced crop + resize
+      const transformedUrl = transformCloudinaryUrl(imageUrl)
+
+      update(fieldPath, transformedUrl)
     } catch (err) {
       console.error("Cloudinary upload failed:", err)
       alert("Upload failed. Check console.")

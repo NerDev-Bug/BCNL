@@ -156,7 +156,7 @@ function OurStory() {
 
       {/* Feedback / Testimonial Carousel */}
       <div
-        className="rounded-2xl p-12 text-center max-w-5xl mx-auto relative
+        className="rounded-2xl p-8 text-center max-w-5xl mx-auto relative
                    bg-[url('./images/rippednotes.jpg')] bg-cover bg-center bg-no-repeat
                    overflow-hidden"
       >
