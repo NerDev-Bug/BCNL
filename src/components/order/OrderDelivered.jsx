@@ -1,4 +1,4 @@
-function OrderDelivered() {
+﻿function OrderDelivered() {
   return (
     <div className="bg-white border rounded-lg py-16 flex flex-col items-center justify-center text-center">
       {/* ICON */}

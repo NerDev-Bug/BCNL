@@ -10,7 +10,7 @@ function WhatsAppWidget() {
     <>
       {/* TOOLTIP (only when widget is closed) */}
       {!open && (
-        <div className="fixed bottom-8 right-24 z-[60] hidden sm:block">
+        <div className="fixed bottom-8 right-24 z-[30] hidden sm:block">
           <div className="bg-white text-gray-800 text-sm px-4 py-2 rounded-lg shadow-xl relative">
             Need Help? <span className="font-semibold">Chat with us</span>
 
@@ -24,7 +24,7 @@ function WhatsAppWidget() {
       <button
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Open WhatsApp chat"
-        className="fixed bottom-6 right-6 z-[60] bg-[#5B1E5D] w-16 h-16 rounded-full shadow-lg hover:scale-110 transition flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-[30] bg-[#5B1E5D] w-16 h-16 rounded-full shadow-lg hover:scale-110 transition flex items-center justify-center"
       >
         <img
           src="/images/whatsappicon.png"
@@ -35,7 +35,7 @@ function WhatsAppWidget() {
 
       {/* CHAT POPUP */}
       {open && (
-        <div className="fixed bottom-24 right-6 w-80 bg-white rounded-lg shadow-2xl z-[60] overflow-hidden animate-fadeIn">
+        <div className="fixed bottom-24 right-6 w-80 bg-white rounded-lg shadow-2xl z-[30] overflow-hidden animate-fadeIn">
           {/* HEADER */}
           <div className="bg-[#5B1E5D] text-white px-4 py-3 relative">
             <p className="font-semibold text-sm">Start a Conversation</p>

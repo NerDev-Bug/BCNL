@@ -53,12 +53,12 @@ export default function OrderConfirmation({
                           {item.name}
                         </p>
                         <p className="text-gray-600 text-sm">
-                          ₱{item.price} x {item.quantity}
+                          €{item.price} x {item.quantity}
                         </p>
                       </div>
 
                       <p className="font-semibold text-[#7B2220] whitespace-nowrap">
-                        ₱{item.price * item.quantity}
+                        €{item.price * item.quantity}
                       </p>
                     </div>
                   ))}
@@ -67,7 +67,7 @@ export default function OrderConfirmation({
                 <div className="flex items-center justify-between mt-4">
                   <p className="font-semibold text-[#502455]">Total</p>
                   <p className="font-semibold text-lg text-[#502455]">
-                    ₱{totalPrice}
+                    €{totalPrice}
                   </p>
                 </div>
               </>

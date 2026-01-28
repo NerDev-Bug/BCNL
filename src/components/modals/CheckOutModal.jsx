@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { auth, db } from "../../firebase"
 
 function CheckOutModal({
@@ -11,7 +11,11 @@ function CheckOutModal({
 }) {
   const [form, setForm] = useState({
     receiverName: "",
-    address: "",
+    streetName: "",
+    houseNumber: "",
+    postalCode: "",
+    city: "",
+    country: "Netherlands",
     contactNumber: "",
     email: "",
     paymentMethod: "cod"
@@ -19,6 +23,7 @@ function CheckOutModal({
 
   const [loadingUser, setLoadingUser] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
@@ -33,21 +38,16 @@ function CheckOutModal({
 
         const data = snap.data()
 
-        const fullAddress = [
-          data.address?.street,
-          data.address?.postalCode,
-          data.address?.city,
-          data.address?.country
-        ]
-          .filter(Boolean)
-          .join(", ")
-
         setForm((prev) => ({
           ...prev,
           receiverName: data.username || "",
+          streetName: data.address?.streetName || "",
+          houseNumber: data.address?.houseNumber || "",
+          postalCode: data.address?.postalCode || "",
+          city: data.address?.city || "",
+          country: data.address?.country || "Netherlands",
           contactNumber: data.phone || "",
-          email: user.email || "",
-          address: fullAddress
+          email: user.email || ""
         }))
       } catch (err) {
         console.error(err)
@@ -78,16 +78,57 @@ function CheckOutModal({
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  const handleSaveChanges = async () => {
+    if (!form.receiverName || !form.streetName || !form.houseNumber || !form.postalCode || !form.city || !form.contactNumber) {
+      alert("Please complete all address fields.")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const user = auth.currentUser
+      if (!user) return
+      
+      await updateDoc(doc(db, "users", user.uid), {
+        username: form.receiverName,
+        phone: form.contactNumber,
+        address: {
+          streetName: form.streetName,
+          houseNumber: form.houseNumber,
+          postalCode: form.postalCode.toUpperCase(),
+          city: form.city,
+          country: form.country
+        }
+      })
+
+      setIsEditing(false)
+      alert("Information updated successfully!")
+    } catch (err) {
+      console.error("Error saving changes:", err)
+      alert("Failed to save changes. Please try again.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleSubmit = () => {
-    if (!form.receiverName || !form.address || !form.contactNumber) {
-      alert("Please complete all fields.")
+    if (!form.receiverName || !form.streetName || !form.houseNumber || !form.postalCode || !form.city || !form.contactNumber) {
+      alert("Please complete all address fields.")
       return
     }
 
     onSaveOrder?.({
       items: cartItems,
       totalPrice,
-      ...form
+      receiverName: form.receiverName,
+      streetName: form.streetName,
+      houseNumber: form.houseNumber,
+      postalCode: form.postalCode,
+      city: form.city,
+      country: form.country,
+      contactNumber: form.contactNumber,
+      email: form.email,
+      paymentMethod: form.paymentMethod
     })
     onClose()
   }
@@ -122,10 +163,17 @@ function CheckOutModal({
             <div className="flex justify-between items-center">
               <h3 className="font-semibold text-sm">Customer Information</h3>
               <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="text-xs px-3 py-1 rounded-full border hover:bg-gray-100"
+                onClick={() => {
+                  if (isEditing) {
+                    handleSaveChanges()
+                  } else {
+                    setIsEditing(true)
+                  }
+                }}
+                disabled={isSaving}
+                className="text-xs px-3 py-1 rounded-full border hover:bg-gray-100 disabled:opacity-60"
               >
-                {isEditing ? "Done" : "Edit"}
+                {isSaving ? "Saving..." : isEditing ? "Done" : "Edit"}
               </button>
             </div>
 
@@ -141,10 +189,58 @@ function CheckOutModal({
             </div>
 
             <div>
-              <label className="text-xs font-medium">Delivery Address</label>
+              <label className="text-xs font-medium">Street Name</label>
               <input
-                name="address"
-                value={form.address}
+                name="streetName"
+                value={form.streetName}
+                onChange={handleChange}
+                disabled={!isEditing}
+                placeholder="e.g., Amstelplein"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium">House Number</label>
+              <input
+                name="houseNumber"
+                value={form.houseNumber}
+                onChange={handleChange}
+                disabled={!isEditing}
+                placeholder="e.g., 150"
+                className={inputClass}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium">Postal Code</label>
+                <input
+                  name="postalCode"
+                  value={form.postalCode}
+                  onChange={(e) => setForm({ ...form, postalCode: e.target.value.toUpperCase() })}
+                  disabled={!isEditing}
+                  placeholder="e.g., 1096 BC"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">City</label>
+                <input
+                  name="city"
+                  value={form.city}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium">Country</label>
+              <input
+                name="country"
+                value={form.country}
                 onChange={handleChange}
                 disabled={!isEditing}
                 className={inputClass}
@@ -185,12 +281,12 @@ function CheckOutModal({
                 <span>
                   {item.name} × {item.quantity}
                 </span>
-                <span>₱{item.price * item.quantity}</span>
+                <span>€{item.price * item.quantity}</span>
               </div>
             ))}
             <div className="flex justify-between font-semibold border-t pt-2">
               <span>Total</span>
-              <span>₱{totalPrice}</span>
+              <span>€{totalPrice}</span>
             </div>
           </div>
 

@@ -247,7 +247,7 @@ function ProductsPage() {
                                 {product.name}
                             </td>
                             <td className="border px-4 py-2">
-                                ₱{product.price}
+                                €{product.price}
                             </td>
                             <td className="border px-4 py-2">
                                 {product.category}

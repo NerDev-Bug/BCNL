@@ -23,7 +23,8 @@ function UserInfo({ user }) {
   const [profile, setProfile] = useState({
     username: "",
     phone: "",
-    street: "",
+    streetName: "",
+    houseNumber: "",
     postalCode: "",
     city: "",
     country: "Netherlands"
@@ -40,7 +41,8 @@ function UserInfo({ user }) {
         setProfile({
           username: data.username || "",
           phone: data.phone || "",
-          street: data.address?.street || "",
+          streetName: data.address?.streetName || "",
+          houseNumber: data.address?.houseNumber || "",
           postalCode: data.address?.postalCode || "",
           city: data.address?.city || "",
           country: data.address?.country || "Netherlands"
@@ -98,7 +100,8 @@ function UserInfo({ user }) {
           username: profile.username,
           phone: profile.phone,
           address: {
-            street: profile.street,
+            streetName: profile.streetName,
+            houseNumber: profile.houseNumber,
             postalCode: profile.postalCode,
             city: profile.city,
             country: profile.country
@@ -168,21 +171,31 @@ function UserInfo({ user }) {
 
         <input
           disabled={!isEditing}
-          placeholder="Street Name + House Number"
-          value={profile.street}
+          placeholder="Street Name"
+          value={profile.streetName}
           onChange={(e) =>
-            setProfile({ ...profile, street: e.target.value })
+            setProfile({ ...profile, streetName: e.target.value })
           }
           className={`${inputClass} mb-2`}
         />
 
-        <div className="grid grid-cols-2 gap-2">
+        <input
+          disabled={!isEditing}
+          placeholder="House Number"
+          value={profile.houseNumber}
+          onChange={(e) =>
+            setProfile({ ...profile, houseNumber: e.target.value })
+          }
+          className={`${inputClass} mb-2`}
+        />
+
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <input
             disabled={!isEditing}
-            placeholder="Postal Code"
+            placeholder="Postal Code (1234 AB)"
             value={profile.postalCode}
             onChange={(e) =>
-              setProfile({ ...profile, postalCode: e.target.value })
+              setProfile({ ...profile, postalCode: e.target.value.toUpperCase() })
             }
             className={inputClass}
           />
@@ -204,7 +217,7 @@ function UserInfo({ user }) {
           onChange={(e) =>
             setProfile({ ...profile, country: e.target.value })
           }
-          className={`${inputClass} mt-2`}
+          className={inputClass}
         />
       </div>
 

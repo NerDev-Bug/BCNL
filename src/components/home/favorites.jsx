@@ -62,7 +62,7 @@ function Favorites() {
                   <div className="px-6 pb-6 flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="text-center text-lg font-semibold text-[#7B2220]">{p.name}</h3>
-                      <p className="text-center text-sm font-semibold mt-2">₱{p.price}</p>
+                      <p className="text-center text-sm font-semibold mt-2">€{p.price}</p>
                     </div>
 
                     <div className="mt-4 flex gap-4">

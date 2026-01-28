@@ -1,12 +1,16 @@
 import {  useState } from "react";
 import { ShoppingCart } from "lucide-react";
+import { toast } from "react-toastify"
+import { useCart } from "../context/CartContext"
 import CheckOutModal from "./modals/CheckOutModal";
 import OrderConfirmation from "./modals/OrderConfirmation"
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
+  const { createOrder } = useCart() // ✅ NEW
   const [showCheckout, setShowCheckout] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false) // ✅ added
   const [pendingOrder, setPendingOrder] = useState(null) // ✅ added
+  
 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
 
@@ -18,22 +22,20 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
   }
 
   // ✅ final confirm
-  const handleConfirmOrder = () => {
-    const finalPayload = {
-      ...pendingOrder,
-      items: cartItems,
-      totalPrice,
-      createdAt: new Date(),
-      status: "pending",
-    }
+  const handleConfirmOrder = async () => {
+  try {
+    await createOrder(pendingOrder)
 
-    console.log("ORDER CONFIRMED:", finalPayload)
-    // TODO: send to backend / firestore here
-
+    toast.success("Order placed successfully!")
     setShowConfirm(false)
     setPendingOrder(null)
     onClose?.()
+  } catch (err) {
+    console.error("ORDER ERROR:", err)
+    toast.error("Failed to place order")
   }
+}
+
 
   const handleQuantityChange = (id, value) => {
     if (value < 1) return
@@ -91,7 +93,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
                   <div>
                     <p className="font-semibold text-[#502455]">{item.name}</p>
                     <p className="text-gray-600">
-                      ₱{item.price} x{" "}
+                      €{item.price} x{" "}
                       <input
                         type="number"
                         min={1}
@@ -106,7 +108,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
 
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-[#7B2220]">
-                      ₱{item.price * item.quantity}
+                      €{item.price * item.quantity}
                     </p>
                     <button
                       onClick={() => handleRemove(item.id)}
@@ -121,7 +123,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
 
             <div className="fixed bottom-0 right-0 w-[380px] bg-white border-t p-5 flex items-center justify-between shadow-lg z-50">
               <p className="font-semibold text-lg text-[#502455]">
-                Total: ₱{totalPrice}
+                Total: €{totalPrice}
               </p>
 
               <button

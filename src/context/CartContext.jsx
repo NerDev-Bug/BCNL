@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
 import { db } from "../firebase"
-import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore"
+import { collection, deleteDoc, doc, getDocs, setDoc, addDoc, serverTimestamp } from "firebase/firestore"
 
 const CartContext = createContext(null)
 
@@ -13,6 +13,46 @@ export function CartProvider({ children }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
 
   const auth = getAuth()
+
+  const createOrder = async (customerData) => {
+  if (!user) throw new Error("Not authenticated")
+  if (cartItems.length === 0) throw new Error("Cart is empty")
+
+  const orderPayload = {
+    userId: user.uid,
+    userEmail: user.email || null,
+
+    customer: {
+      ...customerData, // name, address, phone, notes, etc
+    },
+
+    items: cartItems.map((item) => ({
+      cartItemId: item.id,
+      productId: item.productId || null,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      customization: item.customization || null,
+    })),
+
+    totalPrice: cartItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    ),
+
+    status: "pending",
+    createdAt: serverTimestamp(),
+  }
+
+  // 🔥 THIS CREATES THE `orders` COLLECTION
+  const docRef = await addDoc(collection(db, "orders"), orderPayload)
+
+  // Clear cart ONLY after order is saved
+  await clearCart()
+
+  return docRef.id
+}
+
 
   // ✅ Track auth user
   useEffect(() => {
@@ -147,12 +187,35 @@ export function CartProvider({ children }) {
     deleteFromFirestore(user.uid, id).catch(console.error)
   }
 
+  // ✅ Clear all cart items (called after order confirmation)
+  const clearCart = async () => {
+    if (!user) return
+
+    try {
+      const colRef = collection(db, "users", user.uid, "cartItems")
+      const snap = await getDocs(colRef)
+      
+      // Delete all items in parallel
+      await Promise.all(
+        snap.docs.map(doc => deleteDoc(doc.ref))
+      )
+
+      setCartItems([])
+      setIsCartOpen(false)
+    } catch (err) {
+      console.error("Error clearing cart:", err)
+    }
+  }
+
   const value = useMemo(
     () => ({
       cartItems,
       addToCart,
       updateQuantity,
       removeItem,
+      clearCart, // ✅ NEW
+
+       createOrder, // ✅ ADD THIS
 
       // ✅ Navbar needs these
       isCartOpen,
@@ -167,6 +230,7 @@ export function CartProvider({ children }) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCart() {
   const ctx = useContext(CartContext)
   if (!ctx) throw new Error("useCart must be used inside CartProvider")
