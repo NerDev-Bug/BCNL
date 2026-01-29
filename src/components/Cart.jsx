@@ -1,15 +1,21 @@
 import {  useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { toast } from "react-toastify"
+import { httpsCallable } from "firebase/functions"
+import { functions, auth } from "../firebase"
 import { useCart } from "../context/CartContext"
 import CheckOutModal from "./modals/CheckOutModal";
 import OrderConfirmation from "./modals/Payment"
 
+// Callable cloud function for Mollie payment
+const createMolliePayment = httpsCallable(functions, "createMolliePayment")
+
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
-  const { createOrder } = useCart() // ✅ NEW
+  const { clearCart } = useCart()
   const [showCheckout, setShowCheckout] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false) // ✅ added
-  const [pendingOrder, setPendingOrder] = useState(null) // ✅ added
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [pendingOrder, setPendingOrder] = useState(null)
+  const [loadingPayment, setLoadingPayment] = useState(false)
   
 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
@@ -18,23 +24,88 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
   const handleSaveOrder = (orderData) => {
     setPendingOrder(orderData)   // store checkout info (name/address/etc)
     setShowCheckout(false)       // close checkout modal
-    setShowConfirm(true)         // open confirmation modal
+    setShowConfirm(true)         // open payment method selection modal
   }
 
-  // ✅ final confirm
-  const handleConfirmOrder = async () => {
-  try {
-    await createOrder(pendingOrder)
+  // ✅ final confirm - creates Mollie payment and redirects
+  const handleConfirmOrder = async (method) => {
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        toast.error("Please login first.")
+        return
+      }
 
-    toast.success("Order placed successfully!")
-    setShowConfirm(false)
-    setPendingOrder(null)
-    onClose?.()
-  } catch (err) {
-    console.error("ORDER ERROR:", err)
-    toast.error("Failed to place order")
+      if (!pendingOrder || !method) {
+        toast.error("Please select a payment method.")
+        return
+      }
+
+      if (cartItems.length === 0) {
+        toast.error("Cart is empty.")
+        return
+      }
+
+      setLoadingPayment(true)
+
+      // Generate orderId
+      const orderId = crypto.randomUUID()
+
+      // Call Mollie payment function
+      const result = await createMolliePayment({
+        method,                    // "ideal" or "paypal"
+        amount: totalPrice,        // number
+        orderId,
+        items: cartItems.map((item) => ({
+          cartItemId: item.id,
+          productId: item.productId || null,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          customization: item.customization || null,
+        })),
+        customer: pendingOrder,    // customer info (name, address, etc)
+      })
+
+      const checkoutUrl = result?.data?.checkoutUrl
+      if (!checkoutUrl) {
+        toast.error("No checkout URL returned from Mollie.")
+        setLoadingPayment(false)
+        return
+      }
+
+      // Clear cart before redirect (order is already saved by backend)
+      await clearCart()
+
+      toast.success("Redirecting to payment...")
+      
+      // Redirect to Mollie hosted checkout
+      window.location.href = checkoutUrl
+    } catch (err) {
+      console.error("PAYMENT ERROR:", err)
+      console.error("Error details:", {
+        code: err?.code,
+        message: err?.message,
+        details: err?.details,
+        stack: err?.stack
+      })
+      
+      // Extract error message from Firebase error
+      let errorMessage = "Failed to start payment."
+      
+      // Firebase Functions v2 callable errors
+      if (err?.details) {
+        errorMessage = err.details.message || err.message || errorMessage
+      } else if (err?.message) {
+        errorMessage = err.message
+      } else if (err?.code) {
+        errorMessage = `Error ${err.code}: ${err.message || "Unknown error"}`
+      }
+      
+      toast.error(errorMessage)
+      setLoadingPayment(false)
+    }
   }
-}
 
 
   const handleQuantityChange = (id, value) => {
@@ -147,10 +218,16 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
 
       <OrderConfirmation
         isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onClose={() => {
+          if (!loadingPayment) {
+            setShowConfirm(false)
+            setPendingOrder(null)
+          }
+        }}
         cartItems={cartItems}
         totalPrice={totalPrice}
         onConfirm={handleConfirmOrder}
+        loading={loadingPayment}
       />
     </>
   )

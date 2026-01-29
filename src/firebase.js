@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app"
 import { getFirestore } from "firebase/firestore"
 import { getAuth } from "firebase/auth"
-import { getFunctions } from "firebase/functions"
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
 // 🔥 Your Firebase config
 const firebaseConfig = {
@@ -19,6 +19,13 @@ const app = initializeApp(firebaseConfig)
 // Services
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-export const functions = getFunctions(app) // ✅ ADD THIS
+
+// Initialize Functions with explicit region (us-central1)
+export const functions = getFunctions(app, "us-central1")
+
+// Connect to emulator in development (optional)
+// if (import.meta.env.DEV) {
+//   connectFunctionsEmulator(functions, "localhost", 5001)
+// }
 
 export default app

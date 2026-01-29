@@ -7,6 +7,7 @@ export default function Payment({
   cartItems = [],
   totalPrice = 0,
   onConfirm,
+  loading = false,
 }) {
   const [method, setMethod] = useState("")
 
@@ -19,7 +20,7 @@ export default function Payment({
   if (!isOpen) return null
 
   const handleContinue = () => {
-    if (isEmpty) return
+    if (isEmpty || loading) return
     onConfirm?.(method)
   }
 
@@ -130,7 +131,7 @@ export default function Payment({
               <div className="mt-8 flex justify-center">
                 <button
                   onClick={handleContinue}
-                  disabled={isEmpty || !method}
+                  disabled={isEmpty || !method || loading}
                   className={[
                     "w-full max-w-[360px] rounded-xl py-3 text-white font-extrabold text-base",
                     "bg-[#7B2220] shadow",
@@ -138,7 +139,7 @@ export default function Payment({
                     "disabled:opacity-60 disabled:cursor-not-allowed",
                   ].join(" ")}
                 >
-                  Continue to Payment
+                  {loading ? "Processing..." : "Continue to Payment"}
                 </button>
               </div>
 
