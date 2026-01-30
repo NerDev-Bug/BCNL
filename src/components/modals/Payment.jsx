@@ -10,7 +10,6 @@ export default function Payment({
   loading = false,
 }) {
   const [method, setMethod] = useState("")
-
   const isEmpty = cartItems.length === 0
   const formattedTotal = useMemo(() => {
     const n = Number(totalPrice || 0)

@@ -26,3 +26,22 @@
   animation: slideDown 150ms ease-out;
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  will-change: transform;
+  animation: marquee 18s linear infinite;
+}
+
+/* ✅ pause on hover (optional) */
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
