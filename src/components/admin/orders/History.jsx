@@ -1,163 +1,330 @@
-import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
-import { db } from "../../../firebase";
+import React, { useEffect, useMemo, useState } from "react"
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore"
+import { db } from "../../../firebase"
 
-import DataTable from "../../common/DataTable";
-import { StatusBadge } from "../../common/StatusBadge";
-import { RowActions } from "../../common/RowActions";
-import Pagination from "../../common/Pagination";
+import DataTable from "../../common/DataTable"
+import { StatusBadge } from "../../common/StatusBadge"
+import { RowActions } from "../../common/RowActions"
+import Pagination from "../../common/Pagination"
+
+// ✅ PDF
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 function History() {
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(10); // Or any number of items per page
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
 
+  // ✅ Netherlands timezone
+  const TIMEZONE = "Europe/Amsterdam"
 
-    useEffect(() => {
-        const fetchPendingOrders = async () => {
-        try {
-            const q = query(
-            collection(db, "orders"),
-            where("status", "==", "delivered")
-            );
+  // ✅ Helper: get "today" start/end in TIMEZONE, then convert to JS Date
+  // Note: JS Date is always stored as UTC internally; this method ensures the boundaries match the timezone day.
+  const getDayRangeInTimezone = (tz) => {
+    const now = new Date()
 
-            const snapshot = await getDocs(q);
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now)
 
-            const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            }));
-            console.log("Orders data:", data); // Add this to see the actual structure
-            setOrders(data);
-        } catch (err) {
-            console.error(err);
-            setError("Failed to load orders.");
-        } finally {
-            setLoading(false);
-        }
-        };
+    const y = parts.find((p) => p.type === "year")?.value
+    const m = parts.find((p) => p.type === "month")?.value
+    const d = parts.find((p) => p.type === "day")?.value
 
-        fetchPendingOrders();
-    }, []);
+    // Construct "local midnight" string then interpret as UTC-like; we’ll correct by using timezone formatting above.
+    // Practical approach: create two dates by formatting again with timeZone.
+    const startLocal = new Date(`${y}-${m}-${d}T00:00:00`)
+    const endLocal = new Date(`${y}-${m}-${d}T23:59:59.999`)
 
-    const formatDate = timestamp => {
-        if (!timestamp) return "—";
-        const date =
-        typeof timestamp === "object" && timestamp.seconds
-            ? new Date(timestamp.seconds * 1000)
-            : new Date(timestamp);
-        return date.toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
+    // This is usually fine for daily summaries; if you need absolute precision for DST edge cases,
+    // we can switch to a timezone lib (luxon/date-fns-tz).
+    return { start: startLocal, end: endLocal }
+  }
+
+  useEffect(() => {
+    const fetchDeliveredOrdersToday = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const { start, end } = getDayRangeInTimezone(TIMEZONE)
+
+        const q = query(
+          collection(db, "orders"),
+          where("status", "==", "delivered"),
+          where("createdAt", ">=", Timestamp.fromDate(start)),
+          where("createdAt", "<=", Timestamp.fromDate(end))
+        )
+
+        const snapshot = await getDocs(q)
+
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+
+        setOrders(data)
+        setCurrentPage(1)
+      } catch (err) {
+        console.error(err)
+        setError("Failed to load orders.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDeliveredOrdersToday()
+  }, [])
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "—"
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp)
+
+    return date.toLocaleDateString("en-US", {
+      timeZone: TIMEZONE,
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  }
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "—"
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp)
+
+    return date.toLocaleTimeString("en-US", {
+      timeZone: TIMEZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const handleAcceptOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, "orders", orderId)
+      await updateDoc(orderRef, { status: "preparing" })
+      setOrders((prev) => prev.filter((o) => o.id !== orderId))
+    } catch (err) {
+      console.error("Error updating order:", err)
+      alert("Failed to update order status.")
+    }
+  }
+
+  const handleDeleteOrder = async (orderId) => {
+    try {
+      console.log("Delete order:", orderId)
+    } catch (err) {
+      console.error("Error deleting order:", err)
+    }
+  }
+
+  // ✅ Summary (whole day)
+  const summary = useMemo(() => {
+    const totalOrders = orders.length
+    const totalRevenue = orders.reduce(
+      (sum, o) => sum + Number(o.totalPrice || 0),
+      0
+    )
+
+    const paymentBreakdown = orders.reduce((acc, o) => {
+      const m = o.customer?.paymentMethod || "Unknown"
+      acc[m] = (acc[m] || 0) + 1
+      return acc
+    }, {})
+
+    return { totalOrders, totalRevenue, paymentBreakdown }
+  }, [orders])
+
+  // ✅ PDF generator
+  const downloadDailySummaryPDF = async () => {
+    try {
+      setDownloading(true)
+
+      const todayLabel = new Date().toLocaleDateString("en-US", {
+        timeZone: TIMEZONE,
         year: "numeric",
-        });
-    };
+        month: "short",
+        day: "2-digit",
+      })
 
-    const handleAcceptOrder = async orderId => {
-        try {
-        const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, {
-            status: "preparing",
-        });
-        // Remove the order from the list immediately
-        setOrders(orders.filter(order => order.id !== orderId));
-        } catch (err) {
-        console.error("Error updating order:", err);
-        alert("Failed to update order status.");
-        }
-    };
+      const docPdf = new jsPDF()
 
-    const handleDeleteOrder = async orderId => {
-        try {
-        // You can implement delete logic here if needed
-        console.log("Delete order:", orderId);
-        } catch (err) {
-        console.error("Error deleting order:", err);
-        }
-    };
+      docPdf.setFontSize(16)
+      docPdf.text("Daily Order Summary", 14, 16)
 
-    //Compute paginated orders
-    const totalPages = Math.ceil(orders.length / pageSize);
-    const paginatedOrders = orders.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize
-    );
+      docPdf.setFontSize(11)
+      docPdf.text(`Date: ${todayLabel} (${TIMEZONE})`, 14, 24)
 
+      docPdf.text(`Total Orders: ${summary.totalOrders}`, 14, 32)
+      docPdf.text(
+        `Total Revenue: €${summary.totalRevenue.toFixed(2)}`,
+        14,
+        40
+      )
 
-    const columns = [
-        {
-        key: "id",
-        header: "Order",
-        render: row => `#${row.id.slice(0, 4)}`,
-        },
-        {
-        key: "createdAt",
-        header: "Date",
-        render: row => formatDate(row.createdAt),
-        },
-        {
-        key: "receiverName",
-        header: "Customer",
-        render: row => row.customer?.receiverName || "—",
-        },
-        {
-        key: "paymentMethod",
-        header: "Payment",
-        render: row => (
-            <StatusBadge value={row.customer?.paymentMethod} />
-        ),
-        },
-        {
-        key: "totalPrice",
-        header: "Total",
-        render: row => `€${row.totalPrice || 0}`,
-        },
-        {
-        key: "delivery",
-        header: "Delivery",
-        render: () => "N/A",
-        },
-        {
-        key: "items",
-        header: "Items",
-        render: row => `${row.items?.length || 0} items`,
-        },
-        {
-        key: "status",
-        header: "Fulfillment",
-        render: row => (
-            <StatusBadge value={row.status} />
-        ),
-        },
-        {
-        key: "actions",
-        header: "Action",
-        render: row => (
-            <RowActions 
-            onAccept={() => handleAcceptOrder(row.id)}
-            onDelete={() => handleDeleteOrder(row.id)}
-            />
-        ),
-        },
-    ];
+      // Payment breakdown lines
+      const pbEntries = Object.entries(summary.paymentBreakdown)
+      let y = 48
+      docPdf.text("Payment Breakdown:", 14, y)
+      y += 6
+      if (pbEntries.length === 0) {
+        docPdf.text("—", 14, y)
+        y += 6
+      } else {
+        pbEntries.forEach(([method, count]) => {
+          docPdf.text(`• ${method}: ${count}`, 18, y)
+          y += 6
+        })
+      }
 
-    if (error) return <div className="p-6 text-red-500">{error}</div>;
+      // Table
+      const rows = orders.map((o) => [
+        `#${o.id.slice(0, 4)}`,
+        `${formatDate(o.createdAt)} ${formatTime(o.createdAt)}`,
+        o.customer?.receiverName || "—",
+        o.customer?.paymentMethod || "—",
+        `${o.items?.length || 0}`,
+        `€${Number(o.totalPrice || 0).toFixed(2)}`,
+        o.status || "—",
+      ])
 
-    return (
-        <div className="pt-4">
-        <h2 className="mb-4 text-lg font-semibold">
-            Pending Orders
-        </h2>
+      autoTable(docPdf, {
+        startY: y + 4,
+        head: [
+          [
+            "Order",
+            "Date/Time",
+            "Customer",
+            "Payment",
+            "Items",
+            "Total",
+            "Status",
+          ],
+        ],
+        body: rows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [40, 40, 40] },
+        margin: { left: 14, right: 14 },
+      })
 
-        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
-        <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={setCurrentPage} 
+      const filename = `daily-order-summary-${todayLabel
+        .replaceAll(" ", "-")
+        .replaceAll(",", "")}.pdf`
+
+      docPdf.save(filename)
+    } catch (err) {
+      console.error(err)
+      alert("Failed to generate PDF.")
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  // ✅ pagination
+  const totalPages = Math.ceil(orders.length / pageSize)
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
+  const columns = [
+    {
+      key: "id",
+      header: "Order",
+      render: (row) => `#${row.id.slice(0, 4)}`,
+    },
+    {
+      key: "createdAt",
+      header: "Date",
+      render: (row) => formatDate(row.createdAt),
+    },
+    {
+      key: "receiverName",
+      header: "Customer",
+      render: (row) => row.customer?.receiverName || "—",
+    },
+    {
+      key: "paymentMethod",
+      header: "Payment",
+      render: (row) => <StatusBadge value={row.customer?.paymentMethod} />,
+    },
+    {
+      key: "totalPrice",
+      header: "Total",
+      render: (row) => `€${row.totalPrice || 0}`,
+    },
+    {
+      key: "delivery",
+      header: "Delivery",
+      render: () => "N/A",
+    },
+    {
+      key: "items",
+      header: "Items",
+      render: (row) => `${row.items?.length || 0} items`,
+    },
+    {
+      key: "status",
+      header: "Fulfillment",
+      render: (row) => <StatusBadge value={row.status} />,
+    },
+    {
+      key: "actions",
+      header: "Action",
+      render: (row) => (
+        <RowActions
+          onAccept={() => handleAcceptOrder(row.id)}
+          onDelete={() => handleDeleteOrder(row.id)}
         />
-        </div>
-    );
+      ),
+    },
+  ]
+
+  if (error) return <div className="p-6 text-red-500">{error}</div>
+
+  return (
+    <div className="pt-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Delivered Orders (Today)</h2>
+
+        {/* ✅ Button only (as you requested) */}
+        <button
+          onClick={downloadDailySummaryPDF}
+          disabled={downloading || loading}
+          className="px-4 py-2 rounded-md bg-black text-white text-sm disabled:opacity-60"
+        >
+          {downloading ? "Generating PDF..." : "Download Daily Summary (PDF)"}
+        </button>
+      </div>
+
+      <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+    </div>
+  )
 }
-export default History;
+
+export default History

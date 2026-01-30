@@ -54,6 +54,9 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
       if (rememberMe) localStorage.setItem("remember_email", cleanEmail)
       else localStorage.removeItem("remember_email")
 
+      // ✅ logged in = not guest
+      localStorage.removeItem("is_guest_order")
+
       toast.success("Logged in successfully!")
       onClose()
 
@@ -79,6 +82,14 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
       console.error(err)
       toast.error("Failed to send reset email.")
     }
+  }
+
+  // ✅ NEW: continue as guest -> homepage
+  const handleGuestOrder = () => {
+    localStorage.setItem("is_guest_order", "true") // optional flag
+    toast.info("Continuing as guest...")
+    onClose()
+    navigate("/") // ✅ homepage only
   }
 
   return (
@@ -163,6 +174,15 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 className="w-full bg-[#7B2220] text-white py-2 rounded"
               >
                 {loading ? "Logging in..." : "Login"}
+              </button>
+
+              {/* ✅ NEW: Order as Guest -> homepage */}
+              <button
+                type="button"
+                onClick={handleGuestOrder}
+                className="w-full border border-[#7B2220] text-[#7B2220] py-2 rounded font-semibold hover:bg-[#7B2220] hover:text-white transition"
+              >
+                Order as Guest
               </button>
             </form>
           )}
