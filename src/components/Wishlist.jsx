@@ -4,10 +4,13 @@ import { db, auth } from "../firebase"
 import { collection, doc, deleteDoc, onSnapshot } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import ProductSkeleton from "../context/ProductSkeleton"
+import { useCart } from "../context/CartContext"
+import { flyToCart } from "../utils/flyToCart"
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([])
   const [loading, setLoading] = useState(false)
+  const { addToCart } = useCart()
 
   useEffect(() => {
     let unsubWishlist = null
@@ -25,7 +28,6 @@ function Wishlist() {
         return
       }
 
-      // 🔑 only set loading if there might be data
       setLoading(true)
 
       const colRef = collection(db, "users", user.uid, "wishlist")
@@ -55,7 +57,6 @@ function Wishlist() {
   async function removeFromWishlist(id) {
     const user = auth.currentUser
     if (!user) return
-
     try {
       await deleteDoc(doc(db, "users", user.uid, "wishlist", id))
     } catch (err) {
@@ -93,35 +94,93 @@ function Wishlist() {
               .
             </p>
           </div>
-        ) : loading && wishlist.length > 0 ? (
-          /* ✅ SKELETON ONLY WHEN DATA EXISTS */
+        ) : loading ? (
+          /* ✅ SKELETON */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             <ProductSkeleton count={wishlist.length || 3} />
           </div>
         ) : (
-          /* ✅ WISHLIST GRID */
+          /* ✅ SAME UI AS MENU CARDS + UNAVAILABLE BEHAVIOR */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            {wishlist.map((item) => (
-              <div key={item.id} className="bg-white p-4 rounded-lg shadow">
-                <Link to={`/product/${item.id}`} className="block">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-60 object-cover rounded cursor-pointer"
-                  />
-                </Link>
+            {wishlist.map((item) => {
+              const isAvailable = item.available !== false
 
-                <h3 className="mt-3 font-semibold">{item.name}</h3>
-                <p className="text-sm text-gray-500">₱{item.price}</p>
-
-                <button
-                  onClick={() => removeFromWishlist(item.id)}
-                  className="mt-3 text-sm text-red-600 hover:underline"
+              return (
+                <div
+                  key={item.id}
+                  className="group bg-white border border-[#7B2220] rounded-md shadow-md"
                 >
-                  Remove
-                </button>
-              </div>
-            ))}
+                  <div className="p-4">
+                    <div className="relative">
+                      {isAvailable ? (
+                        <Link to={`/product/${item.id}`}>
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-80 object-cover"
+                          />
+                        </Link>
+                      ) : (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-80 object-cover opacity-60"
+                        />
+                      )}
+
+                      {!isAvailable && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-black/60 text-white font-bold px-4 py-2 rounded-md text-center">
+                            Not available today
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6">
+                    <h3 className="text-center font-semibold text-[#7B2220]">
+                      {item.name}
+                    </h3>
+                    <p className="text-center mt-2">€{item.price}</p>
+
+                    <div className="mt-4 flex gap-4">
+                      {/* ✅ REMOVE BUTTON */}
+                      <button
+                        onClick={() => removeFromWishlist(item.id)}
+                        className="flex-1 rounded-md py-2 font-semibold transition-all border border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                      >
+                        Remove
+                      </button>
+
+                      {/* ✅ ADD TO CART (DISABLED IF NOT AVAILABLE) */}
+                      <button
+                        disabled={!isAvailable}
+                        onClick={(e) => {
+                          if (!isAvailable) return
+                          const img = e.currentTarget
+                            .closest(".group")
+                            ?.querySelector("img")
+
+                          const success = addToCart(item)
+                          if (!success) return window.openLoginModal?.()
+                          flyToCart(img)
+                        }}
+                        className={`flex-1 rounded-md py-2 font-bold
+                          ${
+                            isAvailable
+                              ? "bg-[#7B2220] text-white hover:bg-[#502455]"
+                              : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                          }
+                        `}
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -24,9 +24,11 @@ export default function Menu() {
         const snap = await getDocs(collection(db, "products"))
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         setProducts(data)
+
         const uniqueCats = Array.from(
           new Set(data.map((p) => (p.category || "").trim()).filter(Boolean))
         ).sort((a, b) => a.localeCompare(b))
+
         setCategories(uniqueCats)
       } catch (err) {
         console.error("Failed to fetch products:", err)
@@ -34,6 +36,7 @@ export default function Menu() {
         setLoading(false)
       }
     }
+
     fetchProducts()
   }, [])
 
@@ -42,12 +45,14 @@ export default function Menu() {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubWishlist) unsubWishlist()
       if (!user) return setWishlistIds([])
+
       const colRef = collection(db, "users", user.uid, "wishlist")
       unsubWishlist = onSnapshot(colRef, (snap) => {
         const ids = snap.docs.map((d) => d.id)
         setWishlistIds(ids)
       })
     })
+
     return () => {
       if (unsubWishlist) unsubWishlist()
       unsubAuth()
@@ -64,12 +69,20 @@ export default function Menu() {
           backgroundPosition: "center",
         }}
       >
-        <h1 className="text-4xl md:text-5xl font-bold text-[#502455] font-cooper translate-y-8">Menu</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-[#502455] font-cooper translate-y-8">
+          Menu
+        </h1>
       </div>
 
-      <div className="bg-fixed bg-cover bg-center" style={{ backgroundImage: "url('/images/gingham_pattern_purple_bg.jpg')" }}>
+      <div
+        className="bg-fixed bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/gingham_pattern_purple_bg.jpg')" }}
+      >
         <div className="py-8 px-4 max-w-6xl mx-auto">
-          <div className="border border-[#7B2220] rounded-md p-2 bg-[#502455] sticky z-20" style={{ top: "100px" }}>
+          <div
+            className="border border-[#7B2220] rounded-md p-2 bg-[#502455] sticky z-20"
+            style={{ top: "100px" }}
+          >
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative w-full md:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={18} />
@@ -81,7 +94,11 @@ export default function Menu() {
                 />
               </div>
 
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full md:w-56 px-4 py-2 border rounded-md">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full md:w-56 px-4 py-2 border rounded-md"
+              >
                 <option>All Categories</option>
                 {categories.map((c) => (
                   <option key={c}>{c}</option>
@@ -95,30 +112,62 @@ export default function Menu() {
               <ProductSkeleton count={3} />
             ) : (
               products
-                .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-                .filter((p) => (category === "All Categories" ? true : p.category === category))
+                .filter((p) =>
+                  p.name.toLowerCase().includes(search.toLowerCase())
+                )
+                .filter((p) =>
+                  category === "All Categories" ? true : p.category === category
+                )
                 .map((product) => {
                   const isWishlisted = wishlistIds.includes(product.id)
 
                   return (
-                    <div key={product.id} className="group bg-white border border-[#7B2220] rounded-md shadow-md">
+                    <div
+                      key={product.id}
+                      className="group bg-white border border-[#7B2220] rounded-md shadow-md"
+                    >
                       <div className="p-4">
-                        <Link to={`/product/${product.id}`}>
-                          <img src={product.image} alt={product.name} className={`w-full h-80 object-cover ${!product.available ? "opacity-60" : ""}`} />
-                        </Link>
+                        <div className="relative">
+                          {product.available ? (
+                            <Link to={`/product/${product.id}`}>
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-80 object-cover"
+                              />
+                            </Link>
+                          ) : (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-80 object-cover opacity-60"
+                            />
+                          )}
+
+                          {!product.available && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="bg-black/60 text-white font-bold px-4 py-2 rounded-md text-center">
+                                Not available today
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="px-6 pb-6">
-                        <h3 className="text-center font-semibold text-[#7B2220]">{product.name}</h3>
+                        <h3 className="text-center font-semibold text-[#7B2220]">
+                          {product.name}
+                        </h3>
                         <p className="text-center mt-2">€{product.price}</p>
 
                         <div className="mt-4 flex gap-4">
                           <button
                             onClick={() => toggleWishlist(product, wishlistIds)}
                             className={`flex-1 rounded-md py-2 font-semibold transition-all
-                              ${isWishlisted
-                                ? "bg-[#502455] text-white border border-[#502455]"
-                                : "border border-[#502455] text-[#502455] hover:bg-[#502455] hover:text-white"
+                              ${
+                                isWishlisted
+                                  ? "bg-[#502455] text-white border border-[#502455]"
+                                  : "border border-[#502455] text-[#502455] hover:bg-[#502455] hover:text-white"
                               }
                             `}
                           >
@@ -126,18 +175,41 @@ export default function Menu() {
                           </button>
 
                           {(product.category || "").trim() === "Custom Cakes" ? (
-                            <Link to={`/product/${product.id}`} className="flex-1 text-center rounded-md py-2 font-bold bg-[#7B2220] text-white hover:bg-[#502455]">
-                              Customize
-                            </Link>
+                            product.available ? (
+                              <Link
+                                to={`/product/${product.id}`}
+                                className="flex-1 text-center rounded-md py-2 font-bold bg-[#7B2220] text-white hover:bg-[#502455]"
+                              >
+                                Customize
+                              </Link>
+                            ) : (
+                              <button
+                                disabled
+                                className="flex-1 text-center rounded-md py-2 font-bold bg-gray-300 text-gray-600 cursor-not-allowed"
+                              >
+                                Customize
+                              </button>
+                            )
                           ) : (
                             <button
+                              disabled={!product.available}
                               onClick={(e) => {
-                                const img = e.currentTarget.closest(".group").querySelector("img")
+                                if (!product.available) return
+                                const img =
+                                  e.currentTarget
+                                    .closest(".group")
+                                    .querySelector("img")
                                 const success = addToCart(product)
                                 if (!success) return window.openLoginModal?.()
                                 flyToCart(img)
                               }}
-                              className="flex-1 rounded-md py-2 font-bold bg-[#7B2220] text-white hover:bg-[#502455]"
+                              className={`flex-1 rounded-md py-2 font-bold text-white
+                                ${
+                                  product.available
+                                    ? "bg-[#7B2220] hover:bg-[#502455]"
+                                    : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                }
+                              `}
                             >
                               Order Now
                             </button>
