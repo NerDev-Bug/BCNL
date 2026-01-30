@@ -54,7 +54,6 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
       if (rememberMe) localStorage.setItem("remember_email", cleanEmail)
       else localStorage.removeItem("remember_email")
 
-      // ✅ logged in = not guest
       localStorage.removeItem("is_guest_order")
 
       toast.success("Logged in successfully!")
@@ -84,33 +83,32 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
     }
   }
 
-  // ✅ NEW: continue as guest -> homepage
   const handleGuestOrder = () => {
-    localStorage.setItem("is_guest_order", "true") // optional flag
+    localStorage.setItem("is_guest_order", "true")
     toast.info("Continuing as guest...")
     onClose()
-    navigate("/") // ✅ homepage only
+    navigate("/")
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+      {/* ✅ responsive wrapper */}
+      <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex flex-col md:flex-row">
         <button
           onClick={onClose}
-          className="absolute top-2 right-4 text-gray-500 hover:text-black text-2xl"
+          className="absolute top-2 right-4 text-gray-500 hover:text-black text-2xl z-10"
         >
           ×
         </button>
 
         {/* LEFT */}
-        <div className="w-1/2 p-8">
+        <div className="w-full md:w-1/2 p-6 md:p-8">
           <img
             src="./images/bcnl_logo.png"
             alt="Bake Corner"
             className="h-10 mb-6"
           />
 
-          {/* ================= LOGIN FORM ================= */}
           {!forgotMode && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
@@ -129,7 +127,7 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border rounded px-3 py-2 pr-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -149,7 +147,8 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              {/* ✅ stacks nicely on very small screens */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -162,7 +161,7 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 <button
                   type="button"
                   onClick={() => setForgotMode(true)}
-                  className="text-[#7B2220] font-semibold hover:underline"
+                  className="text-[#7B2220] font-semibold hover:underline text-left sm:text-right"
                 >
                   Forgot password?
                 </button>
@@ -176,7 +175,6 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 {loading ? "Logging in..." : "Login"}
               </button>
 
-              {/* ✅ NEW: Order as Guest -> homepage */}
               <button
                 type="button"
                 onClick={handleGuestOrder}
@@ -187,7 +185,6 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
             </form>
           )}
 
-          {/* ================= FORGOT PASSWORD ================= */}
           {forgotMode && (
             <form onSubmit={handleSendReset} className="space-y-4">
               <h2 className="text-lg font-semibold">Reset Password</h2>
@@ -234,9 +231,9 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
           </p>
         </div>
 
-        {/* RIGHT */}
+        {/* ✅ RIGHT image: hidden on mobile */}
         <div
-          className="w-1/2 bg-cover bg-center"
+          className="hidden md:block md:w-1/2 bg-cover bg-center"
           style={{ backgroundImage: "url('./images/login-bg.png')" }}
         />
       </div>

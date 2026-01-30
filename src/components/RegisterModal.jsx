@@ -38,7 +38,7 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
     try {
       setLoading(true);
       await registerUser(email, password, username);
-      onClose(); // close modal on success
+      onClose();
       toast.success("Account created successfully!, Login Successful");
     } catch (err) {
       setError(err.message);
@@ -49,19 +49,19 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="relative bg-white w-full max-w-4xl rounded-lg overflow-hidden flex">
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+      {/* ✅ responsive wrapper */}
+      <div className="relative bg-white w-full max-w-4xl rounded-lg overflow-hidden flex flex-col md:flex-row">
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-4 text-gray-500 hover:text-black text-2xl"
+          className="absolute top-2 right-4 text-gray-500 hover:text-black text-2xl z-10"
         >
           ×
         </button>
 
         {/* LEFT – Register Form */}
-        <div className="w-1/2 p-8">
+        <div className="w-full md:w-1/2 p-6 md:p-8">
           <form onSubmit={handleRegister}>
             <div className="mb-4">
               <label className="block text-sm mb-1 text-[#7B2220]">
@@ -115,11 +115,7 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
               />
             </div>
 
-            {error && (
-              <p className="text-red-600 text-sm mb-3">
-                {error}
-              </p>
-            )}
+            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
             <button
               type="submit"
@@ -129,6 +125,7 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
               {loading ? "Creating account..." : "Register"}
             </button>
 
+            {/* ✅ better spacing on mobile */}
             <label className="flex items-center gap-2 text-sm mt-3">
               <input
                 type="checkbox"
@@ -152,12 +149,10 @@ function RegisterModal({ isOpen, onClose, onSwitchToLogin }) {
           </form>
         </div>
 
-        {/* RIGHT – Image */}
+        {/* ✅ RIGHT – Image (hidden on mobile) */}
         <div
-          className="w-1/2 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('./images/login-bg.png')",
-          }}
+          className="hidden md:block md:w-1/2 bg-cover bg-center"
+          style={{ backgroundImage: "url('./images/login-bg.png')" }}
         >
           <div className="p-6">
             <img
