@@ -4,7 +4,7 @@ import { functions, auth } from "../firebase"
 import Payment from "../modals/Payment"
 
 // Callable cloud function name MUST match your deployed function
-const createMolliePayment = httpsCallable(functions, "createMolliePayment")
+const createPayment = httpsCallable(functions, "createPayment")
 
 export default function CheckoutPage() {
   // ✅ Example cart data (replace with your real cartItems)
@@ -38,7 +38,7 @@ export default function CheckoutPage() {
       // Use an orderId (you can also use Firestore doc id if you already create order docs)
       const orderId = crypto.randomUUID()
 
-      const result = await createMolliePayment({
+      const result = await createPayment({
         method,             // "ideal" or "paypal"
         amount: totalPrice, // number
         orderId,

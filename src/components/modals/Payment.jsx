@@ -9,7 +9,7 @@ export default function Payment({
   onConfirm,
   loading = false,
 }) {
-  const [method, setMethod] = useState("")
+  const [method, setMethod] = useState("ideal")
   const isEmpty = cartItems.length === 0
   const formattedTotal = useMemo(() => {
     const n = Number(totalPrice || 0)
@@ -97,31 +97,6 @@ export default function Payment({
                   />
                   <span className="text-[#7B2220] font-bold text-base">
                     iDEAL
-                  </span>
-                </button>
-
-                {/* PayPal */}
-                <button
-                  type="button"
-                  onClick={() => setMethod("paypal")}
-                  disabled={isEmpty}
-                  className={[
-                    "mx-auto w-full max-w-[420px] bg-white rounded-xl px-6 py-4 shadow-md",
-                    "flex items-center justify-center gap-3",
-                    "transition",
-                    method === "paypal"
-                      ? "ring-2 ring-[#7B2220]/70"
-                      : "hover:ring-2 hover:ring-white/70",
-                    isEmpty ? "opacity-60 cursor-not-allowed" : "",
-                  ].join(" ")}
-                >
-                  <img
-                    src="/images/paypal_logo.svg"
-                    alt="PayPal"
-                    className="h-6 w-auto"
-                  />
-                  <span className="text-[#1a4bd8] font-bold text-base">
-                    PayPal
                   </span>
                 </button>
               </div>

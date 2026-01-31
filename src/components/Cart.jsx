@@ -8,7 +8,7 @@ import CheckOutModal from "./modals/CheckOutModal"
 import OrderConfirmation from "./modals/Payment"
 
 // Callable cloud function for Mollie payment
-const createMolliePayment = httpsCallable(functions, "createMolliePayment")
+const createPayment = httpsCallable(functions, "createPayment")
 
 function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
   const { clearCart } = useCart()
@@ -67,21 +67,19 @@ const getUnavailableItems = () =>
       const orderId = crypto.randomUUID()
 
       // Call Mollie payment function
-      const result = await createMolliePayment({
-        method,
-        amount: totalPrice,
-        orderId,
-        items: cartItems.map((item) => ({
-          cartItemId: item.id,
-          productId: item.productId || null,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          customization: item.customization || null,
-        })),
-        customer: pendingOrder,
-      })
-
+      const result = await createPayment({
+  amount: totalPrice,                       // REQUIRED
+  description: `Order ${orderId}`,          // ✅ REQUIRED
+  orderId,
+  items: cartItems.map((item) => ({
+    cartItemId: item.id,
+    productId: item.productId || null,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity,
+    customization: item.customization || null,
+  })),
+})
       const checkoutUrl = result?.data?.checkoutUrl
       if (!checkoutUrl) {
         toast.error("No checkout URL returned from Mollie.")
