@@ -5,18 +5,16 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
 import { toast } from "react-toastify"
 
 import { sendPasswordResetEmail } from "firebase/auth"
-import { auth } from "../firebase"
+import { auth, db } from "../firebase"
+import { doc, getDoc } from "firebase/firestore"
 
 function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
-  const [email, setEmail] = useState("")
+  const [identifier, setIdentifier] = useState("") // email or username
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // remember me
   const [rememberMe, setRememberMe] = useState(false)
-
-  // forgot password mode
   const [forgotMode, setForgotMode] = useState(false)
 
   const navigate = useNavigate()
@@ -29,30 +27,94 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
     return () => window.removeEventListener("keydown", handleEsc)
   }, [onClose])
 
-  // load remembered email
   useEffect(() => {
     if (!isOpen) return
-    const savedEmail = localStorage.getItem("remember_email")
-    if (savedEmail) {
-      setEmail(savedEmail)
+    const saved = localStorage.getItem("remember_identifier")
+    if (saved) {
+      setIdentifier(saved)
       setRememberMe(true)
     }
   }, [isOpen])
 
   if (!isOpen) return null
 
+  const looksLikeEmail = (value) => String(value || "").includes("@")
+
+  const validateEmailStrict = (email) => {
+    const e = String(email || "").trim().toLowerCase()
+
+    if (!e.includes("@")) return "Email must contain @."
+    const parts = e.split("@")
+    if (parts.length !== 2) return "Email format is invalid."
+    const [local, domain] = parts
+    if (!local) return "Email username part is missing."
+    if (!domain) return "Email domain is missing."
+    if (!domain.includes(".")) return "Email domain must contain a dot (example: gmail.com)."
+
+    const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+    if (!basicRegex.test(e)) return "Email format is invalid."
+
+    if (domain.startsWith("gmail")) {
+      const allowed = ["gmail.com", "googlemail.com"]
+      if (!allowed.includes(domain)) {
+        const tips = ["gmail.co", "gmail.con", "gmal.com", "gmial.com", "gmail.comm", "gmail.com.ph"]
+        const suggestion = tips.includes(domain)
+          ? "Did you mean gmail.com?"
+          : "Please check your Gmail domain (example: gmail.com)."
+        return suggestion
+      }
+    }
+
+    return null
+  }
+
+  // ✅ resolve username -> email via /usernames/{usernameLower}
+  const getEmailByUsername = async (username) => {
+    const clean = String(username || "").trim()
+    if (!clean) return null
+    const key = clean.toLowerCase()
+
+    const snap = await getDoc(doc(db, "usernames", key))
+    if (!snap.exists()) return null
+
+    const data = snap.data()
+    return data?.email || null
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const cleanEmail = email.trim()
+      const cleanId = identifier.trim()
       const cleanPass = password.trim()
 
-      const { role } = await loginUser(cleanEmail, cleanPass)
+      if (!cleanId) {
+        toast.error("Please enter your email or username.")
+        return
+      }
 
-      if (rememberMe) localStorage.setItem("remember_email", cleanEmail)
-      else localStorage.removeItem("remember_email")
+      let emailToUse = cleanId
+
+      if (looksLikeEmail(cleanId)) {
+        const emailError = validateEmailStrict(cleanId)
+        if (emailError) {
+          toast.error(emailError)
+          return
+        }
+      } else {
+        const foundEmail = await getEmailByUsername(cleanId)
+        if (!foundEmail) {
+          toast.error("Username not found.")
+          return
+        }
+        emailToUse = foundEmail
+      }
+
+      const { role } = await loginUser(emailToUse, cleanPass)
+
+      if (rememberMe) localStorage.setItem("remember_identifier", cleanId)
+      else localStorage.removeItem("remember_identifier")
 
       localStorage.removeItem("is_guest_order")
 
@@ -71,10 +133,29 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
 
   const handleSendReset = async (e) => {
     e.preventDefault()
-    if (!email) return toast.error("Please enter your email")
+    const cleanId = identifier.trim()
+
+    if (!cleanId) return toast.error("Please enter your email or username.")
 
     try {
-      await sendPasswordResetEmail(auth, email.trim())
+      let emailToUse = cleanId
+
+      if (looksLikeEmail(cleanId)) {
+        const emailError = validateEmailStrict(cleanId)
+        if (emailError) {
+          toast.error(emailError)
+          return
+        }
+      } else {
+        const foundEmail = await getEmailByUsername(cleanId)
+        if (!foundEmail) {
+          toast.error("Username not found.")
+          return
+        }
+        emailToUse = foundEmail
+      }
+
+      await sendPasswordResetEmail(auth, emailToUse.trim())
       toast.success("Password reset email sent!")
       setForgotMode(false)
     } catch (err) {
@@ -92,7 +173,6 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-      {/* ✅ responsive wrapper */}
       <div className="relative bg-white w-full max-w-3xl rounded-lg overflow-hidden flex flex-col md:flex-row">
         <button
           onClick={onClose}
@@ -101,24 +181,20 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
           ×
         </button>
 
-        {/* LEFT */}
         <div className="w-full md:w-1/2 p-6 md:p-8">
-          <img
-            src="./images/bcnl_logo.png"
-            alt="Bake Corner"
-            className="h-10 mb-6"
-          />
+          <img src="./images/bcnl_logo.png" alt="Bake Corner" className="h-10 mb-6" />
 
           {!forgotMode && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm mb-1">Email</label>
+                <label className="block text-sm mb-1">Username or email</label>
                 <input
-                  type="email"
+                  type="text"
                   className="w-full border rounded px-3 py-2"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
+                  placeholder="example@gmail.com or username"
                 />
               </div>
 
@@ -138,16 +214,11 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-2 top-2 text-gray-500"
                   >
-                    {showPassword ? (
-                      <EyeSlashIcon className="w-5 h-5" />
-                    ) : (
-                      <EyeIcon className="w-5 h-5" />
-                    )}
+                    {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              {/* ✅ stacks nicely on very small screens */}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -189,24 +260,22 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
             <form onSubmit={handleSendReset} className="space-y-4">
               <h2 className="text-lg font-semibold">Reset Password</h2>
               <p className="text-sm text-gray-600">
-                Enter your email and we’ll send you a reset link.
+                Enter your email (or username) and we’ll send you a reset link.
               </p>
 
               <div>
-                <label className="block text-sm mb-1">Email</label>
+                <label className="block text-sm mb-1">Username or email</label>
                 <input
-                  type="email"
+                  type="text"
                   className="w-full border rounded px-3 py-2"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
+                  placeholder="example@gmail.com or username"
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-[#7B2220] text-white py-2 rounded"
-              >
+              <button type="submit" className="w-full bg-[#7B2220] text-white py-2 rounded">
                 Send reset link
               </button>
 
@@ -222,16 +291,12 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
 
           <p className="text-sm mt-4">
             Don’t have an account?{" "}
-            <span
-              onClick={onSwitchToRegister}
-              className="text-[#7B2220] cursor-pointer font-semibold"
-            >
+            <span onClick={onSwitchToRegister} className="text-[#7B2220] cursor-pointer font-semibold">
               Register
             </span>
           </p>
         </div>
 
-        {/* ✅ RIGHT image: hidden on mobile */}
         <div
           className="hidden md:block md:w-1/2 bg-cover bg-center"
           style={{ backgroundImage: "url('./images/login-bg.png')" }}

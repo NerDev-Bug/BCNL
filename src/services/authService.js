@@ -1,90 +1,117 @@
 // src/services/authService.js
-import { auth, db } from "../firebase";
+import { auth, db } from "../firebase"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-} from "firebase/auth";
+} from "firebase/auth"
 import {
   doc,
   setDoc,
   getDoc,
   serverTimestamp,
-} from "firebase/firestore";
+} from "firebase/firestore"
+
+// ✅ helper: validate username (same rules as UI)
+const validateUsername = (value) => {
+  const u = String(value || "").trim()
+  if (!u) return "Username is required"
+  if (u.length < 3) return "Username must be at least 3 characters"
+  if (u.length > 20) return "Username must be at most 20 characters"
+  if (!/^[a-zA-Z0-9_]+$/.test(u))
+    return "Only letters, numbers, and underscore (_) allowed"
+  return null
+}
+
+// ✅ helper: check username uniqueness using /usernames/{usernameLower}
+const isUsernameTaken = async (usernameLower) => {
+  const snap = await getDoc(doc(db, "usernames", usernameLower))
+  return snap.exists()
+}
 
 /**
  * REGISTER user
- * @param {string} email
- * @param {string} password
- * @param {string} username
- * @returns {Promise<User>}
  */
 export const registerUser = async (email, password, username) => {
   try {
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    const cleanEmail = String(email || "").trim()
+    const cleanUsername = String(username || "").trim()
+    const usernameLower = cleanUsername.toLowerCase()
 
-    // Save user info in Firestore with role
+    // ✅ username validation
+    const uErr = validateUsername(cleanUsername)
+    if (uErr) throw { code: "username-invalid", message: uErr }
+
+    // ✅ check taken (no query)
+    const taken = await isUsernameTaken(usernameLower)
+    if (taken) throw { code: "username-taken", message: "Username is already taken" }
+
+    // ✅ Create user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password)
+    const user = userCredential.user
+
+    // ✅ Reserve username (auto-creates /usernames collection)
+    await setDoc(doc(db, "usernames", usernameLower), {
+      uid: user.uid,
+      username: cleanUsername,
+      email: user.email, // ✅ needed for username login + reset
+      createdAt: serverTimestamp(),
+    })
+
+    // ✅ Save profile
     await setDoc(doc(db, "users", user.uid), {
-      username,
+      username: cleanUsername,
+      usernameLower,
       email: user.email,
       role: "customer",
       createdAt: serverTimestamp(),
-    });
+    })
 
-    return user;
+    return user
   } catch (err) {
-    // Map Firebase registration errors
-    let friendlyMessage = err.message;
+    let friendlyMessage = err?.message || "Registration failed"
 
-    if (err.code === "auth/email-already-in-use") {
-      friendlyMessage = "Email is already registered";
-    } else if (err.code === "auth/invalid-email") {
-      friendlyMessage = "Invalid email format";
-    } else if (err.code === "auth/weak-password") {
-      friendlyMessage = "Password is too weak (min 6 characters)";
+    // custom errors
+    if (err?.code === "username-invalid") friendlyMessage = err.message
+    else if (err?.code === "username-taken") friendlyMessage = err.message
+
+    // firebase errors
+    else if (err?.code === "auth/email-already-in-use") {
+      friendlyMessage = "Email is already registered"
+    } else if (err?.code === "auth/invalid-email") {
+      friendlyMessage = "Invalid email format"
+    } else if (err?.code === "auth/weak-password") {
+      friendlyMessage = "Password is too weak (min 6 characters)"
     }
 
-    throw { code: err.code || "register-error", message: friendlyMessage };
+    throw { code: err?.code || "register-error", message: friendlyMessage }
   }
-};
+}
 
 /**
- * LOGIN user with role
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{user: User, role: string}>}
+ * LOGIN user with role (email only — username handled in LoginModal)
  */
 export const loginUser = async (email, password) => {
   try {
-    // Sign in with Firebase Auth
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    const cleanEmail = String(email || "").trim()
 
-    // Fetch user role from Firestore
-    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password)
+    const user = userCredential.user
+
+    const userDoc = await getDoc(doc(db, "users", user.uid))
     if (!userDoc.exists()) {
-      throw { code: "user-not-found", message: "User record not found" };
+      throw { code: "user-not-found", message: "User record not found" }
     }
 
-    return {
-      user,
-      role: userDoc.data().role,
-    };
+    return { user, role: userDoc.data().role }
   } catch (err) {
-    // Map Firebase login errors to friendly messages
-    let friendlyMessage = err.message;
+    let friendlyMessage = err?.message || "Login failed"
 
-    if (err.code === "auth/wrong-password") {
-      friendlyMessage = "Wrong password";
-    } else if (err.code === "auth/user-not-found") {
-      friendlyMessage = "User not found";
-    } else if (err.code === "auth/invalid-email") {
-      friendlyMessage = "Invalid email format";
-    } else if (err.code === "auth/user-disabled") {
-      friendlyMessage = "User account is disabled";
-    }
+    if (err?.code === "auth/wrong-password") friendlyMessage = "Wrong password"
+    else if (err?.code === "auth/user-not-found") friendlyMessage = "User not found"
+    else if (err?.code === "auth/invalid-email") friendlyMessage = "Invalid email format"
+    else if (err?.code === "auth/user-disabled") friendlyMessage = "User account is disabled"
+    else if (err?.code === "user-not-found") friendlyMessage = "User record not found"
 
-    throw { code: err.code || "login-error", message: friendlyMessage };
+    throw { code: err?.code || "login-error", message: friendlyMessage }
   }
-};
+}
