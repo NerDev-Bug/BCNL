@@ -2,10 +2,12 @@ import { useState } from "react"
 import { ShoppingCart } from "lucide-react"
 import { toast } from "react-toastify"
 import { httpsCallable } from "firebase/functions"
-import { functions, auth } from "../firebase"
+import { functions, auth, db } from "../firebase"
 import { useCart } from "../context/CartContext"
 import CheckOutModal from "./modals/CheckOutModal"
 import OrderConfirmation from "./modals/Payment"
+
+import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 
 // Callable cloud function for Mollie payment
 const createPayment = httpsCallable(functions, "createPayment")
@@ -24,8 +26,8 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
 
   // ✅ helper: find unavailable items in cart
-const getUnavailableItems = () =>
-  (cartItems || []).filter((i) => i?.available === false)
+  const getUnavailableItems = () =>
+    (cartItems || []).filter((i) => i?.available === false)
 
   // ✅ called after checkout form is submitted
   const handleSaveOrder = (orderData) => {
@@ -63,23 +65,52 @@ const getUnavailableItems = () =>
 
       setLoadingPayment(true)
 
-      // Generate orderId
-      const orderId = crypto.randomUUID()
+      // ✅ 1) Create order in Firestore FIRST (auto doc id)
+      const orderRef = await addDoc(collection(db, "orders"), {
+        createdAt: serverTimestamp(),
+        userId: user.uid,
+        email: user.email || null,
 
-      // Call Mollie payment function
+        // from your checkout modal (keep as-is, even if null)
+        orderData: pendingOrder,
+
+        customer: pendingOrder?.customer || null, // if you store customer here
+        address: pendingOrder?.address || null,
+        notes: pendingOrder?.notes || null,
+
+        items: cartItems.map((item) => ({
+          cartItemId: item.id,
+          productId: item.productId || null,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          customization: item.customization || null,
+        })),
+
+        total: Number(totalPrice.toFixed(2)),
+        currency: "EUR",
+
+        paymentMethod: method,
+        paymentStatus: "created",
+      })
+
+      const orderId = orderRef.id // ✅ Firestore doc id
+
+      // ✅ 2) Call Mollie payment function using Firestore orderId
       const result = await createPayment({
-  amount: totalPrice,                       // REQUIRED
-  description: `Order ${orderId}`,          // ✅ REQUIRED
-  orderId,
-  items: cartItems.map((item) => ({
-    cartItemId: item.id,
-    productId: item.productId || null,
-    name: item.name,
-    price: item.price,
-    quantity: item.quantity,
-    customization: item.customization || null,
-  })),
-})
+        amount: totalPrice,              // REQUIRED
+        description: `Order ${orderId}`, // REQUIRED
+        orderId,                         // ✅ MUST be Firestore doc id
+        items: cartItems.map((item) => ({
+          cartItemId: item.id,
+          productId: item.productId || null,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          customization: item.customization || null,
+        })),
+      })
+
       const checkoutUrl = result?.data?.checkoutUrl
       if (!checkoutUrl) {
         toast.error("No checkout URL returned from Mollie.")
@@ -87,8 +118,10 @@ const getUnavailableItems = () =>
         return
       }
 
-      // Clear cart before redirect (order is already saved by backend)
-      await clearCart()
+      // ✅ IMPORTANT:
+      // Do NOT clear cart here.
+      // Clear cart only on PaymentSuccess AFTER payment is verified as paid.
+      // await clearCart()
 
       toast.success("Redirecting to payment...")
       window.location.href = checkoutUrl

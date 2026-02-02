@@ -10,6 +10,13 @@ import { defineSecret } from "firebase-functions/params"
 import createMollieClient, { Payment, PaymentMethod } from "@mollie/api-client"
 import qs from "querystring"
 
+// ✅ Firestore Admin
+import admin from "firebase-admin"
+import { FieldValue } from "firebase-admin/firestore"
+
+if (!admin.apps.length) admin.initializeApp()
+const db = admin.firestore()
+
 const MOLLIE_API_KEY = defineSecret("MOLLIE_API_KEY")
 
 setGlobalOptions({ maxInstances: 10 })
@@ -19,6 +26,8 @@ const REDIRECT_URL = "http://localhost:5173/payment-success"
 
 /**
  * ✅ Create Mollie payment (CALLABLE)
+ * Expects: { orderId: "<orders doc id>", amount, description, items }
+ * Saves paymentId into: orders/{orderId}
  */
 export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) => {
   try {
@@ -28,7 +37,7 @@ export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) =
       throw new HttpsError("invalid-argument", "Missing amount or description")
     }
 
-    // ✅ require orderId so redirect can use it
+    // ✅ orderId must be the Firestore doc id in "orders"
     if (!orderId) {
       throw new HttpsError("invalid-argument", "Missing orderId")
     }
@@ -40,6 +49,13 @@ export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) =
 
     const value = numericAmount.toFixed(2)
 
+    // ✅ Make sure order exists
+    const orderRef = db.collection("orders").doc(String(orderId))
+    const orderSnap = await orderRef.get()
+    if (!orderSnap.exists) {
+      throw new HttpsError("not-found", "Order document not found")
+    }
+
     const mollie = createMollieClient({ apiKey: MOLLIE_API_KEY.value() })
 
     const payment = (await mollie.payments.create({
@@ -49,7 +65,7 @@ export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) =
       // ✅ iDEAL only
       method: "ideal" as PaymentMethod,
 
-      // ✅ FIX: use orderId (already available), NOT payment.id
+      // ✅ redirect includes orderId (your success page can verify using orderId)
       redirectUrl: `${REDIRECT_URL}?orderId=${encodeURIComponent(String(orderId))}`,
 
       webhookUrl: WEBHOOK_URL,
@@ -61,10 +77,20 @@ export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) =
     })) as Payment
 
     const checkoutUrl = (payment as any)?._links?.checkout?.href || null
-
     if (!checkoutUrl) {
       throw new HttpsError("internal", "Mollie did not return a checkout URL")
     }
+
+    // ✅ Save paymentId into Firestore (instant verify later)
+    await orderRef.set(
+      {
+        paymentId: payment.id,
+        paymentStatus: payment.status || "open",
+        paymentMethod: (payment as any)?.method || "ideal",
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
 
     return {
       checkoutUrl,
@@ -78,13 +104,12 @@ export const createPayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) =
 })
 
 /**
- * ✅ Verify Mollie payment by orderId (CALLABLE)
- * Frontend calls this from /payment-success?orderId=xxx
+ * ✅ Verify Mollie payment status instantly by reading paymentId from Firestore
+ * Expects: { orderId: "<orders doc id>" }
  */
 export const verifyMolliePayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (req) => {
   try {
-    // ✅ OPTIONAL: require logged in user
-    // If you allow guest checkout, remove this block.
+    // ✅ OPTIONAL: require login (remove if guest checkout)
     if (!req.auth) {
       throw new HttpsError("unauthenticated", "Login required")
     }
@@ -94,53 +119,51 @@ export const verifyMolliePayment = onCall({ secrets: [MOLLIE_API_KEY] }, async (
       throw new HttpsError("invalid-argument", "Missing orderId")
     }
 
-    const mollie = createMollieClient({ apiKey: MOLLIE_API_KEY.value() })
+    const orderRef = db.collection("orders").doc(orderId)
+    const orderSnap = await orderRef.get()
 
-    // ✅ Find latest payment that matches metadata.orderId
-    // We page through a few results to find it.
-    let matched: any = null
-    let cursor: any = undefined
+    if (!orderSnap.exists) {
+      throw new HttpsError("not-found", "Order document not found")
+    }
 
-    for (let i = 0; i < 5; i++) {
-      const page = await mollie.payments.page({
-        limit: 50,
-        from: cursor,
-      } as any)
+    const orderData = orderSnap.data() || {}
+    const paymentId = orderData.paymentId ? String(orderData.paymentId) : ""
 
-      const found = (page as any)?.find((p: any) => String(p?.metadata?.orderId || "") === orderId)
-      if (found) {
-        matched = found
-        break
+    // If paymentId not saved yet, webhook/create might still be processing
+    if (!paymentId) {
+      return {
+        status: "pending",
+        orderId,
+        paymentId: null,
       }
-
-      // stop if no next cursor
-      const next = (page as any)?._links?.next?.href
-      if (!next) break
-
-      // Mollie pagination uses "from" token; api-client stores it internally in nextPage() too,
-      // but using cursor is okay if available. If not, break.
-      cursor = (page as any)?._links?.next?.href
-      // If cursor isn't usable in your client version, you can remove paging and just keep first page.
     }
 
-    // If not found, still return pending (webhook might not have processed yet)
-    if (!matched) {
-      return { status: "pending", orderId, paymentId: null }
-    }
+    const mollie = createMollieClient({ apiKey: MOLLIE_API_KEY.value() })
+    const payment = (await mollie.payments.get(paymentId)) as Payment
 
-    const rawStatus = String(matched.status || "").toLowerCase()
+    const rawStatus = String(payment?.status || "").toLowerCase()
 
+    // Mollie statuses: open, pending, authorized, paid, failed, canceled, expired
     let status: "paid" | "pending" | "failed" = "pending"
     if (rawStatus === "paid" || rawStatus === "authorized") status = "paid"
     else if (rawStatus === "failed" || rawStatus === "canceled" || rawStatus === "expired") status = "failed"
 
+    // ✅ Update Firestore status for admin UI
+    await orderRef.set(
+      {
+        paymentStatus: rawStatus,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+
     return {
       status,
       orderId,
-      paymentId: matched.id,
-      method: matched.method || null,
-      amount: matched.amount || null, // { value, currency }
-      isTest: !!matched.testmode,
+      paymentId: payment.id,
+      method: (payment as any)?.method || null,
+      amount: (payment as any)?.amount || null, // { value, currency }
+      isTest: !!(payment as any)?.testmode,
     }
   } catch (err: any) {
     logger.error("verifyMolliePayment error", err)
@@ -155,7 +178,10 @@ export const webhook = onRequest({ secrets: [MOLLIE_API_KEY] }, async (req, res)
   try {
     logger.info("Mollie webhook received", { method: req.method })
 
-    let paymentId: string | null = (req.query?.id as string) || (req.body?.id as string) || null
+    let paymentId: string | null =
+      (req.query?.id as string) ||
+      (req.body?.id as string) ||
+      null
 
     // Handle urlencoded body (Mollie sends this sometimes)
     if (!paymentId && req.rawBody) {
@@ -164,7 +190,6 @@ export const webhook = onRequest({ secrets: [MOLLIE_API_KEY] }, async (req, res)
       paymentId = (parsed?.id as string) || null
     }
 
-    // Mollie test webhook can send no ID
     if (!paymentId) {
       res.status(200).send("OK")
       return
@@ -173,15 +198,19 @@ export const webhook = onRequest({ secrets: [MOLLIE_API_KEY] }, async (req, res)
     const mollie = createMollieClient({ apiKey: MOLLIE_API_KEY.value() })
     const payment = (await mollie.payments.get(String(paymentId))) as Payment
 
-    logger.info("Payment status", {
-      paymentId,
-      status: payment.status,
-      metadata: payment.metadata,
-    })
+    const orderId = (payment.metadata as any)?.orderId ? String((payment.metadata as any).orderId) : ""
+    logger.info("Payment status", { paymentId, status: payment.status, orderId })
 
-    if (payment.status === "paid") {
-      logger.info("✅ Payment paid", { paymentId })
-      // TODO: update Firestore using (payment.metadata as any)?.orderId
+    // ✅ If we have orderId, update Firestore
+    if (orderId) {
+      await db.collection("orders").doc(orderId).set(
+        {
+          paymentStatus: payment.status || "open",
+          paymentId: payment.id,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
     }
 
     res.status(200).send("OK")

@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react"
 import { httpsCallable } from "firebase/functions"
-import { functions, auth } from "../firebase"
+import { functions, auth, db } from "../firebase"
 import Payment from "../modals/Payment"
+
+import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 
 // Callable cloud function name MUST match your deployed function
 const createPayment = httpsCallable(functions, "createPayment")
 
 export default function CheckoutPage() {
-  // ✅ Example cart data (replace with your real cartItems)
   const [cartItems, setCartItems] = useState([
     // { id: "p1", name: "Cake", price: 10, quantity: 2 },
   ])
@@ -22,7 +23,6 @@ export default function CheckoutPage() {
   const openPayment = () => setIsPaymentOpen(true)
   const closePayment = () => setIsPaymentOpen(false)
 
-  // ✅ This is what connects Payment.jsx → Mollie
   const handlePaymentConfirm = async (method) => {
     try {
       const user = auth.currentUser
@@ -35,13 +35,27 @@ export default function CheckoutPage() {
 
       setLoadingPay(true)
 
-      // Use an orderId (you can also use Firestore doc id if you already create order docs)
-      const orderId = crypto.randomUUID()
+      // ✅ 1) Create Firestore order first (auto ID)
+      const orderRef = await addDoc(collection(db, "orders"), {
+        createdAt: serverTimestamp(),
+        userId: user.uid,
+        email: user.email || null,
 
+        items: cartItems,
+        total: Number(totalPrice.toFixed(2)),
+        currency: "EUR",
+
+        paymentMethod: method || "ideal",
+        paymentStatus: "created",
+      })
+
+      const orderId = orderRef.id // ✅ THIS is the Firestore doc id
+
+      // ✅ 2) Create Mollie payment using Firestore orderId
       const result = await createPayment({
-        method,             // "ideal" or "paypal"
         amount: totalPrice, // number
-        orderId,
+        description: `BCNL Order ${orderId}`,
+        orderId,            // ✅ Firestore doc id
         items: cartItems,   // optional snapshot
       })
 
@@ -52,7 +66,7 @@ export default function CheckoutPage() {
         return
       }
 
-      // Redirect to Mollie hosted checkout
+      // ✅ 3) Redirect to Mollie hosted checkout
       window.location.href = checkoutUrl
     } catch (err) {
       console.error(err)
