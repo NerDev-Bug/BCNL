@@ -73,7 +73,7 @@ function AdminHeader({ toggleSidebar, sidebarOpen }) {
           <div className="absolute right-0 top-12 w-44 bg-white border rounded-md shadow-lg py-1">
             <button
               onClick={() => {
-                navigate("/admin/profile")
+                navigate("/profile")
                 setOpen(false)
               }}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"

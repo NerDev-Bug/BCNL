@@ -7,7 +7,7 @@ import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import Pagination from "../../common/Pagination";
 import { toast } from "react-toastify";
-import DataDropdown from "../../common/DataDropdown";
+import { ChevronDown } from "lucide-react";
 
 function OrdersPending() {
   const [orders, setOrders] = useState([]);
@@ -96,9 +96,19 @@ function OrdersPending() {
 
   const columns = [
     {
-      key: "items",
-      render: row => (
-        <DataDropdown items={row.items || []} />
+      key: "expand-items",
+      render: (row, { isOpen, toggle }) => (
+        <button
+          onClick={toggle}
+          className="flex items-center justify-center w-full"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : "rotate-0"
+            }`}
+          />
+        </button>
       ),
     },
     {
