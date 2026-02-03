@@ -19,6 +19,13 @@ function UsersPage() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [viewOpen, setViewOpen] = useState(false)
 
+  // ✅ view tabs
+  const [activeViewTab, setActiveViewTab] = useState("account") // account | address | other
+
+  // ✅ delete confirm modal
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState(null)
+
   // ✅ delete loading per row
   const [deletingId, setDeletingId] = useState(null)
 
@@ -45,12 +52,27 @@ function UsersPage() {
     fetchUsers()
   }, [])
 
+  // ✅ close modals on ESC
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (viewOpen) closeView()
+        if (deleteOpen) closeDelete()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [viewOpen, deleteOpen])
+
   const formatDate = (timestamp) => {
     if (!timestamp) return "—"
+
     const date =
-      typeof timestamp === "object" && timestamp.seconds
+      typeof timestamp === "object" && timestamp?.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp)
+
+    if (Number.isNaN(date.getTime())) return "—"
 
     return (
       date.toLocaleDateString("en-US", {
@@ -67,28 +89,38 @@ function UsersPage() {
     )
   }
 
+  // ---------- VIEW ----------
   const openView = (user) => {
     setSelectedUser(user)
     setViewOpen(true)
+    setActiveViewTab("account") // default tab
   }
 
   const closeView = () => {
     setViewOpen(false)
     setSelectedUser(null)
+    setActiveViewTab("account")
   }
 
-  const handleDelete = async (user) => {
-    const ok = window.confirm(
-      `Delete this user?\n\nEmail: ${user?.email || "—"}\nUsername: ${
-        user?.username || "—"
-      }\n\nThis cannot be undone.`
-    )
-    if (!ok) return
+  // ---------- DELETE ----------
+  const openDelete = (user) => {
+    setUserToDelete(user)
+    setDeleteOpen(true)
+  }
+
+  const closeDelete = () => {
+    setDeleteOpen(false)
+    setUserToDelete(null)
+  }
+
+  const confirmDelete = async () => {
+    if (!userToDelete?.id) return
 
     try {
-      setDeletingId(user.id)
-      await deleteDoc(doc(db, "users", user.id))
-      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+      setDeletingId(userToDelete.id)
+      await deleteDoc(doc(db, "users", userToDelete.id))
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
+      closeDelete()
     } catch (err) {
       console.error("Delete failed:", err)
       alert("Delete failed. Check permissions / rules.")
@@ -97,6 +129,7 @@ function UsersPage() {
     }
   }
 
+  // ---------- TABLE ----------
   const columns = useMemo(
     () => [
       {
@@ -139,7 +172,7 @@ function UsersPage() {
 
             <button
               type="button"
-              onClick={() => handleDelete(row)}
+              onClick={() => openDelete(row)}
               disabled={deletingId === row.id}
               className="px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-60"
             >
@@ -152,26 +185,88 @@ function UsersPage() {
     [deletingId]
   )
 
+  // ---------- VIEW DATA (split into tabs) ----------
+  const viewTabsData = useMemo(() => {
+    if (!selectedUser) return null
+    const u = selectedUser
+
+    const accountInfo = [
+      { label: "User ID", value: u.id },
+      { label: "Email", value: u.email },
+      { label: "Username", value: u.username },
+      { label: "Role", value: u.role || "User" },
+      { label: "Status", value: u.status || "ACTIVE" },
+      { label: "Created At", value: formatDate(u.createdAt) },
+    ]
+
+    // Address-like fields (only show if they exist)
+    const addressKeys = [
+      "phone",
+      "mobile",
+      "contactNumber",
+      "address",
+      "street",
+      "barangay",
+      "city",
+      "province",
+      "state",
+      "zip",
+      "postalCode",
+      "country",
+    ]
+
+    const addressInfo = addressKeys
+      .filter((k) => u[k] != null && String(u[k]).trim() !== "")
+      .map((k) => ({
+        label: toTitle(k),
+        value: formatValue(u[k], formatDate),
+      }))
+
+    // Exclude fields already shown
+    const exclude = new Set([
+      "id",
+      "email",
+      "username",
+      "role",
+      "status",
+      "createdAt",
+      ...addressKeys,
+    ])
+
+    const otherFields = Object.entries(u)
+      .filter(([k]) => !exclude.has(k))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => ({
+        label: toTitle(k),
+        value: formatValue(v, formatDate),
+      }))
+
+    return { accountInfo, addressInfo, otherFields }
+  }, [selectedUser])
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">Users</h1>
 
       <DataTable columns={columns} data={users} loading={loading} />
 
-      {/* ✅ View Modal */}
+      {/* ✅ VIEW MODAL - with top bar tabs */}
       {viewOpen && (
         <>
           {/* overlay */}
-          <div
-            onClick={closeView}
-            className="fixed inset-0 bg-black/40 z-50"
-          />
+          <div onClick={closeView} className="fixed inset-0 bg-black/40 z-50" />
 
           {/* modal */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="w-full max-w-[640px] bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="w-full max-w-[820px] bg-white rounded-xl shadow-2xl overflow-hidden">
+              {/* header */}
               <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h2 className="text-lg font-semibold">User Details</h2>
+                <div>
+                  <h2 className="text-lg font-semibold">User Details</h2>
+                  <p className="text-xs text-gray-500">
+                    Browse info using tabs
+                  </p>
+                </div>
                 <button
                   onClick={closeView}
                   className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
@@ -180,28 +275,84 @@ function UsersPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                {/* NOTE: No password shown (Firestore doesn't store Auth password anyway) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Detail label="User ID" value={selectedUser?.id} />
-                  <Detail label="Email" value={selectedUser?.email} />
-                  <Detail label="Username" value={selectedUser?.username} />
-                  <Detail label="Role" value={selectedUser?.role || "User"} />
-                  <Detail
-                    label="Status"
-                    value={selectedUser?.status || "ACTIVE"}
-                  />
-                  <Detail
-                    label="Created At"
-                    value={formatDate(selectedUser?.createdAt)}
-                  />
+              {/* ✅ TOP TAB BAR */}
+              <div className="px-6 pt-4">
+                <div className="flex items-center gap-2 border-b">
+                  <TabButton
+                    active={activeViewTab === "account"}
+                    onClick={() => setActiveViewTab("account")}
+                  >
+                    Account Info
+                  </TabButton>
+                  <TabButton
+                    active={activeViewTab === "address"}
+                    onClick={() => setActiveViewTab("address")}
+                  >
+                    Address Info
+                  </TabButton>
+                  <TabButton
+                    active={activeViewTab === "other"}
+                    onClick={() => setActiveViewTab("other")}
+                  >
+                    Other Fields
+                  </TabButton>
                 </div>
+              </div>
 
-                {/* extra personal info if you have it */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Detail label="Phone" value={selectedUser?.phone} />
-                  <Detail label="Address" value={selectedUser?.address} />
-                </div>
+              {/* body (scrollable if too long) */}
+              <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+                {/* ACCOUNT TAB */}
+                {activeViewTab === "account" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {viewTabsData?.accountInfo.map((item) => (
+                      <Detail
+                        key={item.label}
+                        label={item.label}
+                        value={item.value}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* ADDRESS TAB */}
+                {activeViewTab === "address" && (
+                  <>
+                    {viewTabsData?.addressInfo?.length ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {viewTabsData.addressInfo.map((item) => (
+                          <Detail
+                            key={item.label}
+                            label={item.label}
+                            value={item.value}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No address info saved.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {/* OTHER TAB */}
+                {activeViewTab === "other" && (
+                  <>
+                    {viewTabsData?.otherFields?.length ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {viewTabsData.otherFields.map((item) => (
+                          <Detail
+                            key={item.label}
+                            label={item.label}
+                            value={item.value}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No other fields.</p>
+                    )}
+                  </>
+                )}
               </div>
 
               <div className="px-6 py-4 border-t flex justify-end">
@@ -216,7 +367,76 @@ function UsersPage() {
           </div>
         </>
       )}
+
+      {/* ✅ DELETE CONFIRM MODAL */}
+      {deleteOpen && (
+        <>
+          {/* overlay */}
+          <div onClick={closeDelete} className="fixed inset-0 bg-black/40 z-50" />
+
+          {/* modal */}
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="w-full max-w-[520px] bg-white rounded-xl shadow-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b">
+                <h2 className="text-lg font-semibold text-red-600">Delete User</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="p-6 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Detail label="Email" value={userToDelete?.email} />
+                  <Detail label="Username" value={userToDelete?.username} />
+                  <Detail label="User ID" value={userToDelete?.id} />
+                  <Detail label="Role" value={userToDelete?.role || "User"} />
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Note: This deletes only the Firestore document in <b>users</b>. Firebase
+                  Auth account is not removed unless you delete it via Admin SDK.
+                </p>
+              </div>
+
+              <div className="px-6 py-4 border-t flex items-center justify-end gap-2">
+                <button
+                  onClick={closeDelete}
+                  disabled={deletingId === userToDelete?.id}
+                  className="px-4 py-2 rounded-md border text-sm hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmDelete}
+                  disabled={deletingId === userToDelete?.id}
+                  className="px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-60"
+                >
+                  {deletingId === userToDelete?.id ? "Deleting..." : "Yes, Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
+  )
+}
+
+function TabButton({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "px-3 py-2 text-sm -mb-px border-b-2",
+        active
+          ? "border-black font-semibold text-black"
+          : "border-transparent text-gray-500 hover:text-black",
+      ].join(" ")}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -224,9 +444,52 @@ function Detail({ label, value }) {
   return (
     <div className="border rounded-lg p-3">
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm font-medium break-words">{value || "—"}</p>
+      <p className="text-sm font-medium break-words whitespace-pre-wrap">
+        {value || "—"}
+      </p>
     </div>
   )
+}
+
+// ✅ helper: stringify Firestore values safely
+function formatValue(value, formatDate) {
+  if (value == null) return "—"
+
+  // Firestore Timestamp-like object
+  if (
+    typeof value === "object" &&
+    value?.seconds != null &&
+    value?.nanoseconds != null
+  ) {
+    return formatDate(value)
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]"
+    return value
+      .map((v) =>
+        typeof v === "object" ? JSON.stringify(v, null, 2) : String(v)
+      )
+      .join(", ")
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
+  }
+
+  return String(value)
+}
+
+// ✅ helper: pretty labels (phoneNumber -> Phone Number)
+function toTitle(str) {
+  return String(str)
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export default UsersPage
