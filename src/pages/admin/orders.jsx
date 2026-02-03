@@ -12,7 +12,7 @@ function OrdersPage() {
 
   const tabs = [
     { label: "Orders History", key: "history" },
-    { label: "Pending", key: "pending" },
+    { label: "Paid", key: "paid" },
     { label: "Preparing", key: "preparing" },
     { label: "To Delivered", key: "toDelivered" },
     { label: "Delivered", key: "delivered" },
@@ -23,7 +23,7 @@ function OrdersPage() {
     switch (activeTab) {
       case "history":
         return <History />;
-      case "pending":
+      case "paid":
         return <OrdersPending />;
       case "preparing":
         return <OrdersPreparing />;

@@ -1,11 +1,12 @@
 // OrdersPreparing.jsx
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
+import { toast } from "react-toastify";
 import Pagination from "../../common/Pagination";
 
 function OrdersDelivered() {
@@ -20,7 +21,7 @@ function OrdersDelivered() {
         try {
         const q = query(
             collection(db, "orders"),
-            where("status", "==", "delivered")
+            where("paymentStatus", "==", "delivered")
         );
 
         const snapshot = await getDocs(q);
@@ -29,8 +30,7 @@ function OrdersDelivered() {
             id: doc.id,
             ...doc.data(),
         }));
-
-        console.log("Preparing Orders data:", data);
+        // console.log("Delivered Orders data:", data);
         setOrders(data);
         } catch (err) {
         console.error(err);
@@ -56,10 +56,15 @@ function OrdersDelivered() {
     });
     };
 
+    // Handle deleting an order
     const handleDeleteOrder = async orderId => {
     try {
-        // Implement delete logic if needed
+        const orderDeleteRef = doc(db, "orders", orderId);
+        await deleteDoc(orderDeleteRef);
+        setOrders(orders.filter(order => order.id !== orderId));
+        // You can implement delete logic here if needed
         console.log("Delete order:", orderId);
+        toast.success("Pending order deleted successfully");
     } catch (err) {
         console.error("Error deleting order:", err);
     }
@@ -86,22 +91,31 @@ function OrdersDelivered() {
     {
         key: "receiverName",
         header: "Customer",
-        render: row => row.customer?.receiverName || "—",
+        render: row => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: row => row.orderData?.contactNumber || "—",
     },
     {
         key: "paymentMethod",
         header: "Payment",
-        render: row => <StatusBadge value={row.customer?.paymentMethod} />,
+        render: row => <StatusBadge value={row.paymentMethod} />,
     },
     {
         key: "totalPrice",
         header: "Total",
-        render: row => `€${row.totalPrice || 0}`,
+        render: row => `€${Number(row.total || 0).toFixed(2)}`,
     },
     {
         key: "delivery",
         header: "Delivery",
-        render: () => "N/A",
+        render: row => {
+        const c = row.orderData;
+        if (!c) return "N/A";
+        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
+      },
     },
     {
         key: "items",
@@ -111,7 +125,7 @@ function OrdersDelivered() {
     {
         key: "status",
         header: "Fulfillment",
-        render: row => <StatusBadge value={row.status} />,
+        render: row => <StatusBadge value={row.paymentStatus} />,
     },
     {
         key: "actions",
@@ -119,7 +133,7 @@ function OrdersDelivered() {
         render: row => (
         <RowActions 
             onDelete={() => handleDeleteOrder(row.id)}
-            // No "Accept" button because it's already preparing
+            // No "Accept" button because it's already delivered
         />
         ),
     },
