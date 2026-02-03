@@ -76,7 +76,6 @@ function OrderHistory() {
   const columns = [
     { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
     { key: "createdAt", header: "Date", render: (row) => formatDate(row.createdAt) },
-    { key: "receiverName", header: "Customer", render: (row) => row.orderData?.receiverName || "—" },
     { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
     { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.orderData?.paymentMethod || row.paymentMethod} /> },
     { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },

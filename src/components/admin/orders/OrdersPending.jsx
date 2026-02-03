@@ -7,13 +7,14 @@ import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import Pagination from "../../common/Pagination";
 import { toast } from "react-toastify";
+import DataDropdown from "../../common/DataDropdown";
 
 function OrdersPending() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10); // Or any number of items per page
+  const [pageSize] = useState(10);
 
 
   useEffect(() => {
@@ -30,7 +31,7 @@ function OrdersPending() {
           id: doc.id,
           ...doc.data(),
         }));
-        // console.log("Pending Orders data:", data);
+        console.log("Pending Orders data:", data);
         setOrders(data);
       } catch (err) {
         console.error(err);
@@ -94,6 +95,12 @@ function OrdersPending() {
 
 
   const columns = [
+    {
+      key: "items",
+      render: row => (
+        <DataDropdown items={row.items || []} />
+      ),
+    },
     {
       key: "id",
       header: "Order",

@@ -147,7 +147,12 @@ function OurStory() {
                       <div>
                           <p className="mb-4">{storySection2.body}</p>
                       </div>
-                      <button className="bg-[#7B2220] text-white px-6 py-2 rounded-md mt-4">Contact Us</button>
+                      <button
+                        className="bg-[#7B2220] text-white px-6 py-2 rounded-md mt-4"
+                        onClick={() => window.open("https://wa.me/639105171791?text=Hi%20I%20need%20help", "_blank")}
+                      >
+                        Contact Us
+                      </button>
                   </div>
               </div>
           </section>

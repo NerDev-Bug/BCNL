@@ -81,16 +81,6 @@ function AdminHeader({ toggleSidebar, sidebarOpen }) {
               Profile
             </button>
 
-            <button
-              onClick={() => {
-                navigate("/admin/settings")
-                setOpen(false)
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-            >
-              Settings
-            </button>
-
             <div className="border-t my-1" />
 
             <button

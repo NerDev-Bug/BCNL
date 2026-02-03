@@ -31,6 +31,14 @@ function NavLink({ to, children, onClick }) {
   )
 }
 
+const BetaBadge = () => (
+  <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[60]">
+    <div className="bg-yellow-300 text-black text-xs font-semibold px-3 py-2 rounded-b-lg shadow-lg tracking-wide relative rotate-[-90deg] origin-left">
+      BETA VERSION
+    </div>
+  </div>
+)
+
 /* ---------------- NAVBAR ---------------- */
 function Navbar() {
   const [showLogin, setShowLogin] = useState(false)
@@ -108,6 +116,8 @@ function Navbar() {
 
   return (
     <>
+      <BetaBadge />
+
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
@@ -215,7 +225,7 @@ function Navbar() {
                   user ? navigate("/profile") : setShowLogin(true)
                 }}
               >
-                Sign Up
+                {user ? "Profile" : "Sign Up"}
               </button>
             </div>
           </div>

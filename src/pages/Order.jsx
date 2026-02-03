@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 import { useState } from "react"
 
 import OrderHistory from "../components/order/OrderHistory"
@@ -16,8 +17,73 @@ const TAB_COMPONENTS = {
   Returns: OrderReturn,
 }
 
+const TAB_REMINDERS = {
+  All: {
+    title: "Order Policy",
+    text: (
+      <>
+        Please review your orders carefully. Delivered orders are considered
+        final after <b>7 days</b>. Returns and disputes must be reported within
+        this period.
+      </>
+    ),
+  },
+  Preparing: {
+    title: "Order Preparing",
+    text: (
+      <>
+        Your order is currently being prepared. Changes or cancellations are
+        only allowed before the order is marked as <b>To Deliver</b>.
+      </>
+    ),
+  },
+  "To Deliver": {
+    title: "Out for Delivery",
+    text: (
+      <>
+        Please ensure someone is available to receive your order. Failed
+        delivery attempts may result in rescheduling or additional charges.
+      </>
+    ),
+  },
+  Delivered: {
+    title: "Delivered Orders",
+    text: (
+      <>
+        Once marked as <b>Delivered</b>, you have <b>7 days</b> to report any
+        issues. After this period, orders are considered accepted.
+      </>
+    ),
+  },
+  Returns: {
+    title: "Returns Policy",
+    text: (
+      <>
+        Returned items are subject to inspection. Refunds or replacements will
+        only be processed after approval based on our return policy.
+      </>
+    ),
+  },
+}
+
 function Order() {
   const [activeTab, setActiveTab] = useState("All")
+
+  const OrderPolicyReminder = ({ tab }) => {
+  const reminder = TAB_REMINDERS[tab]
+    if (!reminder) return null
+
+    return (
+      <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-left">
+        <p className="text-sm font-medium text-yellow-800">
+          {reminder.title}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-yellow-700">
+          {reminder.text}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-28 pb-16 bg-gray-50">
@@ -53,6 +119,8 @@ function Order() {
             const ActiveComponent = TAB_COMPONENTS[activeTab]
             return ActiveComponent ? <ActiveComponent /> : null
           })()}
+
+          <OrderPolicyReminder tab={activeTab} />
         </div>
       </div>
     </div>

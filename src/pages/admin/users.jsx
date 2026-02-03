@@ -190,6 +190,7 @@ function UsersPage() {
     if (!selectedUser) return null
     const u = selectedUser
 
+    // ---------- ACCOUNT ----------
     const accountInfo = [
       { label: "User ID", value: u.id },
       { label: "Email", value: u.email },
@@ -199,30 +200,41 @@ function UsersPage() {
       { label: "Created At", value: formatDate(u.createdAt) },
     ]
 
-    // Address-like fields (only show if they exist)
-    const addressKeys = [
-      "phone",
-      "mobile",
-      "contactNumber",
-      "address",
-      "street",
-      "barangay",
-      "city",
-      "province",
-      "state",
-      "zip",
-      "postalCode",
-      "country",
-    ]
+    // ---------- ADDRESS ----------
+    // ---------- ADDRESS ----------
+    const addressInfo = []
 
-    const addressInfo = addressKeys
-      .filter((k) => u[k] != null && String(u[k]).trim() !== "")
-      .map((k) => ({
-        label: toTitle(k),
-        value: formatValue(u[k], formatDate),
-      }))
+    // phone-like fields (keep ONLY phone)
+    if (u.phone) {
+      addressInfo.push({
+        label: "Phone",
+        value: String(u.phone),
+      })
+    }
 
-    // Exclude fields already shown
+    // structured address object → FULL ADDRESS ONLY
+    if (u.address && typeof u.address === "object") {
+      const a = u.address
+
+      const fullAddress = [
+        a.streetName,
+        a.houseNumber,
+        a.city,
+        a.postalCode,
+        a.country,
+      ]
+        .filter(Boolean)
+        .join(", ")
+
+      if (fullAddress) {
+        addressInfo.push({
+          label: "Full Address",
+          value: fullAddress,
+        })
+      }
+    }
+
+    // ---------- OTHER FIELDS ----------
     const exclude = new Set([
       "id",
       "email",
@@ -230,15 +242,18 @@ function UsersPage() {
       "role",
       "status",
       "createdAt",
-      ...addressKeys,
+      "address",
+      "phone",
+      "mobile",
+      "contactNumber",
     ])
 
     const otherFields = Object.entries(u)
-      .filter(([k]) => !exclude.has(k))
+      .filter(([key]) => !exclude.has(key))
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => ({
-        label: toTitle(k),
-        value: formatValue(v, formatDate),
+      .map(([key, value]) => ({
+        label: toTitle(key),
+        value: formatValue(value, formatDate),
       }))
 
     return { accountInfo, addressInfo, otherFields }
