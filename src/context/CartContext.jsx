@@ -40,7 +40,7 @@ export function CartProvider({ children }) {
       0
     ),
 
-    status: "pending",
+    status: "paid", // initial status
     createdAt: serverTimestamp(),
   }
 

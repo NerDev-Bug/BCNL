@@ -4,8 +4,6 @@ import {
   query,
   where,
   getDocs,
-  updateDoc,
-  doc,
   Timestamp,
 } from "firebase/firestore"
 import { db } from "../../../firebase"
@@ -65,18 +63,18 @@ function History() {
 
         const q = query(
           collection(db, "orders"),
-          where("status", "==", "delivered"),
           where("createdAt", ">=", Timestamp.fromDate(start)),
           where("createdAt", "<=", Timestamp.fromDate(end))
-        )
+        );
 
         const snapshot = await getDocs(q)
 
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
+        const data = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(o => ["delivered", "returned"].includes(o.paymentStatus))
 
+
+        // console.log("History Orders data:", data);
         setOrders(data)
         setCurrentPage(1)
       } catch (err) {
@@ -119,17 +117,6 @@ function History() {
     })
   }
 
-  const handleAcceptOrder = async (orderId) => {
-    try {
-      const orderRef = doc(db, "orders", orderId)
-      await updateDoc(orderRef, { status: "preparing" })
-      setOrders((prev) => prev.filter((o) => o.id !== orderId))
-    } catch (err) {
-      console.error("Error updating order:", err)
-      alert("Failed to update order status.")
-    }
-  }
-
   const handleDeleteOrder = async (orderId) => {
     try {
       console.log("Delete order:", orderId)
@@ -147,7 +134,7 @@ function History() {
     )
 
     const paymentBreakdown = orders.reduce((acc, o) => {
-      const m = o.customer?.paymentMethod || "Unknown"
+      const m = o.orderData?.paymentMethod || "Unknown"
       acc[m] = (acc[m] || 0) + 1
       return acc
     }, {})
@@ -201,11 +188,11 @@ function History() {
       const rows = orders.map((o) => [
         `#${o.id.slice(0, 4)}`,
         `${formatDate(o.createdAt)} ${formatTime(o.createdAt)}`,
-        o.customer?.receiverName || "—",
-        o.customer?.paymentMethod || "—",
+        o.orderData?.receiverName || "—",
+        o.orderData?.paymentMethod || "—",
         `${o.items?.length || 0}`,
-        `€${Number(o.totalPrice || 0).toFixed(2)}`,
-        o.status || "—",
+        `€${Number(o.total || 0).toFixed(2)}`,
+        o.paymentStatus || "—",
       ])
 
       autoTable(docPdf, {
@@ -261,39 +248,49 @@ function History() {
     {
       key: "receiverName",
       header: "Customer",
-      render: (row) => row.customer?.receiverName || "—",
+      render: (row) => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: row => row.orderData?.contactNumber || "—",
     },
     {
       key: "paymentMethod",
       header: "Payment",
-      render: (row) => <StatusBadge value={row.customer?.paymentMethod} />,
+      render: row => (
+        <StatusBadge value={row.paymentMethod} />
+      ),
     },
     {
       key: "totalPrice",
       header: "Total",
-      render: (row) => `€${row.totalPrice || 0}`,
+      render: (row) => `€${Number(row.total || 0).toFixed(2)}`,
     },
     {
       key: "delivery",
       header: "Delivery",
-      render: () => "N/A",
+      render: row => {
+        const c = row.orderData;
+        if (!c) return "N/A";
+        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
+      },
     },
     {
       key: "items",
       header: "Items",
-      render: (row) => `${row.items?.length || 0} items`,
+      render: row => `${row.items?.length || 0} items`,
     },
     {
       key: "status",
       header: "Fulfillment",
-      render: (row) => <StatusBadge value={row.status} />,
+      render: row => <StatusBadge value={row.paymentStatus} />,
     },
     {
       key: "actions",
       header: "Action",
       render: (row) => (
         <RowActions
-          onAccept={() => handleAcceptOrder(row.id)}
           onDelete={() => handleDeleteOrder(row.id)}
         />
       ),

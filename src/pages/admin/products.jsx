@@ -285,7 +285,7 @@ function ProductsPage() {
       key: "available",
       header: "Status",
       render: (row) => (
-        <StatusBadge value={row.available ? "AVAILABLE" : "NOT AVAILABLE"} />
+        <StatusBadge value={row.available ? "available" : "unavailable"} />
       ),
     },
     {

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import Pagination from "../../common/Pagination";
+import { toast } from "react-toastify";
 
 function OrdersPending() {
   const [orders, setOrders] = useState([]);
@@ -20,7 +21,7 @@ function OrdersPending() {
       try {
         const q = query(
           collection(db, "orders"),
-          where("status", "==", "pending")
+          where("paymentStatus", "==", "paid")
         );
 
         const snapshot = await getDocs(q);
@@ -29,7 +30,7 @@ function OrdersPending() {
           id: doc.id,
           ...doc.data(),
         }));
-        console.log("Orders data:", data); // Add this to see the actual structure
+        // console.log("Pending Orders data:", data);
         setOrders(data);
       } catch (err) {
         console.error(err);
@@ -55,11 +56,12 @@ function OrdersPending() {
     });
   };
 
+  // Handle accepting an order (changing its status to 'preparing')
   const handleAcceptOrder = async orderId => {
     try {
       const orderRef = doc(db, "orders", orderId);
       await updateDoc(orderRef, {
-        status: "preparing",
+        paymentStatus: "preparing",
       });
       // Remove the order from the list immediately
       setOrders(orders.filter(order => order.id !== orderId));
@@ -69,10 +71,15 @@ function OrdersPending() {
     }
   };
 
+  // Handle deleting an order
   const handleDeleteOrder = async orderId => {
     try {
+      const orderDeleteRef = doc(db, "orders", orderId);
+      await deleteDoc(orderDeleteRef);
+      setOrders(orders.filter(order => order.id !== orderId));
       // You can implement delete logic here if needed
       console.log("Delete order:", orderId);
+      toast.success("Pending order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
     }
@@ -100,24 +107,33 @@ function OrdersPending() {
     {
       key: "receiverName",
       header: "Customer",
-      render: row => row.customer?.receiverName || "—",
+      render: row => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: row => row.orderData?.contactNumber || "—",
     },
     {
       key: "paymentMethod",
       header: "Payment",
       render: row => (
-        <StatusBadge value={row.customer?.paymentMethod} />
+        <StatusBadge value={row.paymentMethod} />
       ),
     },
     {
       key: "totalPrice",
       header: "Total",
-      render: row => `€${row.totalPrice || 0}`,
+      render: row => `€${Number(row.total || 0).toFixed(2)}`,
     },
     {
       key: "delivery",
       header: "Delivery",
-      render: () => "N/A",
+      render: row => {
+        const c = row.orderData;
+        if (!c) return "N/A";
+        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
+      },
     },
     {
       key: "items",
@@ -128,7 +144,7 @@ function OrdersPending() {
       key: "status",
       header: "Fulfillment",
       render: row => (
-        <StatusBadge value={row.status} />
+        <StatusBadge value={row.paymentStatus} />
       ),
     },
     {
