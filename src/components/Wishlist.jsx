@@ -9,17 +9,26 @@ import { flyToCart } from "../utils/flyToCart"
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([])
+  const [productMap, setProductMap] = useState({}) // ✅ live products data
   const [loading, setLoading] = useState(false)
   const { addToCart } = useCart()
 
   useEffect(() => {
     let unsubWishlist = null
+    let productUnsubs = []
+
+    const cleanupProducts = () => {
+      productUnsubs.forEach((fn) => fn?.())
+      productUnsubs = []
+      setProductMap({})
+    }
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubWishlist) {
         unsubWishlist()
         unsubWishlist = null
       }
+      cleanupProducts()
 
       if (!user) {
         setWishlist([])
@@ -38,6 +47,27 @@ function Wishlist() {
           setWishlist(items)
           setLoading(false)
           localStorage.setItem("wishlist", JSON.stringify(items))
+
+          // ✅ resubscribe to product docs for live availability
+          cleanupProducts()
+          items.forEach((w) => {
+            const prodRef = doc(db, "products", w.id)
+            const unsub = onSnapshot(prodRef, (prodSnap) => {
+              if (!prodSnap.exists()) {
+                setProductMap((prev) => {
+                  const next = { ...prev }
+                  delete next[w.id]
+                  return next
+                })
+                return
+              }
+              setProductMap((prev) => ({
+                ...prev,
+                [w.id]: { id: prodSnap.id, ...prodSnap.data() },
+              }))
+            })
+            productUnsubs.push(unsub)
+          })
         },
         (err) => {
           console.error("Wishlist realtime listener failed:", err)
@@ -49,6 +79,7 @@ function Wishlist() {
     })
 
     return () => {
+      cleanupProducts()
       if (unsubWishlist) unsubWishlist()
       unsubAuth()
     }
@@ -73,7 +104,6 @@ function Wishlist() {
       }}
     >
       <div className="max-w-5xl mx-auto px-4 flex justify-center">
-        {/* ✅ EMPTY STATE FIRST */}
         {!loading && wishlist.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-20 text-center shadow-lg w-full md:w-2/3">
             <img
@@ -95,15 +125,17 @@ function Wishlist() {
             </p>
           </div>
         ) : loading ? (
-          /* ✅ SKELETON */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             <ProductSkeleton count={wishlist.length || 3} />
           </div>
         ) : (
-          /* ✅ SAME UI AS MENU CARDS + UNAVAILABLE BEHAVIOR */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             {wishlist.map((item) => {
-              const isAvailable = item.available !== false
+              // ✅ merge: use live product data if present
+              const live = productMap[item.id]
+              const merged = live ? { ...item, ...live } : item
+
+              const isAvailable = merged.available !== false
 
               return (
                 <div
@@ -115,15 +147,15 @@ function Wishlist() {
                       {isAvailable ? (
                         <Link to={`/product/${item.id}`}>
                           <img
-                            src={item.image}
-                            alt={item.name}
+                            src={merged.image}
+                            alt={merged.name}
                             className="w-full h-80 object-cover"
                           />
                         </Link>
                       ) : (
                         <img
-                          src={item.image}
-                          alt={item.name}
+                          src={merged.image}
+                          alt={merged.name}
                           className="w-full h-80 object-cover opacity-60"
                         />
                       )}
@@ -140,12 +172,11 @@ function Wishlist() {
 
                   <div className="px-6 pb-6">
                     <h3 className="text-center font-semibold text-[#7B2220]">
-                      {item.name}
+                      {merged.name}
                     </h3>
-                    <p className="text-center mt-2">€{item.price}</p>
+                    <p className="text-center mt-2">€{merged.price}</p>
 
                     <div className="mt-4 flex gap-4">
-                      {/* ✅ REMOVE BUTTON */}
                       <button
                         onClick={() => removeFromWishlist(item.id)}
                         className="flex-1 rounded-md py-2 font-semibold transition-all border border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
@@ -153,7 +184,6 @@ function Wishlist() {
                         Remove
                       </button>
 
-                      {/* ✅ ADD TO CART (DISABLED IF NOT AVAILABLE) */}
                       <button
                         disabled={!isAvailable}
                         onClick={(e) => {
@@ -162,7 +192,7 @@ function Wishlist() {
                             .closest(".group")
                             ?.querySelector("img")
 
-                          const success = addToCart(item)
+                          const success = addToCart(merged)
                           if (!success) return window.openLoginModal?.()
                           flyToCart(img)
                         }}

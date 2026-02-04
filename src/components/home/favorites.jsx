@@ -82,13 +82,15 @@ function Favorites() {
                   className="group bg-white border border-[#7B2220] rounded-md shadow-md flex flex-col"
                 >
                   <div className="p-4">
-                    <div className="relative border border-gray-200 rounded-md overflow-hidden">
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="w-full h-80 object-cover"
-                      />
-                    </div>
+                    <Link to={`/product/${p.id}`} className="block">
+  <div className="relative border border-gray-200 rounded-md overflow-hidden">
+    <img
+      src={p.image}
+      alt={p.name}
+      className="w-full h-80 object-cover cursor-pointer"
+    />
+  </div>
+</Link>
                   </div>
 
                   <div className="px-6 pb-6 flex-1 flex flex-col justify-between">

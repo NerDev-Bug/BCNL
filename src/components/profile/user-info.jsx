@@ -2,18 +2,24 @@ import { useEffect, useState } from "react"
 import {
   updateEmail,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
 } from "firebase/auth"
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "../../firebase"
 import { toast } from "react-toastify"
 
-const isValidEmail = (email) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 function UserInfo({ user }) {
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
+
+  // ✅ loading states for actions
+  const [updatingEmail, setUpdatingEmail] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  // ✅ edit confirmation modal
+  const [showEditConfirm, setShowEditConfirm] = useState(false)
 
   // AUTH
   const [newEmail, setNewEmail] = useState(user.email)
@@ -27,7 +33,7 @@ function UserInfo({ user }) {
     houseNumber: "",
     postalCode: "",
     city: "",
-    country: "Netherlands"
+    country: "Netherlands",
   })
 
   /** Load user profile */
@@ -45,7 +51,7 @@ function UserInfo({ user }) {
           houseNumber: data.address?.houseNumber || "",
           postalCode: data.address?.postalCode || "",
           city: data.address?.city || "",
-          country: data.address?.country || "Netherlands"
+          country: data.address?.country || "Netherlands",
         })
       }
 
@@ -57,11 +63,14 @@ function UserInfo({ user }) {
 
   /** Update email (Auth) */
   const handleUpdateEmail = async () => {
+    if (updatingEmail || savingProfile) return
+
     if (!isValidEmail(newEmail)) {
       toast.error("Invalid email address")
       return
     }
 
+    setUpdatingEmail(true)
     try {
       await updateEmail(user, newEmail)
       toast.success("Email updated successfully")
@@ -69,6 +78,7 @@ function UserInfo({ user }) {
       if (err.code === "auth/requires-recent-login") {
         if (!currentPassword) {
           toast.error("Enter current password")
+          setUpdatingEmail(false)
           return
         }
 
@@ -87,11 +97,16 @@ function UserInfo({ user }) {
       } else {
         toast.error(err.message)
       }
+    } finally {
+      setUpdatingEmail(false)
     }
   }
 
   /** Update profile (Firestore) */
   const handleUpdateProfile = async () => {
+    if (savingProfile || updatingEmail) return
+
+    setSavingProfile(true)
     try {
       await setDoc(
         doc(db, "users", user.uid),
@@ -104,9 +119,9 @@ function UserInfo({ user }) {
             houseNumber: profile.houseNumber,
             postalCode: profile.postalCode,
             city: profile.city,
-            country: profile.country
+            country: profile.country,
           },
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
         },
         { merge: true }
       )
@@ -115,6 +130,8 @@ function UserInfo({ user }) {
       setIsEditing(false)
     } catch {
       toast.error("Failed to update profile")
+    } finally {
+      setSavingProfile(false)
     }
   }
 
@@ -123,16 +140,58 @@ function UserInfo({ user }) {
   const inputClass =
     "w-full border rounded px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
 
+  const busy = updatingEmail || savingProfile
+
   return (
     <div className="space-y-6">
+      {/* ✅ EDIT CONFIRM MODAL */}
+      {showEditConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !busy && setShowEditConfirm(false)}
+          />
+          <div className="relative bg-white w-[92%] max-w-md rounded-lg shadow-lg p-5">
+            <h3 className="text-lg font-bold">Edit Profile?</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              You’re about to enable editing. Make sure to save your changes when
+              you’re done.
+            </p>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setShowEditConfirm(false)}
+                className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setIsEditing(true)
+                  setShowEditConfirm(false)
+                }}
+                className="px-4 py-2 rounded bg-[#7B2220] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">My Profile</h1>
 
         {!isEditing && (
           <button
-            onClick={() => setIsEditing(true)}
-            className="text-sm text-[#7B2220] underline"
+            onClick={() => setShowEditConfirm(true)}
+            className="text-sm text-[#7B2220] underline disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={busy}
           >
             Edit
           </button>
@@ -144,23 +203,19 @@ function UserInfo({ user }) {
         <h2 className="font-bold text-lg mb-2">Customer Information</h2>
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           placeholder="Username"
           value={profile.username}
-          onChange={(e) =>
-            setProfile({ ...profile, username: e.target.value })
-          }
+          onChange={(e) => setProfile({ ...profile, username: e.target.value })}
           className={`${inputClass} mb-2`}
         />
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           type="tel"
           placeholder="Phone Number"
           value={profile.phone}
-          onChange={(e) =>
-            setProfile({ ...profile, phone: e.target.value })
-          }
+          onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
           className={inputClass}
         />
       </div>
@@ -170,7 +225,7 @@ function UserInfo({ user }) {
         <h2 className="font-bold text-lg mb-2">Delivery Address</h2>
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           placeholder="Street Name"
           value={profile.streetName}
           onChange={(e) =>
@@ -180,7 +235,7 @@ function UserInfo({ user }) {
         />
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           placeholder="House Number"
           value={profile.houseNumber}
           onChange={(e) =>
@@ -191,41 +246,40 @@ function UserInfo({ user }) {
 
         <div className="grid grid-cols-2 gap-2 mb-2">
           <input
-            disabled={!isEditing}
+            disabled={!isEditing || busy}
             placeholder="Postal Code (1234 AB)"
             value={profile.postalCode}
             onChange={(e) =>
-              setProfile({ ...profile, postalCode: e.target.value.toUpperCase() })
+              setProfile({
+                ...profile,
+                postalCode: e.target.value.toUpperCase(),
+              })
             }
             className={inputClass}
           />
           <input
-            disabled={!isEditing}
+            disabled={!isEditing || busy}
             placeholder="City"
             value={profile.city}
-            onChange={(e) =>
-              setProfile({ ...profile, city: e.target.value })
-            }
+            onChange={(e) => setProfile({ ...profile, city: e.target.value })}
             className={inputClass}
           />
         </div>
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           placeholder="Country"
           value={profile.country}
-          onChange={(e) =>
-            setProfile({ ...profile, country: e.target.value })
-          }
+          onChange={(e) => setProfile({ ...profile, country: e.target.value })}
           className={inputClass}
         />
       </div>
 
-      {/* EMAIL (UNCHANGED LOGIC) */}
+      {/* EMAIL */}
       <div>
         <label className="font-semibold">Email</label>
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           type="email"
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
@@ -233,7 +287,7 @@ function UserInfo({ user }) {
         />
 
         <input
-          disabled={!isEditing}
+          disabled={!isEditing || busy}
           type="password"
           placeholder="Current password (for email change)"
           value={currentPassword}
@@ -244,9 +298,10 @@ function UserInfo({ user }) {
         {isEditing && (
           <button
             onClick={handleUpdateEmail}
-            className="mt-2 text-sm text-[#7B2220] underline"
+            disabled={busy}
+            className="mt-2 text-sm text-[#7B2220] underline disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Update Email
+            {updatingEmail ? "Updating..." : "Update Email"}
           </button>
         )}
       </div>
@@ -255,9 +310,17 @@ function UserInfo({ user }) {
       {isEditing && (
         <button
           onClick={handleUpdateProfile}
-          className="bg-[#7B2220] text-white px-6 py-2 rounded hover:opacity-90"
+          disabled={busy}
+          className="bg-[#7B2220] text-white px-6 py-2 rounded hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Save Profile
+          {savingProfile ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 rounded-full border-2 border-white/60 border-t-white animate-spin" />
+              Saving...
+            </span>
+          ) : (
+            "Save Profile"
+          )}
         </button>
       )}
     </div>

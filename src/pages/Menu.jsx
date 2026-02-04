@@ -155,9 +155,9 @@ export default function Menu() {
                       </div>
 
                       <div className="px-6 pb-6">
-                        <h3 className="text-center font-semibold text-[#7B2220]">
-                          {product.name}
-                        </h3>
+                        <h3 className="text-center font-semibold text-[#7B2220] font-cooper">
+  {product.name}
+</h3>
                         <p className="text-center mt-2">€{product.price}</p>
 
                         <div className="mt-4 flex gap-4">

@@ -19,6 +19,9 @@ function Profile() {
   // ✅ logout modal
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
+  // ✅ admin confirm modal
+  const [showAdminModal, setShowAdminModal] = useState(false)
+
   const navigate = useNavigate()
 
   // ✅ put your admin UID(s) here
@@ -55,6 +58,14 @@ function Profile() {
     navigate("/admin/dashboard") // ✅ change this if your admin route is different
   }
 
+  // ✅ NEW: request admin confirmation
+  const requestAdmin = () => setShowAdminModal(true)
+  const cancelAdmin = () => setShowAdminModal(false)
+  const confirmAdmin = () => {
+    setShowAdminModal(false)
+    goAdmin()
+  }
+
   if (!user) return null
 
   // ✅ menu order: Information, Points & Rewards, Order History, Payment Info, Change Password
@@ -75,7 +86,7 @@ function Profile() {
       return
     }
     if (value === "admin") {
-      goAdmin()
+      requestAdmin()
       return
     }
     setActiveTab(value)
@@ -108,6 +119,40 @@ function Profile() {
                   className="px-4 py-2 rounded bg-[#7B2220] text-white hover:opacity-90"
                 >
                   Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ✅ NEW: ADMIN CONFIRMATION MODAL */}
+      {showAdminModal && (
+        <>
+          {/* overlay */}
+          <div onClick={cancelAdmin} className="fixed inset-0 bg-black/40 z-50" />
+
+          {/* modal */}
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-5">
+              <h3 className="text-lg font-semibold mb-2">Admin Dashboard</h3>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to go to the Admin Dashboard?
+              </p>
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={cancelAdmin}
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmAdmin}
+                  className="px-4 py-2 rounded bg-[#7B2220] text-white hover:opacity-90"
+                >
+                  Continue
                 </button>
               </div>
             </div>
@@ -205,23 +250,13 @@ function Profile() {
           {/* ✅ ADMIN BUTTON (only shows for admin) */}
           {isAdmin && (
             <li
-              onClick={goAdmin}
+              onClick={requestAdmin}
               className="cursor-pointer px-3 py-2 rounded-md font-medium transition-all duration-200 text-gray-600 hover:text-[#7B2220] hover:bg-white/70"
             >
-              Go to Admin
+              Admin Dashboard
             </li>
           )}
         </ul>
-
-        {/* ✅ bottom buttons */}
-        {isAdmin && (
-          <button
-            onClick={goAdmin}
-            className="mt-4 w-full border border-[#7B2220] text-[#7B2220] px-4 py-2 rounded hover:bg-white transition-opacity duration-200"
-          >
-            Go to Admin
-          </button>
-        )}
 
         <button
           onClick={requestLogout}

@@ -7,7 +7,7 @@ function FooterNavbar() {
           {/* LEFT SECTIONS */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
             {/* SECTION 1 */}
-<div className="flex items-center">
+<div className="flex items-start">
   <img
     src="/images/bcnl_logo.png"
     alt="Bake Corner NL Logo"
@@ -110,9 +110,9 @@ function FooterNavbar() {
         </div>
 
         {/* BOTTOM */}
-        <div className="border-t border-gray-300 mt-12 pt-4 flex justify-center md:justify-end text-sm text-gray-700">
-          © 2025 Bake Corner NL.
-        </div>
+        <div className="border-t border-gray-300 mt-12 pt-4 flex justify-center text-sm text-gray-700">
+  © 2025 Bake Corner NL.
+</div>
       </div>
     </footer>
   )

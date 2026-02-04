@@ -2,7 +2,7 @@ import { useState } from "react"
 import {
   updatePassword,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
 } from "firebase/auth"
 import { toast } from "react-toastify"
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
@@ -13,17 +13,20 @@ function UserPasswordUpdate({ user }) {
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
 
+  // ✅ loading state
+  const [loading, setLoading] = useState(false)
+
   const handleUpdatePassword = async () => {
+    if (loading) return
+
     if (!currentPassword || !newPassword) {
       toast.error("Please fill in all fields")
       return
     }
 
+    setLoading(true)
     try {
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        currentPassword
-      )
+      const credential = EmailAuthProvider.credential(user.email, currentPassword)
       await reauthenticateWithCredential(user, credential)
       await updatePassword(user, newPassword)
 
@@ -39,6 +42,8 @@ function UserPasswordUpdate({ user }) {
       } else {
         toast.error(err.message)
       }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -51,11 +56,13 @@ function UserPasswordUpdate({ user }) {
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           className="w-full border rounded px-3 py-2"
+          disabled={loading}
         />
         <button
           type="button"
           onClick={() => setShowCurrent(!showCurrent)}
           className="absolute right-2 top-2"
+          disabled={loading}
         >
           {showCurrent ? (
             <EyeSlashIcon className="w-5 h-5" />
@@ -72,11 +79,13 @@ function UserPasswordUpdate({ user }) {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           className="w-full border rounded px-3 py-2"
+          disabled={loading}
         />
         <button
           type="button"
           onClick={() => setShowNew(!showNew)}
           className="absolute right-2 top-2"
+          disabled={loading}
         >
           {showNew ? (
             <EyeSlashIcon className="w-5 h-5" />
@@ -88,9 +97,17 @@ function UserPasswordUpdate({ user }) {
 
       <button
         onClick={handleUpdatePassword}
-        className="mt-4 bg-[#7B2220] text-white px-4 py-2 rounded hover:opacity-90"
+        disabled={loading}
+        className="mt-4 bg-[#7B2220] text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        Update Password
+        {loading ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-4 w-4 rounded-full border-2 border-white/60 border-t-white animate-spin" />
+            Updating...
+          </span>
+        ) : (
+          "Update Password"
+        )}
       </button>
     </div>
   )
