@@ -21,6 +21,10 @@ function Profile() {
 
   const navigate = useNavigate()
 
+  // ✅ put your admin UID(s) here
+  const ADMIN_UIDS = ["righ6b8NVlhuhQ7uRXe83m92hqA2"]
+  const isAdmin = user && ADMIN_UIDS.includes(user.uid)
+
   useEffect(() => {
     if (!auth.currentUser) {
       navigate("/")
@@ -39,34 +43,39 @@ function Profile() {
     navigate("/")
   }
 
-  const requestLogout = () => {
-    setShowLogoutModal(true)
-  }
-
-  const cancelLogout = () => {
-    setShowLogoutModal(false)
-  }
+  const requestLogout = () => setShowLogoutModal(true)
+  const cancelLogout = () => setShowLogoutModal(false)
 
   const confirmLogout = async () => {
     setShowLogoutModal(false)
     await doLogout()
   }
 
+  const goAdmin = () => {
+    navigate("/admin/dashboard") // ✅ change this if your admin route is different
+  }
+
   if (!user) return null
 
   // ✅ menu order: Information, Points & Rewards, Order History, Payment Info, Change Password
+  // ✅ add Admin option only if admin
   const tabOptions = [
     { value: "info", label: "Information" },
     { value: "rewards", label: "Points & Rewards" },
     { value: "orders", label: "Order History" },
     { value: "payment", label: "Payment Info" },
     { value: "password", label: "Change Password" },
+    ...(isAdmin ? [{ value: "admin", label: "Go to Admin" }] : []),
     { value: "logout", label: "Logout" },
   ]
 
   const handleMobileChange = (value) => {
     if (value === "logout") {
       requestLogout()
+      return
+    }
+    if (value === "admin") {
+      goAdmin()
       return
     }
     setActiveTab(value)
@@ -78,18 +87,13 @@ function Profile() {
       {showLogoutModal && (
         <>
           {/* overlay */}
-          <div
-            onClick={cancelLogout}
-            className="fixed inset-0 bg-black/40 z-50"
-          />
+          <div onClick={cancelLogout} className="fixed inset-0 bg-black/40 z-50" />
 
           {/* modal */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-5">
               <h3 className="text-lg font-semibold mb-2">Confirm Logout</h3>
-              <p className="text-gray-600 mb-4">
-                Are you sure you want to logout?
-              </p>
+              <p className="text-gray-600 mb-4">Are you sure you want to logout?</p>
 
               <div className="flex gap-2 justify-end">
                 <button
@@ -114,9 +118,7 @@ function Profile() {
       {/* ✅ MOBILE DROPDOWN */}
       <div className="md:hidden w-full">
         <div className="bg-gray-100 p-3 rounded-lg shadow">
-          <label className="block text-sm font-medium text-gray-600 mb-2">
-            Menu
-          </label>
+          <label className="block text-sm font-medium text-gray-600 mb-2">Menu</label>
 
           <select
             value={activeTab}
@@ -199,11 +201,31 @@ function Profile() {
           >
             Change Password
           </li>
+
+          {/* ✅ ADMIN BUTTON (only shows for admin) */}
+          {isAdmin && (
+            <li
+              onClick={goAdmin}
+              className="cursor-pointer px-3 py-2 rounded-md font-medium transition-all duration-200 text-gray-600 hover:text-[#7B2220] hover:bg-white/70"
+            >
+              Go to Admin
+            </li>
+          )}
         </ul>
+
+        {/* ✅ bottom buttons */}
+        {isAdmin && (
+          <button
+            onClick={goAdmin}
+            className="mt-4 w-full border border-[#7B2220] text-[#7B2220] px-4 py-2 rounded hover:bg-white transition-opacity duration-200"
+          >
+            Go to Admin
+          </button>
+        )}
 
         <button
           onClick={requestLogout}
-          className="mt-4 md:mt-auto w-full bg-[#7B2220] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity duration-200"
+          className="mt-2 md:mt-auto w-full bg-[#7B2220] text-white px-4 py-2 rounded hover:opacity-90 transition-opacity duration-200"
         >
           Logout
         </button>

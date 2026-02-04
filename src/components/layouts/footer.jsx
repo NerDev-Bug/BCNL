@@ -7,39 +7,33 @@ function FooterNavbar() {
           {/* LEFT SECTIONS */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
             {/* SECTION 1 */}
-            <div>
-              <h1 className="text-xl font-bold mb-4">Bake Corner NL</h1>
-              <div className="text-sm space-y-2 text-gray-700">
-                <p>+2 (123) 456 7891</p>
-                <p>info@lorem.ipsum</p>
-                <p>Lorem Ipsum is simply</p>
-                <p>dummy</p>
-              </div>
-            </div>
-
+<div className="flex items-center">
+  <img
+    src="/images/bcnl_logo.png"
+    alt="Bake Corner NL Logo"
+    className="h-20 w-auto"
+  />
+</div>
             {/* SECTION 2 */}
             <div>
               <h1 className="text-sm font-bold tracking-wide mb-4 uppercase">
-                Exporting
+                Information
               </h1>
               <div className="text-sm space-y-2 text-gray-700">
-                <p>For</p>
-                <p>Interfacing</p>
-                <p>Reality</p>
-                <p>Basic Know</p>
+                <p>Terms and conditions</p>
+                <p>Privacy Policy</p>
+                <p>Careers</p>
               </div>
             </div>
 
             {/* SECTION 3 */}
             <div>
               <h1 className="text-sm font-bold tracking-wide mb-4 uppercase">
-                Transforming
+                Get in touch
               </h1>
               <div className="text-sm space-y-2 text-gray-700">
-                <p>Home</p>
-                <p>Our Story</p>
-                <p>Menu</p>
-                <p>Orders</p>
+                <p>bcnl2026@gmail.com</p>
+                <p>(31+)2012345678</p>
               </div>
             </div>
           </div>
@@ -50,15 +44,14 @@ function FooterNavbar() {
           {/* RIGHT SECTION */}
           <div className="w-full md:w-[360px]">
             <h1 className="text-sm font-bold uppercase mb-6">
-              Lorem Ipsum is simply dummy <br />
-              text of lorm ips
+              Subscribe to our newsletter to receive our offers!
             </h1>
 
             {/* INPUT */}
             <div className="flex items-center bg-gray-200 rounded-md px-3 py-2">
               <input
                 type="email"
-                placeholder="Lorem Ipsum is simply"
+                placeholder="Your email address"
                 className="flex-1 bg-transparent outline-none text-sm text-gray-600 placeholder-gray-500"
               />
               <button
@@ -70,12 +63,49 @@ function FooterNavbar() {
             </div>
 
             {/* SOCIAL ICONS */}
-            <div className="flex gap-6 mt-6 items-center">
-              <img src="./images/Facebook-Icon.png" alt="Facebook" className="w-4 h-4 cursor-pointer" />
-              <img src="./images/Twitter-Icon.png" alt="Twitter" className="w-4 h-4 cursor-pointer" />
-              <img src="./images/Instagram-Icon.png" alt="Instagram" className="w-4 h-4 cursor-pointer" />
-              <img src="./images/Youtube-Icon.png" alt="YouTube" className="w-6 h-4 cursor-pointer" />
-            </div>
+<div className="flex gap-6 mt-6 items-center">
+  {/* Facebook */}
+  <div className="relative w-7 h-7 cursor-pointer group">
+    <img
+      src="./images/black_fb.png"
+      alt="Facebook"
+      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+    />
+    <img
+      src="./images/color_fb.png"
+      alt="Facebook"
+      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+    />
+  </div>
+
+  {/* Instagram */}
+  <div className="relative w-7 h-7 cursor-pointer group">
+    <img
+      src="./images/black_ig.png"
+      alt="Instagram"
+      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+    />
+    <img
+      src="./images/color_ig.png"
+      alt="Instagram"
+      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+    />
+  </div>
+
+  {/* TikTok */}
+  <div className="relative w-7 h-7 cursor-pointer group">
+    <img
+      src="./images/black_tiktok.png"
+      alt="TikTok"
+      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+    />
+    <img
+      src="./images/color_tiktok.png"
+      alt="TikTok"
+      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+    />
+  </div>
+</div>
           </div>
         </div>
 
