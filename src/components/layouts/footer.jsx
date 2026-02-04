@@ -65,18 +65,23 @@ function FooterNavbar() {
             {/* SOCIAL ICONS */}
 <div className="flex gap-6 mt-6 items-center">
   {/* Facebook */}
-  <div className="relative w-7 h-7 cursor-pointer group">
-    <img
-      src="./images/black_fb.png"
-      alt="Facebook"
-      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
-    />
-    <img
-      src="./images/color_fb.png"
-      alt="Facebook"
-      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-    />
-  </div>
+<a
+  href="https://www.facebook.com/BakeCorner.NL.Pinoydessert"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="relative w-7 h-7 cursor-pointer group"
+>
+  <img
+    src="./images/black_fb.png"
+    alt="Facebook"
+    className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+  />
+  <img
+    src="./images/color_fb.png"
+    alt="Facebook"
+    className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+  />
+</a>
 
   {/* Instagram */}
   <div className="relative w-7 h-7 cursor-pointer group">
