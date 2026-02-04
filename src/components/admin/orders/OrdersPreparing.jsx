@@ -8,6 +8,7 @@ import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import { toast } from "react-toastify";
 import Pagination from "../../common/Pagination";
+import { ChevronDown } from "lucide-react";
 
 function OrdersPreparing() {
   const [orders, setOrders] = useState([]);
@@ -88,6 +89,22 @@ function OrdersPreparing() {
 
   const columns = [
     {
+      key: "expand-items",
+      render: (row, { isOpen, toggle }) => (
+        <button
+          onClick={toggle}
+          className="flex items-center justify-center w-full"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : "rotate-0"
+            }`}
+          />
+        </button>
+      ),
+    },
+    {
       key: "id",
       header: "Order",
       render: row => `#${row.id.slice(0, 4)}`
@@ -143,6 +160,7 @@ function OrdersPreparing() {
         <RowActions
           onAccept={() => handleAcceptOrder(row.id)} // ✅ Accept button
           onDelete={() => handleDeleteOrder(row.id)}
+          acceptLabel="To Delivered"
         />
       ),
     },

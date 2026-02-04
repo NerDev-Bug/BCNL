@@ -136,6 +136,7 @@ function Navbar() {
           <div className="hidden md:flex text-black font-semibold">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/#our-story">Our Story</NavLink>
+            <NavLink to="/events">Events</NavLink>
             <NavLink to="/menu">Menu</NavLink>
             <NavLink to="/order">Order</NavLink>
           </div>
@@ -204,6 +205,9 @@ function Navbar() {
             </NavLink>
             <NavLink to="/#our-story" onClick={closeMobileMenu}>
               Our Story
+            </NavLink>
+            <NavLink to="/events" onClick={closeMobileMenu}>
+              Events
             </NavLink>
             <NavLink to="/menu" onClick={closeMobileMenu}>
               Menu

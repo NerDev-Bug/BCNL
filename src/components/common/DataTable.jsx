@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+ import React, { useEffect, useState } from "react";
 import { getProduct } from "../../hooks/useProductCache";
 
 /* =========================
@@ -28,9 +27,10 @@ function ExpandedItemRow({ item }) {
     );
   }
 
-  // Render the expanded item row
+  const c = item.customization;
+
   return (
-    <div className="flex items-center gap-4 py-3 border-b last:border-b-0">
+    <div className="flex gap-4 py-3 border-b last:border-b-0">
       {/* Product Image */}
       <img
         src={product.image}
@@ -38,14 +38,36 @@ function ExpandedItemRow({ item }) {
         className="w-12 h-12 rounded object-cover"
       />
 
-      {/* Name + Category */}
+      {/* Product + Customization */}
       <div className="flex-1">
         <div className="font-medium text-gray-900">
           {product.name}
         </div>
+        
+        {/* Category */}
         <div className="text-xs text-gray-500">
           {product.category}
         </div>
+
+        {/* 👉 CUSTOMIZATION (ONLY IF EXISTS) */}
+        {c && (
+          <div className="mt-1 space-y-0.5 text-xs text-gray-600">
+            {c.size && <div>Size: {c.size}</div>}
+            {c.candles && <div>Candles: {c.candles}</div>}
+            {c.deliveryDate && <div>Date: {c.deliveryDate}</div>}
+            {c.deliveryTime && <div>Time: {c.deliveryTime}</div>}
+            {c.cardMessage && (
+              <div>
+                <span className="font-medium not-italic">
+                  Card Message:
+                </span>{" "}
+                <span className="italic">
+                  “{c.cardMessage}”
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quantity */}

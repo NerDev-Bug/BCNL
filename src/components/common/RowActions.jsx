@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Check, Trash2 } from "lucide-react";
 
-export function RowActions({ onAccept, onDelete }) {
+export function RowActions({
+  onAccept,
+  onDelete,
+  acceptLabel = "Accept" // Default label
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -42,7 +46,7 @@ export function RowActions({ onAccept, onDelete }) {
             className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50"
           >
             <Check className="h-4 w-4" />
-            Accept
+            {acceptLabel}
           </button>
           <button
             onClick={handleDelete}

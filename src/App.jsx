@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Order from "./pages/Order";
 import Menu from "./pages/Menu";
+import Events from "./pages/Events"
 import Wishlist from "./components/Wishlist";
 import AdminDashboard from "./pages/admin/dashboard";
 import UsersPage from "./pages/admin/users";
@@ -31,6 +32,7 @@ function App() {
           <Route path="/order" element={<Order />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/events" element={<Events />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/product/:id" element={<ProductDetail />} />
 

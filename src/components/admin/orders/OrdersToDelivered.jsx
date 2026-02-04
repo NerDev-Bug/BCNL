@@ -187,6 +187,7 @@ function OrdersToDelivered() {
             <RowActions
               onAccept={() => handleAcceptOrder(row.id)}
               onDelete={() => handleDeleteOrder(row.id)}
+              acceptLabel="Delivered"
             />
           </div>
         );
