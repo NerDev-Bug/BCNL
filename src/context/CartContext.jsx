@@ -44,7 +44,7 @@ export function CartProvider({ children }) {
     createdAt: serverTimestamp(),
   }
 
-  // 🔥 THIS CREATES THE `orders` COLLECTION
+  // THIS CREATES THE `orders` COLLECTION
   const docRef = await addDoc(collection(db, "orders"), orderPayload)
 
   // Clear cart ONLY after order is saved
@@ -85,7 +85,7 @@ export function CartProvider({ children }) {
   // --- Firestore helpers ---
   const itemDocRef = (uid, id) => doc(db, "users", uid, "cartItems", String(id))
 
-  // ✅ Build a stable unique key for customized items (Custom Cakes)
+  // Build a stable unique key for customized items (Custom Cakes)
   const buildCartItemId = (product) => {
     // default: normal products use their product id
     if (!product?.customization) return String(product.id)
@@ -128,7 +128,7 @@ export function CartProvider({ children }) {
     await deleteDoc(itemDocRef(uid, id))
   }
 
-  // ✅ addToCart now supports custom items as separate lines
+  // addToCart now supports custom items as separate lines
   const addToCart = (product) => {
     if (!user) return false // login required
 
@@ -146,14 +146,14 @@ export function CartProvider({ children }) {
         : [
             ...prev,
             {
-              id: cartItemId, // ✅ unique per customization (or product id for normal)
-              productId: String(product.id), // ✅ optional but useful
+              id: cartItemId, // unique per customization (or product id for normal)
+              productId: String(product.id), // optional but useful
               name: product.name,
               price: product.price,
               image: product.image || null,
               category: product.category || null,
-              quantity: product.customization?.quantity || 1, // ✅ use form quantity if provided
-              customization: product.customization || null, // ✅ NEW
+              quantity: product.customization?.quantity || 1, // use form quantity if provided
+              customization: product.customization || null, // NEW
             },
           ]
 
@@ -166,7 +166,7 @@ export function CartProvider({ children }) {
     return true
   }
 
-  // ✅ Called by Cart.jsx via onUpdateQuantity
+  // Called by Cart.jsx via onUpdateQuantity
   const updateQuantity = (id, quantity) => {
     if (!user) return
     if (!Number.isFinite(quantity) || quantity < 1) return
@@ -179,7 +179,7 @@ export function CartProvider({ children }) {
     })
   }
 
-  // ✅ Called by Cart.jsx via onRemoveItem
+  // Called by Cart.jsx via onRemoveItem
   const removeItem = (id) => {
     if (!user) return
 
@@ -187,7 +187,7 @@ export function CartProvider({ children }) {
     deleteFromFirestore(user.uid, id).catch(console.error)
   }
 
-  // ✅ Clear all cart items (called after order confirmation)
+  // Clear all cart items (called after order confirmation)
   const clearCart = async () => {
     if (!user) return
 
@@ -213,11 +213,11 @@ export function CartProvider({ children }) {
       addToCart,
       updateQuantity,
       removeItem,
-      clearCart, // ✅ NEW
+      clearCart, // NEW
 
-       createOrder, // ✅ ADD THIS
+       createOrder, // ADD THIS
 
-      // ✅ Navbar needs these
+      // Navbar needs these
       isCartOpen,
       setIsCartOpen,
 

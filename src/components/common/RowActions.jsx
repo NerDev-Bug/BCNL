@@ -41,13 +41,15 @@ export function RowActions({
 
       {isOpen && (
         <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-          <button
-            onClick={handleAccept}
-            className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50"
-          >
-            <Check className="h-4 w-4" />
-            {acceptLabel}
-          </button>
+          {onAccept && (
+            <button
+              onClick={handleAccept}
+              className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50"
+            >
+              <Check className="h-4 w-4" />
+              {acceptLabel}
+            </button>
+          )}
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 border-t border-gray-200"

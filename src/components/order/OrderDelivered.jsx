@@ -6,6 +6,7 @@ import { auth, db } from "../../firebase";
 import DataTable from "../common/DataTable";
 import { StatusBadge } from "../common/StatusBadge";
 import Pagination from "../common/Pagination";
+import ReasonForReturn from "../modals/ReasonForReturn";
 
 function OrderDelivered() {
   const [user, setUser] = useState(null);
@@ -15,11 +16,16 @@ function OrderDelivered() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
 
+  const [showModal, setShowModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Auth listener
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u || null));
     return () => unsub();
   }, []);
 
+  // Fetch orders
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -73,6 +79,16 @@ function OrderDelivered() {
     currentPage * pageSize
   );
 
+  const handleReturnClick = (order) => {
+    setSelectedOrder(order);
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setSelectedOrder(null);
+  };
+
   const columns = [
     { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
     { key: "createdAt", header: "Date", render: (row) => formatDate(row.createdAt) },
@@ -90,6 +106,31 @@ function OrderDelivered() {
     },
     { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
     { key: "status", header: "Fulfillment", render: (row) => <StatusBadge value={row.paymentStatus} /> },
+    {
+      key: "action",
+      header: "Action",
+      render: (row) => {
+        // Convert timestamp to Date
+        const createdAt = row.createdAt?.seconds
+          ? new Date(row.createdAt.seconds * 1000)
+          : new Date(row.createdAt);
+
+        const now = new Date();
+        const diffInDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+        const isReturnAllowed = diffInDays <= 7;
+
+        if (!isReturnAllowed) return null; // Hides the button after 7 days
+
+        return (
+          <button
+            onClick={() => handleReturnClick(row)}
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+          >
+            Returned
+          </button>
+        );
+      },
+    },
   ];
 
   if (error) return <div className="p-6 text-red-500">{error}</div>;
@@ -122,6 +163,10 @@ function OrderDelivered() {
       <h2 className="mb-4 text-lg font-semibold">Delivered Orders</h2>
       <DataTable columns={columns} data={paginatedOrders} loading={loading} />
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
+      {showModal && selectedOrder && (
+        <ReasonForReturn order={selectedOrder} onClose={handleModalClose} />
+      )}
     </div>
   );
 }
