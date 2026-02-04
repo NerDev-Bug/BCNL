@@ -28,6 +28,7 @@ function ExpandedItemRow({ item }) {
     );
   }
 
+  // Render the expanded item row
   return (
     <div className="flex items-center gap-4 py-3 border-b last:border-b-0">
       {/* Product Image */}

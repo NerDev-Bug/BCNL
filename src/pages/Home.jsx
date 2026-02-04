@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import Favorites from "../components/home/favorites"
 import OurStory from "../components/home/ourstory"
 import useScrollToHash from "../hooks/useScrollToHash"
+import Events from "../components/home/events"
 
 function Home() {
   useScrollToHash()
@@ -61,6 +62,10 @@ function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section>
+        <Events />
       </section>
 
       {/* Favorites Section */}
