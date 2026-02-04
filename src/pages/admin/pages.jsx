@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { db } from "../../firebase" // adjust path
+import { db } from "../../firebase"
 import {
   doc,
   getDoc,
@@ -12,15 +12,22 @@ import {
   Timestamp,
 } from "firebase/firestore"
 
+import TabsHeader from "./components/TabsHeader"
+import HomeTab from "./components/HomeTab"
+import FavoritesTab from "./components/FavoritesTab"
+import StoriesTab from "./components/StoriesTab"
+import TestimonialsTab from "./components/TestimonialsTab"
+import EventsTab from "./components/EventsTab" // ✅ NEW
+
 export default function Pages() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   // ✅ Tabs
-  const [activeTab, setActiveTab] = useState("home") // home | favorites | stories | testimonials
+  const [activeTab, setActiveTab] = useState("home") // home | favorites | stories | testimonials | events ✅
 
-  // ✅ Put your Cloudinary details here
+  // ✅ Cloudinary
   const CLOUDINARY_CLOUD_NAME = "drgjco3qx"
   const CLOUDINARY_UPLOAD_PRESET = "admin_uploads"
 
@@ -30,7 +37,7 @@ export default function Pages() {
 
   // ✅ auto favorites (weekly most bought)
   const [autoFavoritesLoading, setAutoFavoritesLoading] = useState(false)
-  const [autoFavoritesPreview, setAutoFavoritesPreview] = useState([]) // [{id,name,price,totalQty}]
+  const [autoFavoritesPreview, setAutoFavoritesPreview] = useState([])
 
   const [form, setForm] = useState({
     heading: "Our Story",
@@ -54,14 +61,11 @@ export default function Pages() {
       { text: "", author: "" },
     ],
 
-    // ✅ Favorites mode
     favoritesMode: "manual", // "manual" | "weeklyMostBought"
-
-    // ✅ favorites (3 product IDs)
     favoritesProductIds: ["", "", ""],
   })
 
-  // Load existing content
+  // ✅ Load existing page content
   useEffect(() => {
     const load = async () => {
       try {
@@ -92,34 +96,29 @@ export default function Pages() {
         setLoading(false)
       }
     }
-
     load()
   }, [])
 
-  // Load all products for favorites dropdown
+  // ✅ Load all products for favorites
   useEffect(() => {
     const loadProducts = async () => {
       try {
         const snap = await getDocs(collection(db, "products"))
-        const items = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         items.sort((a, b) =>
           String(a.name || "").localeCompare(String(b.name || ""))
         )
         setAllProducts(items)
       } catch (e) {
-        console.error("Failed to load products for favorites picker:", e)
+        console.error("Failed to load products:", e)
       } finally {
         setProductsLoading(false)
       }
     }
-
     loadProducts()
   }, [])
 
-  // Safe nested update
+  // ✅ Safe nested update
   const update = (path, value) => {
     setForm((prev) => {
       const copy = structuredClone(prev)
@@ -131,50 +130,36 @@ export default function Pages() {
     })
   }
 
-  // Upload to Cloudinary
+  // ✅ Cloudinary upload (images)
   const uploadToCloudinary = async (file) => {
     const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`
-
     const fd = new FormData()
     fd.append("file", file)
     fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET)
 
-    const res = await fetch(url, {
-      method: "POST",
-      body: fd,
-    })
-
-    if (!res.ok) {
-      const err = await res.text()
-      throw new Error(err)
-    }
-
+    const res = await fetch(url, { method: "POST", body: fd })
+    if (!res.ok) throw new Error(await res.text())
     const data = await res.json()
     return data.secure_url
   }
 
-  const transformCloudinaryUrl = (url) => {
-    return url.replace(
+  const transformCloudinaryUrl = (url) =>
+    url.replace(
       "/upload/",
       "/upload/c_fill,g_auto,w_1852,h_1536,q_auto,f_auto/"
     )
-  }
 
-  const handleUpload = async (e, fieldPath) => {
-    const file = e.target.files?.[0]
+  const handleUpload = async (file, fieldPath) => {
     if (!file) return
-
     setUploading(true)
     try {
       const imageUrl = await uploadToCloudinary(file)
-      const transformedUrl = transformCloudinaryUrl(imageUrl)
-      update(fieldPath, transformedUrl)
+      update(fieldPath, transformCloudinaryUrl(imageUrl))
     } catch (err) {
       console.error("Cloudinary upload failed:", err)
       alert("Upload failed. Check console.")
     } finally {
       setUploading(false)
-      e.target.value = ""
     }
   }
 
@@ -228,7 +213,6 @@ export default function Pages() {
     return { start, end }
   }
 
-  // ✅ Compute Weekly Most Bought Top 3 (from orders collection)
   const computeWeeklyMostBoughtTop3 = async () => {
     setAutoFavoritesLoading(true)
     try {
@@ -242,13 +226,13 @@ export default function Pages() {
       )
 
       const snap = await getDocs(q)
-      const counts = new Map() // productId -> totalQty
+      const counts = new Map()
 
       snap.docs.forEach((d) => {
         const o = d.data()
         const items = Array.isArray(o.items) ? o.items : []
         items.forEach((it) => {
-          const pid = it.productId || it.id // supports both
+          const pid = it.productId || it.id
           const qty = Number(it.quantity || 1)
           if (!pid) return
           counts.set(pid, (counts.get(pid) || 0) + qty)
@@ -274,13 +258,7 @@ export default function Pages() {
           }
         })
 
-      // store in form
-      setForm((prev) => {
-        const next = structuredClone(prev)
-        next.favoritesProductIds = padded
-        return next
-      })
-
+      setForm((prev) => ({ ...prev, favoritesProductIds: padded }))
       setAutoFavoritesPreview(preview)
     } catch (e) {
       console.error("Failed to compute weekly most bought:", e)
@@ -296,10 +274,7 @@ export default function Pages() {
       const refDoc = doc(db, "pages", "ourStory")
       await setDoc(
         refDoc,
-        {
-          ...form,
-          updatedAt: serverTimestamp(),
-        },
+        { ...form, updatedAt: serverTimestamp() },
         { merge: true }
       )
       alert("Our Story updated!")
@@ -313,377 +288,49 @@ export default function Pages() {
 
   if (loading) return <div className="p-6">Loading...</div>
 
-  const tabBtn = (key) =>
-    `px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-      activeTab === key
-        ? "bg-[#7B2220] text-white"
-        : "bg-white border text-[#7B2220] hover:bg-[#7B2220] hover:text-white"
-    }`
-
   return (
     <div className="p-6">
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Pages</h1>
-
-        <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            className={tabBtn("home")}
-            onClick={() => setActiveTab("home")}
-          >
-            Home
-          </button>
-          <button
-            type="button"
-            className={tabBtn("favorites")}
-            onClick={() => setActiveTab("favorites")}
-          >
-            Favorites
-          </button>
-          <button
-            type="button"
-            className={tabBtn("stories")}
-            onClick={() => setActiveTab("stories")}
-          >
-            Our Stories
-          </button>
-          <button
-            type="button"
-            className={tabBtn("testimonials")}
-            onClick={() => setActiveTab("testimonials")}
-          >
-            Testimonials
-          </button>
-        </div>
-      </div>
+      <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {uploading && (
         <p className="text-sm text-gray-600 mb-4">Uploading image...</p>
       )}
 
-      {/* HOME TAB */}
-      {activeTab === "home" && (
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-          <label className="block text-sm font-semibold mb-2">Heading</label>
-          <input
-            value={form.heading}
-            onChange={(e) => update("heading", e.target.value)}
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Our Story"
-          />
-        </div>
-      )}
+      {activeTab === "home" && <HomeTab form={form} update={update} />}
 
-      {/* FAVORITES TAB */}
       {activeTab === "favorites" && (
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-          <h2 className="text-lg font-bold mb-2">Favorites</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Choose how Favorites are selected.
-          </p>
-
-          {/* ✅ MODE SELECT */}
-          <div className="flex flex-wrap gap-3 mb-5">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="favMode"
-                checked={(form.favoritesMode || "manual") === "manual"}
-                onChange={() => update("favoritesMode", "manual")}
-              />
-              Admin picks 3
-            </label>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="favMode"
-                checked={form.favoritesMode === "weeklyMostBought"}
-                onChange={() => update("favoritesMode", "weeklyMostBought")}
-              />
-              Auto: Weekly Most Bought
-            </label>
-          </div>
-
-          {/* ✅ AUTO WEEKLY */}
-          {form.favoritesMode === "weeklyMostBought" && (
-            <div className="border rounded-xl p-4 mb-5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-sm font-semibold">
-                  This will pick Top 3 products based on this week&apos;s orders.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={computeWeeklyMostBoughtTop3}
-                  disabled={autoFavoritesLoading || productsLoading}
-                  className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
-                >
-                  {autoFavoritesLoading ? "Computing..." : "Compute Now"}
-                </button>
-              </div>
-
-              {autoFavoritesPreview.length > 0 && (
-                <div className="mt-4 space-y-2 text-sm">
-                  {autoFavoritesPreview.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between"
-                    >
-                      <span>
-                        #{idx + 1} {p.name}
-                        {p.price != null ? ` • €${p.price}` : ""}
-                      </span>
-                      <span className="text-gray-600">qty: {p.totalQty}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {autoFavoritesPreview.length === 0 && !autoFavoritesLoading && (
-                <p className="mt-3 text-sm text-gray-600">
-                  Click “Compute Now” to generate this week’s Top 3.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* ✅ MANUAL PICKER */}
-          {form.favoritesMode !== "weeklyMostBought" && (
-            <>
-              {productsLoading ? (
-                <div className="text-sm">Loading products...</div>
-              ) : (
-                <div className="grid md:grid-cols-3 gap-4">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i}>
-                      <label className="block text-sm font-semibold mb-2">
-                        Product #{i + 1}
-                      </label>
-                      <select
-                        value={form.favoritesProductIds?.[i] || ""}
-                        onChange={(e) => setFavoriteAt(i, e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2"
-                      >
-                        <option value="">— Select product —</option>
-                        {allProducts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name || "Unnamed"}{" "}
-                            {p.price != null ? `• €${p.price}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <FavoritesTab
+          form={form}
+          update={update}
+          allProducts={allProducts}
+          productsLoading={productsLoading}
+          autoFavoritesLoading={autoFavoritesLoading}
+          autoFavoritesPreview={autoFavoritesPreview}
+          computeWeeklyMostBoughtTop3={computeWeeklyMostBoughtTop3}
+          setFavoriteAt={setFavoriteAt}
+        />
       )}
 
-      {/* OUR STORIES TAB (section1 + section2 ONLY) */}
       {activeTab === "stories" && (
-        <>
-          {/* Section 1 */}
-          <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-            <h2 className="text-lg font-bold mb-4">Section 1</h2>
-
-            <label className="block text-sm font-semibold mb-2">Title</label>
-            <input
-              value={form.section1.title}
-              onChange={(e) => update("section1.title", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-            />
-
-            <label className="block text-sm font-semibold mb-2">Body</label>
-            <textarea
-              value={form.section1.body}
-              onChange={(e) => update("section1.body", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-              rows={5}
-            />
-
-            <label className="block text-sm font-semibold mb-2">
-              Button Text
-            </label>
-            <input
-              value={form.section1.ctaText}
-              onChange={(e) => update("section1.ctaText", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Background Image (redpaint)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleUpload(e, "section1.bgImage")}
-                  className="w-full"
-                  disabled={uploading}
-                />
-                {form.section1.bgImage && (
-                  <img
-                    src={form.section1.bgImage}
-                    alt="section1 bg"
-                    className="mt-3 w-full rounded-lg border"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Frame Image (single_frame)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleUpload(e, "section1.frameImage")}
-                  className="w-full"
-                  disabled={uploading}
-                />
-                {form.section1.frameImage && (
-                  <img
-                    src={form.section1.frameImage}
-                    alt="section1 frame"
-                    className="mt-3 w-full rounded-lg border"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2 */}
-          <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-            <h2 className="text-lg font-bold mb-4">Section 2</h2>
-
-            <label className="block text-sm font-semibold mb-2">Title</label>
-            <input
-              value={form.section2.title}
-              onChange={(e) => update("section2.title", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-            />
-
-            <label className="block text-sm font-semibold mb-2">Body</label>
-            <textarea
-              value={form.section2.body}
-              onChange={(e) => update("section2.body", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-              rows={5}
-            />
-
-            <label className="block text-sm font-semibold mb-2">
-              Button Text
-            </label>
-            <input
-              value={form.section2.ctaText}
-              onChange={(e) => update("section2.ctaText", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-            />
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Background Image (bg_purple)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleUpload(e, "section2.bgImage")}
-                  className="w-full"
-                  disabled={uploading}
-                />
-                {form.section2.bgImage && (
-                  <img
-                    src={form.section2.bgImage}
-                    alt="section2 bg"
-                    className="mt-3 w-full rounded-lg border"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Frame Image (group_frame)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleUpload(e, "section2.frameImage")}
-                  className="w-full"
-                  disabled={uploading}
-                />
-                {form.section2.frameImage && (
-                  <img
-                    src={form.section2.frameImage}
-                    alt="section2 frame"
-                    className="mt-3 w-full rounded-lg border"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </>
+        <StoriesTab
+          form={form}
+          update={update}
+          uploading={uploading}
+          handleUpload={handleUpload}
+        />
       )}
 
-      {/* TESTIMONIALS TAB (ONLY testimonials show) */}
       {activeTab === "testimonials" && (
-        <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">Testimonials</h2>
-            <button
-              onClick={addTestimonial}
-              className="px-4 py-2 rounded-lg bg-black text-white"
-              type="button"
-            >
-              + Add
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {form.testimonials.map((t, idx) => (
-              <div key={idx} className="border rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-semibold">Testimonial #{idx + 1}</p>
-                  <button
-                    onClick={() => removeTestimonial(idx)}
-                    className="text-sm text-red-600"
-                    type="button"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <label className="block text-sm font-semibold mb-2">Text</label>
-                <textarea
-                  value={t.text}
-                  onChange={(e) =>
-                    update(`testimonials.${idx}.text`, e.target.value)
-                  }
-                  className="w-full border rounded-lg px-3 py-2 mb-4"
-                  rows={3}
-                />
-
-                <label className="block text-sm font-semibold mb-2">
-                  Author
-                </label>
-                <input
-                  value={t.author}
-                  onChange={(e) =>
-                    update(`testimonials.${idx}.author`, e.target.value)
-                  }
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="– Name"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+        <TestimonialsTab
+          form={form}
+          update={update}
+          addTestimonial={addTestimonial}
+          removeTestimonial={removeTestimonial}
+        />
       )}
+
+      {/* ✅ NEW EVENTS TAB */}
+      {activeTab === "events" && <EventsTab />}
 
       {/* Save always visible */}
       <button

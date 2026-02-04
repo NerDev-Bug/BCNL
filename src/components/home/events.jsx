@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { db } from "../../firebase" // adjust path
+import { doc, getDoc } from "firebase/firestore"
 
 function Events() {
-  const baseMedia = useMemo(
+  const [remoteMedia, setRemoteMedia] = useState(null) // null = loading, [] = loaded empty
+  const [paused, setPaused] = useState(false)
+
+  // ✅ fallback (if admin didn't set anything yet)
+  const fallbackMedia = useMemo(
     () => [
       { type: "image", src: "./images/event1.png" },
       { type: "image", src: "./images/event2.png" },
@@ -10,8 +16,41 @@ function Events() {
     []
   )
 
+  // ✅ load from Firestore
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const snap = await getDoc(doc(db, "pages", "events"))
+        if (snap.exists()) {
+          const data = snap.data()
+          const media = Array.isArray(data.media) ? data.media : []
+          setRemoteMedia(
+            media
+              .map((m) => ({
+                type: m.type === "video" ? "video" : "image",
+                src: m.src,
+              }))
+              .filter((m) => m.src)
+          )
+        } else {
+          setRemoteMedia([])
+        }
+      } catch (e) {
+        console.error("Failed to load events media:", e)
+        setRemoteMedia([])
+      }
+    }
+    load()
+  }, [])
+
+  const baseMedia = (remoteMedia && remoteMedia.length > 0) ? remoteMedia : fallbackMedia
+
+  // 🚫 important: if baseMedia length is 0, don’t render carousel logic
+  if (!baseMedia || baseMedia.length === 0) {
+    return <div className="py-8 px-4 max-w-6xl mx-auto">No events yet.</div>
+  }
+
   // Build: [clones][real][clones]
-  // This makes the rail infinite-looking.
   const CLONE_SETS = 2
   const extended = useMemo(() => {
     const clonesBefore = Array.from({ length: CLONE_SETS }, () => baseMedia).flat()
@@ -21,14 +60,17 @@ function Events() {
 
   const baseLen = baseMedia.length
   const beforeLen = CLONE_SETS * baseLen
-  const realStart = beforeLen // index in extended where the "real" set begins
+  const realStart = beforeLen
   const realEnd = realStart + baseLen - 1
 
-  // We track an index inside EXTENDED array (so we can slide through clones)
   const [extIndex, setExtIndex] = useState(realStart)
-  const [paused, setPaused] = useState(false)
 
-  // For dots + modal, we use the base index (0..baseLen-1)
+  // keep extIndex valid when baseMedia changes (after Firestore load)
+  useEffect(() => {
+    setExtIndex(realStart)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseLen])
+
   const baseIndex = ((extIndex - realStart) % baseLen + baseLen) % baseLen
 
   // modal
@@ -47,20 +89,17 @@ function Events() {
     const rail = railRef.current
     const slide = slideRefs.current[targetExtIndex]
     if (!rail || !slide) return
-
     const railWidth = rail.clientWidth
     const slideCenter = slide.offsetLeft + slide.clientWidth / 2
     const left = slideCenter - railWidth / 2
     rail.scrollTo({ left, behavior })
   }
 
-  // Center whenever extIndex changes
   useEffect(() => {
     centerAt(extIndex, "smooth")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extIndex])
 
-  // Keep centered on resize
   useEffect(() => {
     const onResize = () => centerAt(extIndex, "auto")
     window.addEventListener("resize", onResize)
@@ -68,20 +107,13 @@ function Events() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extIndex])
 
-  // Seamless reset when we drift into far clones:
-  // If we move past the real area, jump (no animation) to the equivalent "real" slide.
   useEffect(() => {
-    // We only need to reset when extIndex goes outside [realStart..realEnd] range
-    // but we allow a bit of room because user may move within clones.
-    const minSafe = realStart - baseLen // one set before real
-    const maxSafe = realEnd + baseLen // one set after real
+    const minSafe = realStart - baseLen
+    const maxSafe = realEnd + baseLen
 
     if (extIndex < minSafe || extIndex > maxSafe) {
-      // map extIndex -> equivalent real index
       const normalizedBase = ((extIndex - realStart) % baseLen + baseLen) % baseLen
       const newExt = realStart + normalizedBase
-
-      // Jump instantly and re-center without animation
       setExtIndex(newExt)
       requestAnimationFrame(() => centerAt(newExt, "auto"))
     }
@@ -90,23 +122,15 @@ function Events() {
 
   const next = () => setExtIndex((i) => i + 1)
   const prev = () => setExtIndex((i) => i - 1)
+  const goToBase = (i) => setExtIndex(realStart + i)
 
-  const goToBase = (i) => {
-    // go to the "real" copy of that base slide
-    const newExt = realStart + i
-    setExtIndex(newExt)
-  }
-
-  // auto-slide every 5s (pause on hover + modal)
+  // auto-slide
   useEffect(() => {
     if (paused || modalOpen) return
-    const t = setInterval(() => {
-      setExtIndex((curr) => curr + 1)
-    }, 5000)
+    const t = setInterval(() => setExtIndex((c) => c + 1), 5000)
     return () => clearInterval(t)
   }, [paused, modalOpen])
 
-  // swipe main
   const onTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -119,7 +143,6 @@ function Events() {
     diff < 0 ? next() : prev()
   }
 
-  // modal
   const openModal = () => {
     setModalIndex(baseIndex)
     setModalOpen(true)
@@ -161,24 +184,19 @@ function Events() {
         onTouchEnd={onTouchEnd}
       >
         <div
-  ref={railRef}
-  className="overflow-hidden w-full"
-  style={{
-    paddingLeft: 0,
-    paddingRight: 0,
-    touchAction: "pan-y",
-  }}
->
-  <div className="flex gap-0">
+          ref={railRef}
+          className="overflow-hidden w-full"
+          style={{ paddingLeft: 0, paddingRight: 0, touchAction: "pan-y" }}
+        >
+          <div className="flex gap-0">
             {extended.map((item, i) => {
               const isActive = i === extIndex
-
               return (
                 <div
                   key={`${item.src}-${i}`}
                   ref={(el) => (slideRefs.current[i] = el)}
                   className="shrink-0 cursor-pointer"
-                  style={{ width: "88%" }} // ✅ peek size (75% = more peek; 85% = less peek)
+                  style={{ width: "88%" }}
                   onClick={() => {
                     if (isActive) openModal()
                     else setExtIndex(i)
@@ -190,9 +208,7 @@ function Events() {
                         src={item.src}
                         controls
                         className={`w-full h-full object-cover transition-all duration-500 ${
-                          isActive
-                            ? "opacity-100 scale-100"
-                            : "opacity-60 scale-[0.97]"
+                          isActive ? "opacity-100 scale-100" : "opacity-60 scale-[0.97]"
                         }`}
                       />
                     ) : (
@@ -201,9 +217,7 @@ function Events() {
                         alt=""
                         draggable={false}
                         className={`w-full h-full object-cover transition-all duration-500 ${
-                          isActive
-                            ? "opacity-100 scale-100"
-                            : "opacity-60 scale-[0.97]"
+                          isActive ? "opacity-100 scale-100" : "opacity-60 scale-[0.97]"
                         }`}
                       />
                     )}
@@ -214,7 +228,6 @@ function Events() {
           </div>
         </div>
 
-        {/* arrows */}
         <button
           type="button"
           onClick={prev}
@@ -233,7 +246,6 @@ function Events() {
         </button>
       </div>
 
-      {/* dots (based on real slides) */}
       <div className="flex justify-center mt-4 gap-2">
         {baseMedia.map((_, i) => (
           <button
@@ -247,7 +259,6 @@ function Events() {
         ))}
       </div>
 
-      {/* FULLSCREEN MODAL */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4"
