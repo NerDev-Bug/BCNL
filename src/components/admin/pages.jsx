@@ -12,12 +12,12 @@ import {
   Timestamp,
 } from "firebase/firestore"
 
-import TabsHeader from "./components/TabsHeader"
-import HomeTab from "./components/HomeTab"
-import FavoritesTab from "./components/FavoritesTab"
-import StoriesTab from "./components/StoriesTab"
-import TestimonialsTab from "./components/TestimonialsTab"
-import EventsTab from "./components/EventsTab" // ✅ NEW
+import TabsHeader from "./pages_components/TabsHeader";
+import HomeTab from "./pages_components/HomeTab";
+import FavoritesTab from "./pages_components/FavoritesTab";
+import StoriesTab from "./pages_components/StoriesTab";
+import TestimonialsTab from "./pages_components/TestimonialsTab";
+import EventsTab from "./pages_components/EventsTab";
 
 export default function Pages() {
   const [loading, setLoading] = useState(true)

@@ -221,9 +221,9 @@ export default function ProductDetails() {
 
   return (
     <div
-      className="min-h-screen bg-cover bg-center bg-fixed flex items-center"
-      style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}
-    >
+  className="min-h-screen bg-cover bg-center bg-fixed"
+  style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}
+>
       {/* ✅ ToastContainer (COPY SAME AS MENU) */}
       <ToastContainer
         position="top-right"
@@ -235,43 +235,42 @@ export default function ProductDetails() {
         theme="light"
       />
 
-      <div className="max-w-6xl mx-auto px-3 pt-16 w-full">
+      <div className="max-w-6xl mx-auto px-3 pt-28 md:pt-32 w-full">
         {/* TOP BAR (breadcrumb + search) */}
-        <div className="bg-white border-2 border-black rounded-sm px-4 py-3 flex items-center gap-3 w-full">
-          {/* CLICKABLE BREADCRUMB */}
-          <p className="text-sm text-gray-700 flex-1 truncate">
-            <Link to="/menu" className="hover:underline hover:text-black">
-              Menu
-            </Link>
+        <div className="bg-white border-2 border-black rounded-sm px-4 py-3 flex flex-col md:flex-row md:items-center gap-3 w-full">
+  {/* CLICKABLE BREADCRUMB */}
+  <p className="text-sm text-gray-700 md:flex-1 truncate">
+    <Link to="/menu" className="hover:underline hover:text-black">
+      Menu
+    </Link>
+    <span className="mx-1">{">"}</span>
+    <Link
+      to={`/menu?category=${encodeURIComponent(product.category || "")}`}
+      className="hover:underline hover:text-black"
+    >
+      {product.category || "category"}
+    </Link>
+    <span className="mx-1">{">"}</span>
+    <span className="font-medium text-black">{product.name}</span>
+  </p>
 
-            <span className="mx-1">{">"}</span>
-
-            <Link
-              to={`/menu?category=${encodeURIComponent(product.category || "")}`}
-              className="hover:underline hover:text-black"
-            >
-              {product.category || "category"}
-            </Link>
-
-            <span className="mx-1">{">"}</span>
-
-            <span className="font-medium text-black">{product.name}</span>
-          </p>
-
-          {/* FUNCTIONAL SEARCH */}
-          <form onSubmit={handleSearchSubmit} className="relative w-full max-w-md">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search related..."
-              className="w-full border border-black rounded-sm pl-10 pr-3 py-2 outline-none"
-            />
-          </form>
-        </div>
+  {/* FUNCTIONAL SEARCH */}
+  <form
+    onSubmit={handleSearchSubmit}
+    className="relative w-full md:max-w-md"
+  >
+    <Search
+      size={18}
+      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+    />
+    <input
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      placeholder="Search related..."
+      className="w-full border border-black rounded-sm pl-10 pr-3 py-2 outline-none"
+    />
+  </form>
+</div>
 
         {/* MAIN CARD */}
         <div className="mt-3 bg-white border-[3px] border-black p-8 w-full">
@@ -305,158 +304,171 @@ export default function ProductDetails() {
 
               {/* ✅ CUSTOM CAKES CONTROLLED FORM (only shows if category is Custom Cakes) */}
               {isCustomCakes && (
-                <div className="mt-6 border border-black rounded-sm p-4 text-left text-black">
-                  <p className="text-xs font-bold mb-2 text-[#7B2220]">
-                    Custom Cakes Details
-                  </p>
+  <div className="mt-6 border border-black rounded-sm p-4 text-left text-black">
+    <p className="text-xs font-bold mb-2 text-[#7B2220]">Custom Cakes Details</p>
 
-                  {/* Delivery Date */}
-                  <label className="block text-xs font-semibold mb-1">
-                    Select delivery date
-                  </label>
-                  <input
-                    type="date"
-                    value={customForm.deliveryDate}
-                    onChange={(e) => updateCustomForm({ deliveryDate: e.target.value })}
-                    className="w-full border border-black rounded-sm px-3 py-2 outline-none"
-                  />
+    {/* ✅ Responsive grid wrapper */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Delivery Date */}
+      <div className="sm:col-span-1">
+        <label className="block text-xs font-semibold mb-1">
+          Select delivery date
+        </label>
+        <input
+          type="date"
+          value={customForm.deliveryDate}
+          onChange={(e) => updateCustomForm({ deliveryDate: e.target.value })}
+          className="w-full border border-black rounded-sm px-3 py-2 outline-none"
+        />
+      </div>
 
-                  {/* Delivery Time */}
-                  <label className="block text-xs font-semibold mt-4 mb-2">
-                    Select delivery time
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["11AM - 1PM", "1PM - 3PM", "3PM - 5PM", "5PM - 7PM"].map(
-                      (t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => updateCustomForm({ deliveryTime: t })}
-                          className={`border border-black rounded-sm px-2 py-2 text-xs ${
-                            customForm.deliveryTime === t ? "bg-black text-white" : ""
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      )
-                    )}
-                  </div>
+      {/* Quantity */}
+      <div className="sm:col-span-1">
+        <label className="block text-xs font-semibold mb-1">Quantity</label>
 
-                  {/* Quantity */}
-                  <label className="block text-xs font-semibold mt-4 mb-2">
-                    Quantity
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={decQty}
-                      className="w-10 h-10 border border-black rounded-sm font-bold"
-                    >
-                      −
-                    </button>
+        {/* ✅ stacks on mobile, row on sm+ */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={decQty}
+              className="w-full sm:w-10 h-10 border border-black rounded-sm font-bold"
+            >
+              −
+            </button>
 
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={customForm.quantity}
-                      onChange={(e) =>
-                        updateCustomForm({
-                          quantity: Math.max(1, Math.min(99, Number(e.target.value || 1))),
-                        })
-                      }
-                      className="w-20 text-center border border-black rounded-sm px-2 py-2 outline-none"
-                    />
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={customForm.quantity}
+              onChange={(e) =>
+                updateCustomForm({
+                  quantity: Math.max(
+                    1,
+                    Math.min(99, Number(e.target.value || 1))
+                  ),
+                })
+              }
+              className="w-full sm:w-20 text-center border border-black rounded-sm px-2 py-2 outline-none"
+            />
 
-                    <button
-                      type="button"
-                      onClick={incQty}
-                      className="w-10 h-10 border border-black rounded-sm font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
+            <button
+              type="button"
+              onClick={incQty}
+              className="w-full sm:w-10 h-10 border border-black rounded-sm font-bold"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
 
-                  {/* Size + Candles */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <div>
-                      <label className="block text-xs font-semibold mb-1">Size</label>
-                      <select
-                        value={customForm.size}
-                        onChange={(e) => updateCustomForm({ size: e.target.value })}
-                        className="w-full border border-black rounded-sm px-3 py-2 outline-none"
-                      >
-                        <option value="REGULAR">REGULAR</option>
-                        <option value="LARGE">LARGE</option>
-                        <option value="XL">XL</option>
-                      </select>
-                    </div>
+      {/* Delivery Time */}
+      <div className="sm:col-span-2">
+        <label className="block text-xs font-semibold mb-2">
+          Select delivery time
+        </label>
 
-                    <div>
-                      <label className="block text-xs font-semibold mb-1">
-                        Candles (FOC)
-                      </label>
-                      <select
-                        value={customForm.candles}
-                        onChange={(e) => updateCustomForm({ candles: e.target.value })}
-                        className="w-full border border-black rounded-sm px-3 py-2 outline-none"
-                      >
-                        <option value="-">-</option>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                      </select>
-                    </div>
-                  </div>
+        {/* ✅ 1 column on mobile, 2 on sm+, 4 on lg */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {["11AM - 1PM", "1PM - 3PM", "3PM - 5PM", "5PM - 7PM"].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => updateCustomForm({ deliveryTime: t })}
+              className={`border border-black rounded-sm px-2 py-2 text-xs w-full ${
+                customForm.deliveryTime === t ? "bg-black text-white" : ""
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                  {/* Card Message */}
-                  <label className="block text-xs font-semibold mt-4 mb-1">
-                    Card message (max 250 words)
-                  </label>
-                  <textarea
-                    value={customForm.cardMessage}
-                    onChange={(e) => updateCustomForm({ cardMessage: e.target.value })}
-                    rows={4}
-                    className="w-full border border-black rounded-sm px-3 py-2 outline-none"
-                    placeholder="Include recipient’s name..."
-                  />
+      {/* Size */}
+      <div className="sm:col-span-1">
+        <label className="block text-xs font-semibold mb-1">Size</label>
+        <select
+          value={customForm.size}
+          onChange={(e) => updateCustomForm({ size: e.target.value })}
+          className="w-full border border-black rounded-sm px-3 py-2 outline-none"
+        >
+          <option value="REGULAR">REGULAR</option>
+          <option value="LARGE">LARGE</option>
+          <option value="XL">XL</option>
+        </select>
+      </div>
 
-                  {/* Preset Buttons */}
-                  <div className="grid grid-cols-3 gap-2 mt-3">
-                    {["Birthday", "Romance", "Anniversary", "Get well soon", "Apology"].map(
-                      (p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => applyPreset(p)}
-                          className="border border-black rounded-sm px-2 py-2 text-xs"
-                        >
-                          {p}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
+      {/* Candles */}
+      <div className="sm:col-span-1">
+        <label className="block text-xs font-semibold mb-1">Candles (FOC)</label>
+        <select
+          value={customForm.candles}
+          onChange={(e) => updateCustomForm({ candles: e.target.value })}
+          className="w-full border border-black rounded-sm px-3 py-2 outline-none"
+        >
+          <option value="-">-</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+
+      {/* Card Message */}
+      <div className="sm:col-span-2">
+        <label className="block text-xs font-semibold mb-1">
+          Card message (max 250 words)
+        </label>
+        <textarea
+          value={customForm.cardMessage}
+          onChange={(e) => updateCustomForm({ cardMessage: e.target.value })}
+          rows={4}
+          className="w-full border border-black rounded-sm px-3 py-2 outline-none"
+          placeholder="Include recipient’s name..."
+        />
+      </div>
+
+      {/* Preset Buttons */}
+      <div className="sm:col-span-2">
+        {/* ✅ 2 cols on mobile, 3 on sm+ */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {["Birthday", "Romance", "Anniversary", "Get well soon", "Apology"].map(
+            (p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => applyPreset(p)}
+                className="border border-black rounded-sm px-2 py-2 text-xs w-full"
+              >
+                {p}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
               {/* BUTTONS */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-                <button
-                  onClick={() => addToWishlist(product)}
-                  className="w-44 border border-[#7B2220] text-[#7B2220] px-6 py-2 rounded-md hover:bg-[#7B2220]/5"
-                >
-                  Add to wishlist
-                </button>
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:gap-3 sm:justify-center md:justify-start">
+  <button
+    onClick={() => addToWishlist(product)}
+    className="w-full border border-[#7B2220] text-[#7B2220] py-3 rounded-lg hover:bg-[#7B2220]/5 text-sm font-medium"
+  >
+    Add to wishlist
+  </button>
 
-                <button
-                  onClick={handleOrderNow}
-                  className="w-44 bg-[#7B2220] text-white px-6 py-2 rounded-md hover:opacity-95"
-                >
-                  Order Now
-                </button>
-              </div>
-
+  <button
+    onClick={handleOrderNow}
+    className="w-full bg-[#7B2220] text-white py-3 rounded-lg hover:opacity-95 text-sm font-medium"
+  >
+    Order Now
+  </button>
+</div>
               {/* RELATED */}
               <div className="mt-8">
                 <p className="text-sm text-[#7B2220] text-center md:text-left mb-3">

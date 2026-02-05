@@ -1,11 +1,11 @@
 // Orders.jsx
 import { useState } from "react";
-import History from "../../components/admin/orders/History"
-import OrdersPending from "../../components/admin/orders/OrdersPending"
-import OrdersPreparing from "../../components/admin/orders/OrdersPreparing"
-import OrdersToDelivered from "../../components/admin/orders/OrdersToDelivered"
-import OrdersDelivered from "../../components/admin/orders/OrdersDelivered"
-import OrdersReturned from "../../components/admin/orders/OrdersReturned"
+import History from "./orders/History"
+import OrdersPending from "./orders/OrdersPending"
+import OrdersPreparing from "./orders/OrdersPreparing"
+import OrdersToDelivered from "./orders/OrdersToDelivered"
+import OrdersDelivered from "./orders/OrdersDelivered"
+import OrdersReturned from "./orders/OrdersReturned"
 
 function OrdersPage() {
   const [activeTab, setActiveTab] = useState("history");

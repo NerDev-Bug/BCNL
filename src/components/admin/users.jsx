@@ -8,8 +8,8 @@ import {
   orderBy,
 } from "firebase/firestore"
 import { db } from "../../firebase"
-import DataTable from "../../components/common/DataTable"
-import { StatusBadge } from "../../components/common/StatusBadge"
+import DataTable from "../common/DataTable"
+import { StatusBadge } from "../common/StatusBadge"
 
 function UsersPage() {
   const [users, setUsers] = useState([])

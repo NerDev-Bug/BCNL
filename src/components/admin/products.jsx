@@ -8,8 +8,8 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
-import DataTable from "../../components/common/DataTable";
-import { StatusBadge } from "../../components/common/StatusBadge";
+import DataTable from "../common/DataTable";
+import { StatusBadge } from "../common/StatusBadge";
 import { Trash2, Edit2 } from "lucide-react";
 
 function ProductsPage() {

@@ -4,13 +4,13 @@ import Order from "./pages/Order";
 import Menu from "./pages/Menu";
 import Events from "./pages/Events"
 import Wishlist from "./components/Wishlist";
-import AdminDashboard from "./pages/admin/dashboard";
-import UsersPage from "./pages/admin/users";
-import ProductsPage from "./pages/admin/products";
-import OrdersPage from "./pages/admin/orders";
+import AdminDashboard from "./components/admin/dashboard";
+import UsersPage from "./components/admin/users";
+import ProductsPage from "./components/admin/products";
+import OrdersPage from "./components/admin/orders";
 import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetails";
-import Pages from "./pages/admin/pages";
+import Pages from "./components/admin/pages";
 import PaymentSuccess from "./pages/PaymentSuccess"; // ✅ ADD THIS
 
 // React Toastify
