@@ -22,7 +22,10 @@ const MOLLIE_API_KEY = defineSecret("MOLLIE_API_KEY")
 setGlobalOptions({ maxInstances: 10 })
 
 const WEBHOOK_URL = "https://webhook-nmsgrcdlaa-uc.a.run.app"
-const REDIRECT_URL = "http://localhost:5173/payment-success"
+const REDIRECT_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://bcnl.vercel.app/payment-success"
+    : "http://localhost:5173/payment-success"
 
 /**
  * ✅ Create Mollie payment (CALLABLE)
