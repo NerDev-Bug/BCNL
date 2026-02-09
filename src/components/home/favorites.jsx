@@ -63,7 +63,7 @@ function Favorites() {
           to="/menu"
           className="absolute left-6 top-8 bg-[#7a2d2d] text-white rounded-md px-4 py-2 text-sm flex items-center gap-2 hover:opacity-90"
         >
-          Go to Menu
+          This Week's Bakes
           <span className="ml-1 bg-[#7a2d2d] rounded-sm w-6 h-6 flex items-center justify-center shadow-sm">
             <img src="./images/Farword-Arrow.png" alt="" className="w-4 h-3" />
           </span>
