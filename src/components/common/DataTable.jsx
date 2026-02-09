@@ -98,13 +98,13 @@ function DataTable({ columns, data, rowKey = "id", loading = false }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse text-sm">
         <thead className="border-b border-gray-200">
           <tr>
             {columns.map(col => (
               <th
                 key={col.key}
-                className="px-6 py-4 text-left text-sm font-semibold text-gray-700"
+                className="px-6 py-4 text-center text-sm font-semibold text-gray-700"
               >
                 {col.header}
               </th>

@@ -416,41 +416,53 @@ function ProductsPage() {
   return (
     <div className="p-8">
       <div className="mb-6 space-y-4">
-        {/* Title */}
-        <h1 className="text-2xl font-bold">Products</h1>
+        {/* HEADER */}
+        <div className="mb-6 space-y-4">
+          {/* Top row: Title + Add */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Products
+            </h1>
 
-        {/* Search (below title) */}
-        <div className="w-full max-w-md">
-          <Search
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by name or category"
-          />
-        </div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+            >
+              Add Product
+            </button>
+          </div>
 
-        {/* Category + Add Product */}
-        <div className="flex items-end justify-between gap-4">
-          <Filter
-            label="Filter by Category"
-            value={categoryFilter}
-            options={categories}
-            onChange={setCategoryFilter}
-          />
+          {/* Second row: Search + Filter */}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="w-full md:max-w-md">
+              <Search
+                value={search}
+                onChange={setSearch}
+                placeholder="Search by name or category"
+              />
+            </div>
 
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
-          >
-            Add Product
-          </button>
+            <Filter
+              label="Filter by Category"
+              value={categoryFilter}
+              options={categories}
+              onChange={setCategoryFilter}
+            />
+          </div>
         </div>
       </div>
 
       {/* 🔹 TABLE */}
-      <DataTable columns={columns} data={paginatedProducts} loading={loading} />
+      <div className="bg-white rounded-lg border border-gray-200">
+        <DataTable
+          columns={columns}
+          data={paginatedProducts}
+          loading={loading}
+        />
+      </div>
 
       {/* 🔹 PAGINATION */}
-      <div className="mt-4">
+      <div className="mt-6 flex justify-center">
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
