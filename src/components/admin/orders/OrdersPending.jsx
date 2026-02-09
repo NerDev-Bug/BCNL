@@ -31,7 +31,7 @@ function OrdersPending() {
           id: doc.id,
           ...doc.data(),
         }));
-        // console.log("Pending Orders data:", data);
+        console.log("Pending Orders data:", data);
         setOrders(data);
       } catch (err) {
         console.error(err);

@@ -7,6 +7,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { useCart } from "../context/CartContext"
 import { flyToCart } from "../utils/flyToCart"
 import ProductSkeleton from "../context/ProductSkeleton"
+import PolicyAdsModal from "../components/modals/PolicyAdsModal"
 import { toggleWishlist } from "../utils/wishlist"
 
 export default function Menu() {
@@ -17,6 +18,20 @@ export default function Menu() {
   const { addToCart } = useCart()
   const [loading, setLoading] = useState(true)
   const [wishlistIds, setWishlistIds] = useState([])
+  const [showAd, setShowAd] = useState(false)
+
+  useEffect(() => {
+    const hasSeenMenuAd = localStorage.getItem("menuAdSeen");
+
+    if (!hasSeenMenuAd) {
+      setShowAd(true);
+    }
+  }, []);
+
+  const handleCloseAd = () => {
+    localStorage.setItem("menuAdSeen", "true");
+    setShowAd(false);
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -61,6 +76,7 @@ export default function Menu() {
 
   return (
     <div className="w-full">
+      {showAd && <PolicyAdsModal onClose={handleCloseAd} />}
       <div
         className="w-full border-y-2 border-black min-h-[250px] flex items-center justify-center"
         style={{

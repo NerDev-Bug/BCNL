@@ -158,6 +158,10 @@ function UsersPage() {
         render: (row) => <StatusBadge value={row.status || "ACTIVE"} />,
       },
       {
+        key: "points",
+        header: "Points",
+      },
+      {
         key: "actions",
         header: "Actions",
         render: (row) => (

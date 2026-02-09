@@ -9,6 +9,9 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import DataTable from "../common/DataTable";
+import Search from "../common/Search";
+import Filter from "../common/Filter";
+import Pagination from "../common/Pagination";
 import { StatusBadge } from "../common/StatusBadge";
 import { Trash2, Edit2 } from "lucide-react";
 
@@ -19,6 +22,30 @@ function ProductsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+
+  // Extract unique categories for filter options
+  const categories = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean))
+  );
+
+
+  const filteredProducts = products.filter((product) => {
+    const q = search.toLowerCase();
+
+    const matchesSearch =
+      product.name?.toLowerCase().includes(q) ||
+      product.category?.toLowerCase().includes(q);
+
+    const matchesCategory =
+      !categoryFilter || product.category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -27,7 +54,12 @@ function ProductsPage() {
     category: "",
     dailyLimit: "", // ✅ NEW
     imageFile: null,
+    productDiscount: "", // ✅ NEW
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter]);
 
   const productsCollection = collection(db, "products");
 
@@ -54,6 +86,30 @@ function ProductsPage() {
 
     return data.secure_url;
   };
+
+  // ✅ Discount parser & validator
+  const parseDiscount = (value) => {
+    if (!value) return null;
+
+    const v = value.trim();
+
+    // Percentage discount: 10%
+    if (/^\d+(\.\d+)?%$/.test(v)) {
+      const percent = Number(v.replace("%", ""));
+      if (percent <= 0 || percent >= 100) return null;
+      return { type: "percent", value: percent };
+    }
+
+    // Fixed discount: 5 or €5
+    if (/^\d+(\.\d+)?€?$/.test(v)) {
+      const amount = Number(v.replace("€", ""));
+      if (amount <= 0) return null;
+      return { type: "fixed", value: amount };
+    }
+
+    return null;
+  };
+
 
   // 🔹 Fetch products
   useEffect(() => {
@@ -90,6 +146,13 @@ function ProductsPage() {
       return;
     }
 
+    // ✅ Validate discount
+    const discountParsed = parseDiscount(newProduct.productDiscount);
+    if (!discountParsed) {
+      alert("Invalid discount. Use e.g. 10% or 5€");
+      return;
+    }
+
     // ✅ allow blank, but if provided must be valid number >= 0
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
@@ -113,6 +176,7 @@ function ProductsPage() {
         category: newProduct.category,
         available: true,
         dailyLimit: limitNum, // ✅ NEW
+        productDiscount: discountParsed, // ✅ NEW
       });
 
       setProducts((prev) => [
@@ -126,6 +190,7 @@ function ProductsPage() {
           category: newProduct.category,
           available: true,
           dailyLimit: limitNum, // ✅ NEW
+          productDiscount: discountParsed, // ✅ NEW
         },
       ]);
 
@@ -150,6 +215,12 @@ function ProductsPage() {
       return;
     }
 
+    const discountParsed = parseDiscount(newProduct.productDiscount);
+    if (!discountParsed) {
+      alert("Invalid discount. Use e.g. 10% or 5€");
+      return;
+    }
+
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
         ? null
@@ -169,6 +240,7 @@ function ProductsPage() {
         description: newProduct.description,
         category: newProduct.category,
         dailyLimit: limitNum, // ✅ NEW
+        productDiscount: discountParsed, // ✅ NEW
       };
 
       if (newProduct.imageFile) {
@@ -204,6 +276,12 @@ function ProductsPage() {
           ? ""
           : String(product.dailyLimit), // ✅ NEW
       imageFile: null,
+      productDiscount:
+        product.productDiscount?.type === "percent"
+          ? `${product.productDiscount.value}%`
+          : product.productDiscount?.type === "fixed"
+          ? `€${product.productDiscount.value}`
+          : "", // ✅ NEW
     });
     setShowModal(true);
   };
@@ -240,8 +318,17 @@ function ProductsPage() {
       category: "",
       dailyLimit: "", // ✅ NEW
       imageFile: null,
+      productDiscount: "", // ✅ NEW
     });
   };
+
+  // 🔹 Pagination logic (same as OrdersPending)
+  const totalPages = Math.ceil(filteredProducts.length / pageSize);
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const columns = [
     {
@@ -273,20 +360,26 @@ function ProductsPage() {
 
     // ✅ NEW COLUMN
     {
-      key: "dailyLimit",
-      header: "Daily Limit",
-      render: (row) =>
-        row.dailyLimit === null || typeof row.dailyLimit === "undefined"
-          ? "—"
-          : row.dailyLimit,
+      key: "productDiscount",
+      header: "Product Discount",
+      render: (row) => {
+        if (!row.productDiscount) return "—";
+        return row.productDiscount.type === "percent"
+          ? `${row.productDiscount.value}%`
+          : `€${row.productDiscount.value}`;
+      },
     },
-
     {
       key: "available",
       header: "Status",
       render: (row) => (
         <StatusBadge value={row.available ? "available" : "unavailable"} />
       ),
+    },
+    {
+      key: "dailyLimit",
+      header: "Daily Limit",
+      render: (row) => row.dailyLimit ?? "—",
     },
     {
       key: "actions",
@@ -322,17 +415,48 @@ function ProductsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 space-y-4">
+        {/* Title */}
         <h1 className="text-2xl font-bold">Products</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
-        >
-          Add Product
-        </button>
+
+        {/* Search (below title) */}
+        <div className="w-full max-w-md">
+          <Search
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by name or category"
+          />
+        </div>
+
+        {/* Category + Add Product */}
+        <div className="flex items-end justify-between gap-4">
+          <Filter
+            label="Filter by Category"
+            value={categoryFilter}
+            options={categories}
+            onChange={setCategoryFilter}
+          />
+
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+          >
+            Add Product
+          </button>
+        </div>
       </div>
 
-      <DataTable columns={columns} data={products} loading={loading} />
+      {/* 🔹 TABLE */}
+      <DataTable columns={columns} data={paginatedProducts} loading={loading} />
+
+      {/* 🔹 PAGINATION */}
+      <div className="mt-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
 
       {/* 🔹 MODAL */}
       {showModal && (
@@ -390,6 +514,19 @@ function ProductsPage() {
                 setNewProduct({
                   ...newProduct,
                   dailyLimit: e.target.value,
+                })
+              }
+            />
+
+            <input
+              type="text"
+              className="border w-full mb-4 px-3 py-2 rounded"
+              placeholder="Product Discount (e.g. 10% or 5€)"
+              value={newProduct.productDiscount}
+              onChange={(e) =>
+                setNewProduct({
+                  ...newProduct,
+                  productDiscount: e.target.value,
                 })
               }
             />

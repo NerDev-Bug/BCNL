@@ -1,12 +1,7 @@
-// Pagination.jsx
 import React from "react";
 
-function Pagination({ 
-  currentPage, 
-  totalPages, 
-  onPageChange 
-}) {
-  if (totalPages <= 1) return null; // No need to show pagination
+function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
 
   const handlePrev = () => {
     if (currentPage > 1) onPageChange(currentPage - 1);
@@ -17,22 +12,63 @@ function Pagination({
   };
 
   const renderPageNumbers = () => {
+    const delta = 2; // how many pages to show around current
     const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(
+
+    const start = Math.max(2, currentPage - delta);
+    const end = Math.min(totalPages - 1, currentPage + delta);
+
+    // Always show first page
+    pages.push(1);
+
+    // Left ellipsis
+    if (start > 2) {
+      pages.push("left-ellipsis");
+    }
+
+    // Middle pages
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    // Right ellipsis
+    if (end < totalPages - 1) {
+      pages.push("right-ellipsis");
+    }
+
+    // Always show last page
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((item) => {
+      if (typeof item === "string") {
+        return (
+          <span
+            key={item}
+            className="px-3 py-1 mx-1 text-gray-500"
+          >
+            …
+          </span>
+        );
+      }
+
+      return (
         <button
-          key={i}
-          onClick={() => onPageChange(i)}
+          key={item}
+          onClick={() => onPageChange(item)}
           className={`px-3 py-1 rounded-md mx-1 text-sm font-medium ${
-            i === currentPage ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-700"
+            item === currentPage
+              ? "bg-blue-500 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          {i}
+          {item}
         </button>
       );
-    }
-    return pages;
+    });
   };
+
 
   return (
     <div className="flex items-center justify-center mt-4">
@@ -43,7 +79,9 @@ function Pagination({
       >
         Prev
       </button>
+
       {renderPageNumbers()}
+
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
