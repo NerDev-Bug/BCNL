@@ -12,12 +12,12 @@ import {
   Timestamp,
 } from "firebase/firestore"
 
-import TabsHeader from "./pages_components/TabsHeader";
-import HomeTab from "./pages_components/HomeTab";
-import FavoritesTab from "./pages_components/FavoritesTab";
-import StoriesTab from "./pages_components/StoriesTab";
-import TestimonialsTab from "./pages_components/TestimonialsTab";
-import EventsTab from "./pages_components/EventsTab";
+import TabsHeader from "./pages_components/TabsHeader"
+import HomeTab from "./pages_components/HomeTab"
+import FavoritesTab from "./pages_components/FavoritesTab"
+import StoriesTab from "./pages_components/StoriesTab"
+import TestimonialsTab from "./pages_components/TestimonialsTab"
+import EventsTab from "./pages_components/EventsTab"
 
 export default function Pages() {
   const [loading, setLoading] = useState(true)
@@ -25,7 +25,7 @@ export default function Pages() {
   const [uploading, setUploading] = useState(false)
 
   // ✅ Tabs
-  const [activeTab, setActiveTab] = useState("home") // home | favorites | stories | testimonials | events ✅
+  const [activeTab, setActiveTab] = useState("home") // home | favorites | stories | testimonials | events
 
   // ✅ Cloudinary
   const CLOUDINARY_CLOUD_NAME = "drgjco3qx"
@@ -39,6 +39,19 @@ export default function Pages() {
   const [autoFavoritesLoading, setAutoFavoritesLoading] = useState(false)
   const [autoFavoritesPreview, setAutoFavoritesPreview] = useState([])
 
+  /**
+   * ✅ HOME FORM (separate doc: pages/home)
+   * Only for Home hero content
+   */
+  const [homeForm, setHomeForm] = useState({
+    heading: "Homemade cakes and pastries",
+    estText: "est. 2019",
+    cakeImage: "",
+  })
+
+  /**
+   * ✅ OUR STORY / FAVORITES / TESTIMONIALS FORM (doc: pages/ourStory)
+   */
   const [form, setForm] = useState({
     heading: "Our Story",
     section1: {
@@ -60,14 +73,32 @@ export default function Pages() {
       { text: "", author: "" },
       { text: "", author: "" },
     ],
-
     favoritesMode: "manual", // "manual" | "weeklyMostBought"
     favoritesProductIds: ["", "", ""],
   })
 
-  // ✅ Load existing page content
+  // ✅ Load Home content (pages/home)
   useEffect(() => {
-    const load = async () => {
+    const loadHome = async () => {
+      try {
+        const snap = await getDoc(doc(db, "pages", "home"))
+        if (snap.exists()) {
+          const data = snap.data()
+          setHomeForm((prev) => ({
+            ...prev,
+            ...data,
+          }))
+        }
+      } catch (e) {
+        console.error("Failed to load home:", e)
+      }
+    }
+    loadHome()
+  }, [])
+
+  // ✅ Load OurStory content (pages/ourStory)
+  useEffect(() => {
+    const loadOurStory = async () => {
       try {
         const refDoc = doc(db, "pages", "ourStory")
         const snap = await getDoc(refDoc)
@@ -92,11 +123,13 @@ export default function Pages() {
               : prev.favoritesProductIds,
           }))
         }
+      } catch (e) {
+        console.error("Failed to load ourStory:", e)
       } finally {
         setLoading(false)
       }
     }
-    load()
+    loadOurStory()
   }, [])
 
   // ✅ Load all products for favorites
@@ -118,7 +151,7 @@ export default function Pages() {
     loadProducts()
   }, [])
 
-  // ✅ Safe nested update
+  // ✅ Safe nested update for ourStory form
   const update = (path, value) => {
     setForm((prev) => {
       const copy = structuredClone(prev)
@@ -128,6 +161,11 @@ export default function Pages() {
       cur[keys[keys.length - 1]] = value
       return copy
     })
+  }
+
+  // ✅ Simple update for home form (flat)
+  const updateHome = (key, value) => {
+    setHomeForm((prev) => ({ ...prev, [key]: value }))
   }
 
   // ✅ Cloudinary upload (images)
@@ -268,12 +306,23 @@ export default function Pages() {
     }
   }
 
+  // ✅ Save: saves based on active tab
   const save = async () => {
     setSaving(true)
     try {
-      const refDoc = doc(db, "pages", "ourStory")
+      if (activeTab === "home") {
+        await setDoc(
+          doc(db, "pages", "home"),
+          { ...homeForm, updatedAt: serverTimestamp() },
+          { merge: true }
+        )
+        alert("Home updated!")
+        return
+      }
+
+      // everything else uses pages/ourStory
       await setDoc(
-        refDoc,
+        doc(db, "pages", "ourStory"),
         { ...form, updatedAt: serverTimestamp() },
         { merge: true }
       )
@@ -296,7 +345,14 @@ export default function Pages() {
         <p className="text-sm text-gray-600 mb-4">Uploading image...</p>
       )}
 
-      {activeTab === "home" && <HomeTab form={form} update={update} />}
+      {activeTab === "home" && (
+        <HomeTab
+          form={homeForm}
+          update={updateHome}
+          cloudName={CLOUDINARY_CLOUD_NAME}
+          uploadPreset={CLOUDINARY_UPLOAD_PRESET}
+        />
+      )}
 
       {activeTab === "favorites" && (
         <FavoritesTab
@@ -329,7 +385,6 @@ export default function Pages() {
         />
       )}
 
-      {/* ✅ NEW EVENTS TAB */}
       {activeTab === "events" && <EventsTab />}
 
       {/* Save always visible */}
@@ -339,7 +394,11 @@ export default function Pages() {
         className="bg-[#7B2220] text-white px-6 py-3 rounded-xl disabled:opacity-60"
         type="button"
       >
-        {saving ? "Saving..." : "Save Changes"}
+        {saving
+          ? "Saving..."
+          : activeTab === "home"
+          ? "Save Home"
+          : "Save Changes"}
       </button>
     </div>
   )
