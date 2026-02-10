@@ -1,17 +1,20 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth, db } from "../firebase"
 import { useCart } from "../context/CartContext"
+import { Bell } from "lucide-react"
 
 // ✅ Realtime wishlist badge
-import { collection, onSnapshot } from "firebase/firestore"
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore"
 
 import DeliveryLayout from "./layouts/delivery"
 import LoginModal from "./LoginModal"
 import RegisterModal from "./RegisterModal"
 import Cart from "./Cart"
 import WhatsAppIcon from "./layouts/WhatsAppIcon"
+import NotificationHistory from "./common/Notification-history"
 
 /* ---------------- NAV LINK ---------------- */
 function NavLink({ to, children, onClick }) {
@@ -45,6 +48,48 @@ function Navbar() {
   const [showRegister, setShowRegister] = useState(false)
   const [user, setUser] = useState(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState([])
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([])
+      return
+    }
+
+    const notifRef = collection(db, "users", user.uid, "notifications")
+    const q = query(
+      notifRef,
+      orderBy("createdAt", "desc"),
+      limit(20)
+    )
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const items = snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            message: data.message || "Notification",
+            time: data.createdAt?.toDate
+              ? data.createdAt.toDate().toLocaleString()
+              : "Just now",
+            read: !!data.read,
+          }
+        })
+
+        setNotifications(items)
+      },
+      (err) => {
+        console.error("Notifications listener error:", err)
+        setNotifications([])
+      }
+    )
+
+    return () => unsub()
+  }, [user])
+
 
   // ✅ Wishlist badge count
   const [wishlistCount, setWishlistCount] = useState(0)
@@ -86,7 +131,6 @@ function Navbar() {
     // not logged in → localStorage count
     if (!user) {
       const local = JSON.parse(localStorage.getItem("wishlist")) || []
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWishlistCount(local.length)
       return
     }
@@ -170,6 +214,29 @@ function Navbar() {
                 </span>
               )}
             </Link>
+
+            {/* Notification */}
+            <div className="relative mr-4 hidden md:block">
+              <button
+                onClick={() => setShowNotifications((v) => !v)}
+                aria-label="Notifications"
+                className="relative p-1 rounded-full hover:bg-gray-200 transition"
+              >
+                <Bell className="w-6 h-6 text-gray-700 animate-pulse" />
+
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2220] text-white text-[11px] font-bold flex items-center justify-center leading-none">
+                    {notifications.length > 99 ? "99+" : notifications.length}
+                  </span>
+                )}
+              </button>
+
+              <NotificationHistory
+                open={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                notifications={notifications}
+              />
+            </div>
 
             {/* ACCOUNT */}
             <button

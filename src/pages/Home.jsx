@@ -7,6 +7,7 @@ import Favorites from "../components/home/favorites"
 import OurStory from "../components/home/ourstory"
 import useScrollToHash from "../hooks/useScrollToHash"
 import Events from "../components/home/events"
+import PickUp from "../components/home/pickUp"
 
 const DEFAULT_HOME = {
   heading: "Homemade cakes and pastries",
@@ -115,14 +116,22 @@ function Home() {
         </div>
       </section>
 
+      {/* Events Section */}
       <section>
         <Events />
       </section>
 
+      {/* Pick-Up Orders Section */}
+      <section>
+        <PickUp />
+      </section>
+
+      {/* Favorites Section */}
       <section>
         <Favorites />
       </section>
 
+      {/* Our Story Section */}
       <section id="our-story">
         <OurStory />
       </section>
