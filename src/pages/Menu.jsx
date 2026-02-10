@@ -9,6 +9,7 @@ import { flyToCart } from "../utils/flyToCart"
 import ProductSkeleton from "../context/ProductSkeleton"
 import PolicyAdsModal from "../components/modals/PolicyAdsModal"
 import { toggleWishlist } from "../utils/wishlist"
+import StarRating from "../components/common/StarRating"
 
 export default function Menu() {
   const [products, setProducts] = useState([])
@@ -19,6 +20,7 @@ export default function Menu() {
   const [loading, setLoading] = useState(true)
   const [wishlistIds, setWishlistIds] = useState([])
   const [showAd, setShowAd] = useState(false)
+  const [productRatings, setProductRatings] = useState({}) // { productId: { average: number, count: number } }
 
   useEffect(() => {
     const hasSeenMenuAd = localStorage.getItem("menuAdSeen");
@@ -33,6 +35,41 @@ export default function Menu() {
     setShowAd(false);
   };
 
+  // Fetch product ratings from reviews (subcollection)
+  const fetchProductRatings = async (productIds) => {
+    const ratingsMap = {}
+    
+    for (const productId of productIds) {
+      try {
+        const reviewsRef = collection(db, "products", productId, "reviews")
+        const reviewsSnap = await getDocs(reviewsRef)
+        const reviews = reviewsSnap.docs.map((d) => d.data())
+        
+        if (reviews.length > 0) {
+          const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0)
+          const average = sum / reviews.length
+          ratingsMap[productId] = {
+            average: average,
+            count: reviews.length
+          }
+        } else {
+          ratingsMap[productId] = {
+            average: 0,
+            count: 0
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching reviews for product ${productId}:`, error)
+        ratingsMap[productId] = {
+          average: 0,
+          count: 0
+        }
+      }
+    }
+    
+    setProductRatings(ratingsMap)
+  }
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -45,6 +82,10 @@ export default function Menu() {
         ).sort((a, b) => a.localeCompare(b))
 
         setCategories(uniqueCats)
+        
+        // Fetch ratings for all products
+        const productIds = data.map((p) => p.id)
+        await fetchProductRatings(productIds)
       } catch (err) {
         console.error("Failed to fetch products:", err)
       } finally {
@@ -172,9 +213,24 @@ export default function Menu() {
 
                       <div className="px-6 pb-6">
                         <h3 className="text-center font-semibold text-[#7B2220] font-cooper">
-  {product.name}
-</h3>
-                        <p className="text-center mt-2">€{product.price}</p>
+                          {product.name}
+                        </h3>
+
+                        {/* ⭐ Rating Stars */}
+                        <div className="flex items-center justify-center gap-2 mt-2">
+                          <StarRating 
+                            rating={productRatings[product.id]?.average || 0} 
+                            interactive={false} 
+                            size="xs" 
+                            color="primary"
+                          />
+                          {productRatings[product.id]?.count > 0 && (
+                            <span className="text-xs text-gray-600">
+                              ({productRatings[product.id].average.toFixed(1)})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-center mt-2 font-semibold text-[#7B2220]">€{product.price}</p>
 
                         <div className="mt-4 flex gap-4">
                           <button

@@ -18,6 +18,7 @@ import FavoritesTab from "./pages_components/FavoritesTab"
 import StoriesTab from "./pages_components/StoriesTab"
 import TestimonialsTab from "./pages_components/TestimonialsTab"
 import EventsTab from "./pages_components/EventsTab"
+import Loading from "../common/Loading"
 
 export default function Pages() {
   const [loading, setLoading] = useState(true)
@@ -335,71 +336,97 @@ export default function Pages() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>
+  if (loading) {
+    return (
+      <Loading
+        message="Loading page content..."
+        fullscreen
+      />
+    )
+  }
 
   return (
-    <div className="p-6">
-      <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {uploading && (
-        <p className="text-sm text-gray-600 mb-4">Uploading image...</p>
-      )}
+        {uploading && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <Loading
+              message="Uploading image..."
+              size="text-xl"
+            />
+          </div>
+        )}
 
-      {activeTab === "home" && (
-        <HomeTab
-          form={homeForm}
-          update={updateHome}
-          cloudName={CLOUDINARY_CLOUD_NAME}
-          uploadPreset={CLOUDINARY_UPLOAD_PRESET}
-        />
-      )}
+        <div className="mb-6">
+          {activeTab === "home" && (
+            <HomeTab
+              form={homeForm}
+              update={updateHome}
+              cloudName={CLOUDINARY_CLOUD_NAME}
+              uploadPreset={CLOUDINARY_UPLOAD_PRESET}
+            />
+          )}
 
-      {activeTab === "favorites" && (
-        <FavoritesTab
-          form={form}
-          update={update}
-          allProducts={allProducts}
-          productsLoading={productsLoading}
-          autoFavoritesLoading={autoFavoritesLoading}
-          autoFavoritesPreview={autoFavoritesPreview}
-          computeWeeklyMostBoughtTop3={computeWeeklyMostBoughtTop3}
-          setFavoriteAt={setFavoriteAt}
-        />
-      )}
+          {activeTab === "favorites" && (
+            <FavoritesTab
+              form={form}
+              update={update}
+              allProducts={allProducts}
+              productsLoading={productsLoading}
+              autoFavoritesLoading={autoFavoritesLoading}
+              autoFavoritesPreview={autoFavoritesPreview}
+              computeWeeklyMostBoughtTop3={computeWeeklyMostBoughtTop3}
+              setFavoriteAt={setFavoriteAt}
+            />
+          )}
 
-      {activeTab === "stories" && (
-        <StoriesTab
-          form={form}
-          update={update}
-          uploading={uploading}
-          handleUpload={handleUpload}
-        />
-      )}
+          {activeTab === "stories" && (
+            <StoriesTab
+              form={form}
+              update={update}
+              uploading={uploading}
+              handleUpload={handleUpload}
+            />
+          )}
 
-      {activeTab === "testimonials" && (
-        <TestimonialsTab
-          form={form}
-          update={update}
-          addTestimonial={addTestimonial}
-          removeTestimonial={removeTestimonial}
-        />
-      )}
+          {activeTab === "testimonials" && (
+            <TestimonialsTab
+              form={form}
+              update={update}
+              addTestimonial={addTestimonial}
+              removeTestimonial={removeTestimonial}
+            />
+          )}
 
-      {activeTab === "events" && <EventsTab />}
+          {activeTab === "events" && <EventsTab />}
+        </div>
 
-      {/* Save always visible */}
-      <button
-        onClick={save}
-        disabled={saving || uploading || autoFavoritesLoading}
-        className="bg-[#7B2220] text-white px-6 py-3 rounded-xl disabled:opacity-60"
-        type="button"
-      >
-        {saving
-          ? "Saving..."
-          : activeTab === "home"
-          ? "Save Home"
-          : "Save Changes"}
-      </button>
+        {/* Save Button - Fixed at bottom */}
+        <div className="sticky bottom-6 mt-8 flex justify-end">
+          <button
+            onClick={save}
+            disabled={saving || uploading || autoFavoritesLoading}
+            className="px-8 py-4 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 text-lg"
+            type="button"
+          >
+            {saving ? (
+              <>
+                <Loading
+                  message="Saving..."
+                  size="text-xl"
+                />
+              </>
+            ) : (
+              <>
+                <span>💾</span>
+                <span>{activeTab === "home" ? "Save Home" : "Save Changes"}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -9,99 +9,167 @@ export default function FavoritesTab({
   setFavoriteAt,
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm mb-6">
-      <h2 className="text-lg font-bold mb-2">Favorites</h2>
-      <p className="text-sm text-gray-600 mb-4">Choose how Favorites are selected.</p>
-
-      <div className="flex flex-wrap gap-3 mb-5">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
-            name="favMode"
-            checked={(form.favoritesMode || "manual") === "manual"}
-            onChange={() => update("favoritesMode", "manual")}
-          />
-          Admin picks 3
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
-            name="favMode"
-            checked={form.favoritesMode === "weeklyMostBought"}
-            onChange={() => update("favoritesMode", "weeklyMostBought")}
-          />
-          Auto: Weekly Most Bought
-        </label>
+    <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 mb-6">
+      <div className="mb-6 pb-4 border-b border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900">Favorites Configuration</h2>
+        <p className="text-sm text-gray-500 mt-1">Choose how favorites are selected and displayed</p>
       </div>
 
+      {/* Selection Mode */}
+      <div className="mb-8">
+        <label className="block text-sm font-semibold text-gray-700 mb-4">
+          Selection Mode
+        </label>
+        <div className="grid md:grid-cols-2 gap-4">
+          <label
+            className={`
+              relative flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200
+              ${
+                (form.favoritesMode || "manual") === "manual"
+                  ? "border-[#7B2220] bg-[#7B2220]/5"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }
+            `}
+          >
+            <input
+              type="radio"
+              name="favMode"
+              checked={(form.favoritesMode || "manual") === "manual"}
+              onChange={() => update("favoritesMode", "manual")}
+              className="w-5 h-5 text-[#7B2220] focus:ring-[#7B2220] focus:ring-2"
+            />
+            <div className="flex-1">
+              <div className="font-semibold text-gray-900">Manual Selection</div>
+              <div className="text-sm text-gray-500 mt-1">Admin manually picks 3 favorite products</div>
+            </div>
+          </label>
+
+          <label
+            className={`
+              relative flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200
+              ${
+                form.favoritesMode === "weeklyMostBought"
+                  ? "border-[#7B2220] bg-[#7B2220]/5"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }
+            `}
+          >
+            <input
+              type="radio"
+              name="favMode"
+              checked={form.favoritesMode === "weeklyMostBought"}
+              onChange={() => update("favoritesMode", "weeklyMostBought")}
+              className="w-5 h-5 text-[#7B2220] focus:ring-[#7B2220] focus:ring-2"
+            />
+            <div className="flex-1">
+              <div className="font-semibold text-gray-900">Auto Selection</div>
+              <div className="text-sm text-gray-500 mt-1">Automatically picks weekly most bought products</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Auto Mode Section */}
       {form.favoritesMode === "weeklyMostBought" && (
-        <div className="border rounded-xl p-4 mb-5">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm font-semibold">
-              This will pick Top 3 products based on this week&apos;s orders.
-            </p>
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-2">Weekly Most Bought</h3>
+              <p className="text-sm text-gray-600">
+                Automatically selects the top 3 products based on this week&apos;s order quantities (Monday to Sunday).
+              </p>
+            </div>
 
             <button
               type="button"
               onClick={computeWeeklyMostBoughtTop3}
               disabled={autoFavoritesLoading || productsLoading}
-              className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
+              className="px-6 py-3 rounded-xl bg-[#7B2220] text-white font-medium hover:bg-[#8B3230] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap"
             >
-              {autoFavoritesLoading ? "Computing..." : "Compute Now"}
+              {autoFavoritesLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin">⏳</span> Computing...
+                </span>
+              ) : (
+                "🔄 Compute Now"
+              )}
             </button>
           </div>
 
           {autoFavoritesPreview.length > 0 && (
-            <div className="mt-4 space-y-2 text-sm">
+            <div className="mt-6 space-y-3">
+              <h4 className="font-semibold text-gray-900 text-sm mb-3">Preview Results:</h4>
               {autoFavoritesPreview.map((p, idx) => (
-                <div key={p.id} className="flex items-center justify-between">
-                  <span>
-                    #{idx + 1} {p.name}
-                    {p.price != null ? ` • €${p.price}` : ""}
-                  </span>
-                  <span className="text-gray-600">qty: {p.totalQty}</span>
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#7B2220] text-white font-bold text-sm">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{p.name}</div>
+                      {p.price != null && (
+                        <div className="text-sm text-gray-500">€{p.price}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                    {p.totalQty} sold
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
           {autoFavoritesPreview.length === 0 && !autoFavoritesLoading && (
-            <p className="mt-3 text-sm text-gray-600">
-              Click “Compute Now” to generate this week’s Top 3.
-            </p>
+            <div className="mt-4 p-4 bg-white/50 rounded-lg border border-blue-200">
+              <p className="text-sm text-gray-600 text-center">
+                Click &quot;Compute Now&quot; to generate this week&apos;s Top 3 favorites
+              </p>
+            </div>
           )}
         </div>
       )}
 
+      {/* Manual Mode Section */}
       {form.favoritesMode !== "weeklyMostBought" && (
-        <>
+        <div>
           {productsLoading ? (
-            <div className="text-sm">Loading products...</div>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin text-4xl mb-2">⏳</div>
+                <p className="text-sm text-gray-600">Loading products...</p>
+              </div>
+            </div>
           ) : (
-            <div className="grid md:grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i}>
-                  <label className="block text-sm font-semibold mb-2">
-                    Product #{i + 1}
-                  </label>
-                  <select
-                    value={form.favoritesProductIds?.[i] || ""}
-                    onChange={(e) => setFavoriteAt(i, e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2"
-                  >
-                    <option value="">— Select product —</option>
-                    {allProducts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name || "Unnamed"} {p.price != null ? `• €${p.price}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+            <div className="space-y-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Select 3 Favorite Products</h3>
+              <div className="grid md:grid-cols-3 gap-6">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Favorite #{i + 1} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={form.favoritesProductIds?.[i] || ""}
+                      onChange={(e) => setFavoriteAt(i, e.target.value)}
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all bg-white"
+                    >
+                      <option value="">— Select product —</option>
+                      {allProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name || "Unnamed"} {p.price != null ? `• €${p.price}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )

@@ -338,7 +338,7 @@ function ProductsPage() {
         <img
           src={row.image}
           alt={row.name}
-          className="w-12 h-12 object-cover rounded"
+          className="w-16 h-16 object-cover rounded-xl border-2 border-gray-200 shadow-sm"
         />
       ),
     },
@@ -388,23 +388,26 @@ function ProductsPage() {
         <div className="flex gap-2">
           <button
             onClick={() => handleEdit(row)}
-            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
+            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 border border-blue-200"
+            title="Edit product"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => toggleAvailability(row)}
-            className={`px-3 py-2 rounded text-white transition ${
+            className={`px-3 py-2 rounded-lg text-white font-medium transition-all duration-200 ${
               row.available
-                ? "bg-yellow-500 hover:bg-yellow-600"
-                : "bg-gray-500 hover:bg-gray-600"
+                ? "bg-yellow-500 hover:bg-yellow-600 shadow-sm"
+                : "bg-gray-500 hover:bg-gray-600 shadow-sm"
             }`}
+            title={row.available ? "Disable product" : "Enable product"}
           >
             {row.available ? "Disable" : "Enable"}
           </button>
           <button
             onClick={() => handleDelete(row)}
-            className="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition"
+            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200"
+            title="Delete product"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -414,177 +417,282 @@ function ProductsPage() {
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-6 space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
         {/* HEADER */}
-        <div className="mb-6 space-y-4">
-          {/* Top row: Title + Add */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Products
-            </h1>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">Products Management</h1>
+              <p className="text-sm text-gray-500">Manage your product catalog, pricing, and availability</p>
+            </div>
 
             <button
               onClick={() => setShowModal(true)}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+              className="px-6 py-3 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
             >
-              Add Product
+              <span>+</span>
+              <span>Add Product</span>
             </button>
           </div>
 
-          {/* Second row: Search + Filter */}
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="w-full md:max-w-md">
-              <Search
-                value={search}
-                onChange={setSearch}
-                placeholder="Search by name or category"
-              />
-            </div>
+          {/* Search + Filter */}
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex-1 min-w-[250px]">
+                <Search
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search by name or category"
+                />
+              </div>
 
-            <Filter
-              label="Filter by Category"
-              value={categoryFilter}
-              options={categories}
-              onChange={setCategoryFilter}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 🔹 TABLE */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <DataTable
-          columns={columns}
-          data={paginatedProducts}
-          loading={loading}
-        />
-      </div>
-
-      {/* 🔹 PAGINATION */}
-      <div className="mt-6 flex justify-center">
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </div>
-
-      {/* 🔹 MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded w-96 shadow-xl">
-            <h2 className="text-xl font-bold mb-4">
-              {isEditing ? "Edit Product" : "Add Product"}
-            </h2>
-
-            <input
-              className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Name"
-              value={newProduct.name}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  name: e.target.value,
-                })
-              }
-            />
-
-            <input
-              type="number"
-              className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Price"
-              value={newProduct.price}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  price: e.target.value,
-                })
-              }
-            />
-
-            <input
-              className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Category (e.g. cookies)"
-              value={newProduct.category}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  category: e.target.value,
-                })
-              }
-            />
-
-            {/* ✅ NEW INPUT */}
-            <input
-              type="number"
-              min="0"
-              className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Daily limit (optional)"
-              value={newProduct.dailyLimit}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  dailyLimit: e.target.value,
-                })
-              }
-            />
-
-            <input
-              type="text"
-              className="border w-full mb-4 px-3 py-2 rounded"
-              placeholder="Product Discount (e.g. 10% or 5€)"
-              value={newProduct.productDiscount}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  productDiscount: e.target.value,
-                })
-              }
-            />
-
-            <textarea
-              className="border w-full mb-2 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Description"
-              value={newProduct.description}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  description: e.target.value,
-                })
-              }
-            />
-
-            <input
-              type="file"
-              className="border w-full mb-4 px-3 py-2 rounded"
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  imageFile: e.target.files[0],
-                })
-              }
-            />
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={resetModal}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={isEditing ? handleUpdateProduct : handleAddProduct}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition disabled:opacity-60"
-                disabled={uploading}
-              >
-                {uploading ? "Saving..." : isEditing ? "Update" : "Add"}
-              </button>
+              <div className="min-w-[200px]">
+                <Filter
+                  label="Filter by Category"
+                  value={categoryFilter}
+                  options={categories}
+                  onChange={setCategoryFilter}
+                />
+              </div>
             </div>
           </div>
         </div>
-      )}
+
+        {/* TABLE */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={paginatedProducts}
+            loading={loading}
+          />
+        </div>
+
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
+
+        {/* MODAL */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {isEditing ? "Edit Product" : "Add New Product"}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isEditing ? "Update product information" : "Fill in the details to add a new product"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={resetModal}
+                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-8 space-y-6">
+                {/* Product Name */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Product Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+                    placeholder="Enter product name"
+                    value={newProduct.name}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        name: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                {/* Price and Category Row */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Price (€) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+                      placeholder="0.00"
+                      value={newProduct.price}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          price: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+                      placeholder="e.g. cookies, cakes"
+                      value={newProduct.category}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          category: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Daily Limit and Discount Row */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Daily Limit
+                      <span className="text-xs text-gray-500 ml-2">(optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+                      placeholder="Leave empty for unlimited"
+                      value={newProduct.dailyLimit}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          dailyLimit: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Product Discount
+                      <span className="text-xs text-gray-500 ml-2">(e.g. 10% or 5€)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+                      placeholder="10% or 5€"
+                      value={newProduct.productDiscount}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          productDiscount: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all resize-none"
+                    rows={4}
+                    placeholder="Enter product description..."
+                    value={newProduct.description}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Product Image {!isEditing && <span className="text-red-500">*</span>}
+                  </label>
+                  <label className="block">
+                    <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#7B2220] hover:bg-[#7B2220]/5 transition-all duration-200">
+                      <div className="text-center">
+                        <div className="text-3xl mb-2">📷</div>
+                        <span className="text-sm text-gray-600">
+                          {newProduct.imageFile
+                            ? newProduct.imageFile.name
+                            : isEditing
+                            ? "Click to change image (optional)"
+                            : "Click to upload image"}
+                        </span>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          imageFile: e.target.files[0],
+                        })
+                      }
+                    />
+                  </label>
+                  {isEditing && newProduct.imageFile && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      New image will replace the existing one
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-8 py-6 rounded-b-2xl flex justify-end gap-4">
+                <button
+                  onClick={resetModal}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={isEditing ? handleUpdateProduct : handleAddProduct}
+                  className="px-8 py-3 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isEditing ? "💾" : "➕"}</span>
+                      <span>{isEditing ? "Update Product" : "Add Product"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -169,18 +169,20 @@ function UsersPage() {
             <button
               type="button"
               onClick={() => openView(row)}
-              className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
+              className="px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 border border-blue-200 text-sm font-medium"
+              title="View user details"
             >
-              View
+              👁️ View
             </button>
 
             <button
               type="button"
               onClick={() => openDelete(row)}
               disabled={deletingId === row.id}
-              className="px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete user"
             >
-              {deletingId === row.id ? "Deleting..." : "Delete"}
+              {deletingId === row.id ? "⏳ Deleting..." : "🗑️ Delete"}
             </button>
           </div>
         ),
@@ -264,39 +266,49 @@ function UsersPage() {
   }, [selectedUser])
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Users</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Users Management</h1>
+          <p className="text-sm text-gray-500">View and manage user accounts and information</p>
+        </div>
 
-      <DataTable columns={columns} data={users} loading={loading} />
+        {/* Table */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <DataTable columns={columns} data={users} loading={loading} />
+        </div>
+      </div>
 
       {/* ✅ VIEW MODAL - with top bar tabs */}
       {viewOpen && (
         <>
           {/* overlay */}
-          <div onClick={closeView} className="fixed inset-0 bg-black/40 z-50" />
+          <div onClick={closeView} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
 
           {/* modal */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="w-full max-w-[820px] bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="w-full max-w-[900px] bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
               {/* header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                 <div>
-                  <h2 className="text-lg font-semibold">User Details</h2>
-                  <p className="text-xs text-gray-500">
-                    Browse info using tabs
+                  <h2 className="text-2xl font-bold text-gray-900">User Details</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Browse user information using tabs below
                   </p>
                 </div>
                 <button
                   onClick={closeView}
-                  className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all"
+                  title="Close"
                 >
-                  Close
+                  ×
                 </button>
               </div>
 
               {/* ✅ TOP TAB BAR */}
-              <div className="px-6 pt-4">
-                <div className="flex items-center gap-2 border-b">
+              <div className="px-8 pt-6 bg-white border-b border-gray-200">
+                <div className="flex items-center gap-2">
                   <TabButton
                     active={activeViewTab === "account"}
                     onClick={() => setActiveViewTab("account")}
@@ -319,7 +331,7 @@ function UsersPage() {
               </div>
 
               {/* body (scrollable if too long) */}
-              <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+              <div className="px-8 py-6 max-h-[calc(90vh-200px)] overflow-y-auto bg-gray-50">
                 {/* ACCOUNT TAB */}
                 {activeViewTab === "account" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -347,9 +359,11 @@ function UsersPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">
-                        No address info saved.
-                      </p>
+                      <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="text-4xl mb-3">📍</div>
+                        <p className="text-sm font-medium text-gray-600">No address info saved</p>
+                        <p className="text-xs text-gray-500 mt-1">This user hasn't provided address information</p>
+                      </div>
                     )}
                   </>
                 )}
@@ -368,16 +382,20 @@ function UsersPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">No other fields.</p>
+                      <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
+                        <div className="text-4xl mb-3">📋</div>
+                        <p className="text-sm font-medium text-gray-600">No other fields</p>
+                        <p className="text-xs text-gray-500 mt-1">No additional information available</p>
+                      </div>
                     )}
                   </>
                 )}
               </div>
 
-              <div className="px-6 py-4 border-t flex justify-end">
+              <div className="px-8 py-6 border-t border-gray-200 bg-white flex justify-end">
                 <button
                   onClick={closeView}
-                  className="px-4 py-2 rounded-md bg-black text-white text-sm hover:opacity-90"
+                  className="px-8 py-3 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] transition-all duration-200 shadow-md hover:shadow-lg"
                 >
                   Done
                 </button>
@@ -391,37 +409,49 @@ function UsersPage() {
       {deleteOpen && (
         <>
           {/* overlay */}
-          <div onClick={closeDelete} className="fixed inset-0 bg-black/40 z-50" />
+          <div onClick={closeDelete} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
 
           {/* modal */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="w-full max-w-[520px] bg-white rounded-xl shadow-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b">
-                <h2 className="text-lg font-semibold text-red-600">Delete User</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  This action cannot be undone.
-                </p>
+            <div className="w-full max-w-[600px] bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-red-600">Delete User</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      This action cannot be undone
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-6 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Detail label="Email" value={userToDelete?.email} />
-                  <Detail label="Username" value={userToDelete?.username} />
-                  <Detail label="User ID" value={userToDelete?.id} />
-                  <Detail label="Role" value={userToDelete?.role || "User"} />
+              <div className="p-8 space-y-6 bg-gray-50">
+                <div className="bg-white rounded-xl p-6 border border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">User Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Detail label="Email" value={userToDelete?.email} />
+                    <Detail label="Username" value={userToDelete?.username} />
+                    <Detail label="User ID" value={userToDelete?.id} />
+                    <Detail label="Role" value={userToDelete?.role || "User"} />
+                  </div>
                 </div>
 
-                <p className="text-xs text-gray-500">
-                  Note: This deletes only the Firestore document in <b>users</b>. Firebase
-                  Auth account is not removed unless you delete it via Admin SDK.
-                </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-semibold">Note:</span> This deletes only the Firestore document in <b>users</b>. Firebase
+                    Auth account is not removed unless you delete it via Admin SDK.
+                  </p>
+                </div>
               </div>
 
-              <div className="px-6 py-4 border-t flex items-center justify-end gap-2">
+              <div className="px-8 py-6 border-t border-gray-200 bg-white flex items-center justify-end gap-3">
                 <button
                   onClick={closeDelete}
                   disabled={deletingId === userToDelete?.id}
-                  className="px-4 py-2 rounded-md border text-sm hover:bg-gray-50 disabled:opacity-60"
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -429,9 +459,19 @@ function UsersPage() {
                 <button
                   onClick={confirmDelete}
                   disabled={deletingId === userToDelete?.id}
-                  className="px-4 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-60"
+                  className="px-8 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {deletingId === userToDelete?.id ? "Deleting..." : "Yes, Delete"}
+                  {deletingId === userToDelete?.id ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🗑️</span>
+                      <span>Yes, Delete</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -447,24 +487,30 @@ function TabButton({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={[
-        "px-3 py-2 text-sm -mb-px border-b-2",
-        active
-          ? "border-black font-semibold text-black"
-          : "border-transparent text-gray-500 hover:text-black",
-      ].join(" ")}
+      className={`
+        relative px-6 py-3 text-sm font-semibold transition-all duration-200
+        rounded-t-lg border-b-2 border-transparent
+        ${
+          active
+            ? "text-[#7B2220] border-[#7B2220] bg-[#7B2220]/5"
+            : "text-gray-600 hover:text-[#7B2220] hover:bg-gray-50"
+        }
+      `}
     >
       {children}
+      {active && (
+        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#7B2220] rounded-full" />
+      )}
     </button>
   )
 }
 
 function Detail({ label, value }) {
   return (
-    <div className="border rounded-lg p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm font-medium break-words whitespace-pre-wrap">
-        {value || "—"}
+    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-[#7B2220]/30 hover:shadow-md transition-all duration-200">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-sm font-medium text-gray-900 break-words whitespace-pre-wrap">
+        {value || <span className="text-gray-400">—</span>}
       </p>
     </div>
   )

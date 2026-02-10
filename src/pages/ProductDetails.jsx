@@ -17,6 +17,7 @@ import { Search } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import StarRating from "../components/common/StarRating";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -145,35 +146,79 @@ export default function ProductDetails() {
   const [userComment, setUserComment] = useState("");
 
   const fetchReviews = async (productId) => {
-    const q = query(
-      collection(db, "products", productId, "reviews"),
-      orderBy("createdAt", "desc")
-    );
-    const snap = await getDocs(q);
-    setReviews(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    try {
+      const q = query(
+        collection(db, "products", productId, "reviews"),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+      const reviewsData = snap.docs.map((d) => {
+        const data = d.data();
+        let createdAt = new Date();
+        if (data.createdAt?.toDate) {
+          createdAt = data.createdAt.toDate();
+        } else if (data.createdAt?.seconds) {
+          createdAt = new Date(data.createdAt.seconds * 1000);
+        }
+        return {
+          id: d.id,
+          ...data,
+          createdAt,
+        };
+      });
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      toast.error("Failed to load reviews");
+    }
   };
+
+  // Calculate average rating from reviews
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + (review.rating || 0), 0);
+    return sum / reviews.length;
+  }, [reviews]);
 
   const handleSubmitReview = async () => {
     const user = auth.currentUser;
-    if (!user) return toast.info("Please login to leave a review");
-    if (userRating < 1) return toast.info("Please select a rating");
+    if (!user) {
+      toast.info("Please login to leave a review");
+      window.openLoginModal?.();
+      return;
+    }
+    
+    if (userRating < 1) {
+      toast.info("Please select a rating ⭐");
+      return;
+    }
 
-    const reviewRef = doc(collection(db, "products", id, "reviews"));
-    await setDoc(reviewRef, {
-      userId: user.uid,
-      userName: user.displayName || "Anonymous",
-      rating: userRating,
-      comment: userComment,
-      createdAt: serverTimestamp(),
-    });
+    if (!userComment.trim()) {
+      toast.info("Please write a review comment");
+      return;
+    }
 
-    setUserRating(0);
-    setUserComment("");
-    toast.success("Review submitted!");
-    setReviews((prev) => [
-      { id: reviewRef.id, userId: user.uid, userName: user.displayName, rating: userRating, comment: userComment, createdAt: new Date() },
-      ...prev,
-    ]);
+    try {
+      const reviewRef = doc(collection(db, "products", id, "reviews"));
+      await setDoc(reviewRef, {
+        userId: user.uid,
+        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+        userEmail: user.email || null,
+        rating: userRating,
+        comment: userComment.trim(),
+        createdAt: serverTimestamp(),
+      });
+
+      setUserRating(0);
+      setUserComment("");
+      toast.success("Review submitted successfully! ⭐");
+      
+      // Refresh reviews from Firestore
+      await fetchReviews(id);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      toast.error("Failed to submit review. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -257,6 +302,20 @@ export default function ProductDetails() {
             {/* RIGHT INFO */}
             <div className="text-center md:text-left text-[#7B2220]">
               <h1 className="text-4xl font-extrabold">{product.name}</h1>
+              
+              {/* Average Rating Display */}
+              <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                <StarRating rating={averageRating} interactive={false} size="md" color="primary" />
+                {reviews.length > 0 && (
+                  <span className="text-md text-gray-600">
+                    ({averageRating.toFixed(1)}) • {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+                  </span>
+                )}
+                {reviews.length === 0 && (
+                  <span className="text-md text-gray-500">No reviews yet</span>
+                )}
+              </div>
+
               <p className="text-sm mt-4 leading-relaxed max-w-md md:mx-0 mx-auto">{product.description || "No description available."}</p>
               <p className="text-sm font-bold text-right mt-2 max-w-md md:ml-0 mx-auto">₱{product.price}</p>
 
@@ -391,51 +450,79 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            {/* REVIEWS DISPLAY */}
-            <div className="mt-6 border-t border-gray-200 pt-4">
-              <h2 className="text-lg font-semibold mb-2">Customer Reviews</h2>
-              {reviews.length === 0 && <p className="text-sm text-gray-500">No reviews yet.</p>}
-              {reviews.map((r) => (
-                <div key={r.id} className="border-b border-gray-200 py-3">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{r.userName}</p>
-                    <div className="flex gap-1 text-yellow-400">
-                      {Array.from({ length: 5 }).map((_, idx) => <span key={idx}>{idx < r.rating ? "★" : "☆"}</span>)}
-                    </div>
+            {/* REVIEWS SECTION */}
+            <div className="md:col-span-2 mt-8 border-t-2 border-gray-300 pt-6">
+              <h2 className="text-2xl font-bold text-[#7B2220] mb-6">Customer Reviews</h2>
+              
+              {/* REVIEWS DISPLAY */}
+              <div className="space-y-4 mb-8">
+                {reviews.length === 0 ? (
+                  <div className="text-center py-8 border border-gray-200 rounded-lg bg-gray-50">
+                    <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
                   </div>
-                  {r.comment && <p className="text-sm text-gray-700 mt-1">{r.comment}</p>}
-                  <p className="text-xs text-gray-400">{r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ""}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* REVIEWS SUBMISSION */}
-            <div className="mt-6 border-t border-gray-300 pt-4">
-              <h2 className="text-lg font-semibold mb-2">Leave a Review</h2>
-              <div className="flex items-center gap-1 mt-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setUserRating(i)}
-                    className={`text-2xl ${i <= userRating ? "text-yellow-400" : "text-gray-300"} hover:text-yellow-400 transition-colors`}
-                  >
-                    ★
-                  </button>
-                ))}
+                ) : (
+                  reviews.map((r) => (
+                    <div key={r.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#7B2220] flex items-center justify-center text-white font-semibold">
+                            {(r.userName || "A")[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-[#7B2220]">{r.userName || "Anonymous"}</p>
+                            <StarRating rating={r.rating || 0} interactive={false} size="sm" color="primary" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {r.createdAt instanceof Date 
+                            ? r.createdAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                            : new Date(r.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                          }
+                        </p>
+                      </div>
+                      {r.comment && (
+                        <p className="text-sm text-gray-700 mt-2 leading-relaxed">{r.comment}</p>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
-              <textarea
-                value={userComment}
-                onChange={(e) => setUserComment(e.target.value)}
-                placeholder="Write a review..."
-                className="w-full border border-gray-300 rounded-sm px-3 py-2 mt-2 outline-none"
-              />
-              <button
-                onClick={handleSubmitReview}
-                className="mt-2 bg-[#7B2220] text-white px-4 py-2 rounded hover:opacity-90"
-              >
-                Submit Review
-              </button>
+
+              {/* REVIEWS SUBMISSION */}
+              <div className="bg-white border-2 border-[#7B2220] rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-[#7B2220] mb-4">Write a Review</h3>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+                  <StarRating 
+                    rating={userRating} 
+                    onRatingChange={setUserRating}
+                    interactive={true}
+                    size="lg"
+                    color="primary"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
+                  <textarea
+                    value={userComment}
+                    onChange={(e) => setUserComment(e.target.value)}
+                    placeholder="Share your experience with this product..."
+                    rows={4}
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#7B2220] transition-colors resize-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{userComment.length} characters</p>
+                </div>
+
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={userRating === 0 || !userComment.trim()}
+                  className="w-full bg-[#7B2220] text-white px-6 py-3 rounded-lg hover:bg-[#502455] transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
+                >
+                  Submit Review
+                </button>
+              </div>
             </div>
           </div>
         </div>

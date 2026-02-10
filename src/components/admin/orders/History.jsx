@@ -72,7 +72,16 @@ function History() {
         const data = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(o => ["delivered", "returned"].includes(o.paymentStatus))
-
+          .sort((a, b) => {
+            // Sort by createdAt: oldest first (ascending)
+            const getTime = (timestamp) => {
+              if (!timestamp) return 0
+              if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
+              if (timestamp instanceof Date) return timestamp.getTime()
+              return new Date(timestamp).getTime() || 0
+            }
+            return getTime(a.createdAt) - getTime(b.createdAt)
+          })
 
         // console.log("History Orders data:", data);
         setOrders(data)

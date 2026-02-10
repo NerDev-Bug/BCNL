@@ -112,12 +112,13 @@ export function CartProvider({ children }) {
     await setDoc(
       itemDocRef(uid, item.id),
       {
+        productId: item.productId || null, // ✅ FIX: Save productId to Firestore
         name: item.name,
         price: item.price,
         image: item.image || null,
         category: item.category || null,
         quantity: item.quantity,
-        customization: item.customization || null, // ✅ NEW
+        customization: item.customization || null,
         updatedAt: Date.now(),
       },
       { merge: true }
