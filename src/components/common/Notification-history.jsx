@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { doc, updateDoc } from "firebase/firestore"
+import { db } from "../../firebase"
+import { onAuthStateChanged } from "firebase/auth"
+import { auth } from "../../firebase"
 
 export default function NotificationHistory({
   open,
@@ -8,6 +12,7 @@ export default function NotificationHistory({
   visibleCount = 5,
 }) {
   const ref = useRef(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!open) return
@@ -21,6 +26,42 @@ export default function NotificationHistory({
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [open, onClose])
+
+  const handleNotificationClick = async (notification) => {
+    // Disable click if notification is already read
+    if (notification.read) {
+      return
+    }
+
+    // Disable click if notification is older than 1 day
+    if (notification.createdAt instanceof Date) {
+      const oneDayMs = 24 * 60 * 60 * 1000
+      const isExpired = Date.now() - notification.createdAt.getTime() > oneDayMs
+      if (isExpired) {
+        return
+      }
+    }
+
+    // Mark as read
+    if (notification.id && !notification.read) {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          try {
+            const notifRef = doc(db, "users", user.uid, "notifications", notification.id)
+            await updateDoc(notifRef, { read: true })
+          } catch (error) {
+            console.error("Error marking notification as read:", error)
+          }
+        }
+      })
+    }
+
+    // Navigate if link exists
+    if (notification.link) {
+      navigate(notification.link)
+      onClose()
+    }
+  }
 
   if (!open) return null
 
@@ -42,17 +83,31 @@ export default function NotificationHistory({
             No notification available right now
           </p>
         ) : (
-          visible.map((n) => (
-            <div
-              key={n.id}
-              className="px-4 py-3 border-b last:border-b-0 hover:bg-gray-50"
-            >
-              <p className="text-sm text-gray-800">{n.message}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {n.time}
-              </p>
-            </div>
-          ))
+          visible.map((n) => {
+            const oneDayMs = 24 * 60 * 60 * 1000
+            const isExpired =
+              n.createdAt instanceof Date &&
+              Date.now() - n.createdAt.getTime() > oneDayMs
+
+            const isClickable = !n.read && !isExpired && n.link
+
+            return (
+              <div
+                key={n.id}
+                onClick={() => handleNotificationClick(n)}
+                className={`px-4 py-3 border-b last:border-b-0 ${
+                  isClickable ? "cursor-pointer hover:bg-gray-50" : "cursor-default opacity-70"
+                } ${!n.read ? "bg-blue-50" : ""}`}
+              >
+                <p className="text-sm text-gray-800">{n.message}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {n.time}
+                  {isExpired && " • expired"}
+                  {n.read && !isExpired && " • seen"}
+                </p>
+              </div>
+            )
+          })
         )}
       </div>
 

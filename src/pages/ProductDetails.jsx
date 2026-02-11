@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { db, auth } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
   getDoc,
@@ -144,6 +145,49 @@ export default function ProductDetails() {
   const [reviews, setReviews] = useState([]);
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
+  const [canReview, setCanReview] = useState(false); // Check if user can review this product
+  const [user, setUser] = useState(null);
+
+  // Check if user has delivered orders for this product
+  const checkCanReview = async (productId, userId) => {
+    if (!userId || !productId) {
+      setCanReview(false);
+      return;
+    }
+
+    try {
+      // Check if user has any delivered orders containing this product
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("userId", "==", userId),
+        where("paymentStatus", "==", "delivered")
+      );
+      
+      const ordersSnap = await getDocs(ordersQuery);
+      const hasDeliveredOrder = ordersSnap.docs.some((doc) => {
+        const orderData = doc.data();
+        return orderData.items?.some((item) => item.productId === productId);
+      });
+
+      setCanReview(hasDeliveredOrder);
+    } catch (error) {
+      console.error("Error checking review eligibility:", error);
+      setCanReview(false);
+    }
+  };
+
+  // Listen to auth state and check review eligibility
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser && id) {
+        checkCanReview(id, currentUser.uid);
+      } else {
+        setCanReview(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [id]); // Re-check when product ID changes
 
   const fetchReviews = async (productId) => {
     try {
@@ -488,41 +532,64 @@ export default function ProductDetails() {
                 )}
               </div>
 
-              {/* REVIEWS SUBMISSION */}
-              <div className="bg-white border-2 border-[#7B2220] rounded-lg p-6">
-                <h3 className="text-xl font-semibold text-[#7B2220] mb-4">Write a Review</h3>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
-                  <StarRating 
-                    rating={userRating} 
-                    onRatingChange={setUserRating}
-                    interactive={true}
-                    size="lg"
-                    color="primary"
-                  />
-                </div>
+              {/* REVIEWS SUBMISSION - Only show if user has delivered orders for this product */}
+              {canReview ? (
+                <div className="bg-white border-2 border-[#7B2220] rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-[#7B2220] mb-4">Write a Review</h3>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+                    <StarRating 
+                      rating={userRating} 
+                      onRatingChange={setUserRating}
+                      interactive={true}
+                      size="lg"
+                      color="primary"
+                    />
+                  </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
-                  <textarea
-                    value={userComment}
-                    onChange={(e) => setUserComment(e.target.value)}
-                    placeholder="Share your experience with this product..."
-                    rows={4}
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#7B2220] transition-colors resize-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">{userComment.length} characters</p>
-                </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
+                    <textarea
+                      value={userComment}
+                      onChange={(e) => setUserComment(e.target.value)}
+                      placeholder="Share your experience with this product..."
+                      rows={4}
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#7B2220] transition-colors resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{userComment.length} characters</p>
+                  </div>
 
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={userRating === 0 || !userComment.trim()}
-                  className="w-full bg-[#7B2220] text-white px-6 py-3 rounded-lg hover:bg-[#502455] transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
-                >
-                  Submit Review
-                </button>
-              </div>
+                  <button
+                    onClick={handleSubmitReview}
+                    disabled={userRating === 0 || !userComment.trim()}
+                    className="w-full bg-[#7B2220] text-white px-6 py-3 rounded-lg hover:bg-[#502455] transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              ) : user ? (
+                <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-6 text-center">
+                  <p className="text-gray-600 mb-2">
+                    📦 You can only review products you've ordered and received.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Once your order is delivered, you'll be able to leave a review here!
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-6 text-center">
+                  <p className="text-gray-600 mb-2">
+                    🔐 Please log in to leave a review.
+                  </p>
+                  <button
+                    onClick={() => window.openLoginModal?.()}
+                    className="mt-2 text-[#7B2220] hover:underline font-medium"
+                  >
+                    Login here
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

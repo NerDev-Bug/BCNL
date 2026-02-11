@@ -1,7 +1,11 @@
 import React, { useState, useRef } from "react";
+import { doc, updateDoc, Timestamp } from "firebase/firestore";
+import { db } from "../../firebase";
+import { toast } from "react-toastify";
 
 function ReasonForReturn({ order, onClose }) {
   const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const textareaRef = useRef(null);
 
   const handleChange = (e) => {
@@ -15,10 +19,26 @@ function ReasonForReturn({ order, onClose }) {
     }
   };
 
-  const handleSubmit = () => {
-    console.log("Order returned:", order.id, "Reason:", reason);
-    // TODO: Update Firestore with return reason
-    onClose();
+  const handleSubmit = async () => {
+    if (!reason.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const orderRef = doc(db, "orders", order.id);
+      await updateDoc(orderRef, {
+        paymentStatus: "return_requested",
+        returnReason: reason.trim(),
+        returnRequestedAt: Timestamp.now(),
+      });
+
+      toast.success("Return request submitted successfully. Waiting for admin approval.");
+      onClose();
+    } catch (err) {
+      console.error("Error submitting return request:", err);
+      toast.error("Failed to submit return request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,10 +66,10 @@ function ReasonForReturn({ order, onClose }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!reason.trim()}
+            disabled={!reason.trim() || submitting}
             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
           >
-            Submit
+            {submitting ? "Submitting..." : "Submit"}
           </button>
         </div>
       </div>

@@ -31,16 +31,29 @@ function OrderReturn() {
       setLoading(true);
       setError(null);
       try {
+        // Fetch both return_requested and returned orders
         const q = query(
           collection(db, "orders"),
           where("userId", "==", user.uid),
-          where("paymentStatus", "==", "returned")
+          where("paymentStatus", "in", ["return_requested", "returned"])
         );
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        }))
+        .sort((a, b) => {
+          // Sort by returnRequestedAt or createdAt: newest first
+          const getTime = (timestamp) => {
+            if (!timestamp) return 0;
+            if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
+            if (timestamp instanceof Date) return timestamp.getTime();
+            return new Date(timestamp).getTime() || 0;
+          };
+          const aTime = getTime(a.returnRequestedAt || a.createdAt);
+          const bTime = getTime(b.returnRequestedAt || b.createdAt);
+          return bTime - aTime; // Newest first
+        });
         setOrders(data);
         setCurrentPage(1);
       } catch (err) {
@@ -67,6 +80,21 @@ function OrderReturn() {
     });
   };
 
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return "—";
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp);
+    return date.toLocaleString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const totalPages = Math.ceil(orders.length / pageSize) || 1;
   const paginatedOrders = orders.slice(
     (currentPage - 1) * pageSize,
@@ -75,21 +103,46 @@ function OrderReturn() {
 
   const columns = [
     { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
-    { key: "createdAt", header: "Date", render: (row) => formatDate(row.createdAt) },
+    { key: "createdAt", header: "Order Date", render: (row) => formatDate(row.createdAt) },
     { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
     { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.orderData?.paymentMethod || row.paymentMethod} /> },
     { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
     {
-      key: "delivery",
-      header: "Delivery",
-      render: (row) => {
-        const c = row.orderData;
-        if (!c) return "N/A";
-        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
-      },
+      key: "returnReason",
+      header: "Return Reason",
+      render: (row) => (
+        <div className="max-w-xs">
+          <p className="text-sm text-gray-700" title={row.returnReason || "—"}>
+            {row.returnReason || "—"}
+          </p>
+          {row.returnRequestedAt && (
+            <p className="text-xs text-gray-500 mt-1">
+              Requested: {formatDateTime(row.returnRequestedAt)}
+            </p>
+          )}
+          {row.returnApprovedAt && (
+            <p className="text-xs text-green-600 mt-1">
+              Approved: {formatDateTime(row.returnApprovedAt)}
+            </p>
+          )}
+          {row.returnRejectedAt && (
+            <p className="text-xs text-red-600 mt-1">
+              Rejected: {formatDateTime(row.returnRejectedAt)}
+            </p>
+          )}
+        </div>
+      ),
     },
     { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
-    { key: "status", header: "Fulfillment", render: (row) => <StatusBadge value={row.paymentStatus} /> },
+    { 
+      key: "status", 
+      header: "Status", 
+      render: (row) => (
+        <StatusBadge 
+          value={row.paymentStatus === "return_requested" ? "Pending Approval" : row.paymentStatus} 
+        />
+      ) 
+    },
   ];
 
   if (error) return <div className="p-6 text-red-500">{error}</div>;

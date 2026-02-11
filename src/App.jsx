@@ -8,6 +8,10 @@ import AdminDashboard from "./components/admin/dashboard";
 import UsersPage from "./components/admin/users";
 import ProductsPage from "./components/admin/products";
 import OrdersPage from "./components/admin/orders";
+import SalesPage from "./components/admin/sales";
+import CustomersPage from "./components/admin/customers";
+import ReportsPage from "./components/admin/reports";
+import DiscountsPage from "./components/admin/discounts";
 import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetails";
 import Pages from "./components/admin/pages";
@@ -46,6 +50,10 @@ function App() {
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/products" element={<ProductsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
+          <Route path="/admin/sales" element={<SalesPage />} />
+          <Route path="/admin/customers" element={<CustomersPage />} />
+          <Route path="/admin/reports" element={<ReportsPage />} />
+          <Route path="/admin/discounts" element={<DiscountsPage />} />
           <Route path="/admin/pages" element={<Pages />} />
         </Route>
 

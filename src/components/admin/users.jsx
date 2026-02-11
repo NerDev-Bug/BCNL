@@ -36,10 +36,12 @@ function UsersPage() {
         const q = query(usersCollection, orderBy("createdAt", "desc"))
         const usersSnapshot = await getDocs(q)
 
-        const usersList = usersSnapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
+        const usersList = usersSnapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+          .filter((u) => String(u.role || "").toLowerCase() === "admin")
 
         setUsers(usersList)
       } catch (error) {

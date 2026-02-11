@@ -1,63 +1,39 @@
-import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Check, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 
 export function RowActions({
   onAccept,
   onDelete,
-  acceptLabel = "Accept" // Default label
+  acceptLabel = "Accept", // Default label
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
-
   const handleAccept = () => {
     onAccept?.();
-    setIsOpen(false);
   };
 
   const handleDelete = () => {
     onDelete?.();
-    setIsOpen(false);
   };
 
-  useEffect(() => {
-    const handleClickOutside = event => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center pl-2 text-gray-400 hover:text-gray-600"
-      >
-        <MoreHorizontal className="h-5 w-5 cursor-pointer" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-          {onAccept && (
-            <button
-              onClick={handleAccept}
-              className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50"
-            >
-              <Check className="h-4 w-4" />
-              {acceptLabel}
-            </button>
-          )}
-          <button
-            onClick={handleDelete}
-            className="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 border-t border-gray-200"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-        </div>
+    <div className="flex flex-col items-end gap-1 min-w-[110px]">
+      {onAccept && (
+        <button
+          type="button"
+          onClick={handleAccept}
+          className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-green-600 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 w-full justify-center"
+        >
+          <Check className="h-3 w-3" />
+          {acceptLabel}
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-red-600 bg-red-50 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 w-full justify-center"
+        >
+          <Trash2 className="h-3 w-3" />
+          Delete
+        </button>
       )}
     </div>
   );

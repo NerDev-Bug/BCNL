@@ -87,6 +87,27 @@ function OrderDelivered() {
   const handleModalClose = () => {
     setShowModal(false);
     setSelectedOrder(null);
+    // Refresh orders after return request is submitted
+    if (user) {
+      const fetchOrders = async () => {
+        try {
+          const q = query(
+            collection(db, "orders"),
+            where("userId", "==", user.uid),
+            where("paymentStatus", "==", "delivered")
+          );
+          const snapshot = await getDocs(q);
+          const data = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setOrders(data);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchOrders();
+    }
   };
 
   const columns = [
@@ -110,16 +131,18 @@ function OrderDelivered() {
       key: "action",
       header: "Action",
       render: (row) => {
-        // Convert timestamp to Date
-        const createdAt = row.createdAt?.seconds
-          ? new Date(row.createdAt.seconds * 1000)
-          : new Date(row.createdAt);
+        // Check 7 days from DELIVERY date, not order creation date
+        // Use deliveredAt if available, otherwise fallback to createdAt (for old orders)
+        const deliveryDate = row.deliveredAt || row.createdAt;
+        const deliveryTimestamp = deliveryDate?.seconds
+          ? new Date(deliveryDate.seconds * 1000)
+          : new Date(deliveryDate);
 
         const now = new Date();
-        const diffInDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+        const diffInDays = Math.floor((now - deliveryTimestamp) / (1000 * 60 * 60 * 24));
         const isReturnAllowed = diffInDays <= 7;
 
-        if (!isReturnAllowed) return null; // Hides the button after 7 days
+        if (!isReturnAllowed) return null; // Hides the button after 7 days from delivery
 
         return (
           <button

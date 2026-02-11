@@ -119,7 +119,7 @@ function DataTable({ columns, data, rowKey = "id", loading = false }) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">

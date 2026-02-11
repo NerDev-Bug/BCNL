@@ -4,7 +4,6 @@ import {
   query,
   where,
   getDocs,
-  Timestamp,
 } from "firebase/firestore"
 import { db } from "../../../firebase"
 
@@ -28,50 +27,20 @@ function History() {
   // ✅ Netherlands timezone
   const TIMEZONE = "Europe/Amsterdam"
 
-  // ✅ Helper: get "today" start/end in TIMEZONE, then convert to JS Date
-  // Note: JS Date is always stored as UTC internally; this method ensures the boundaries match the timezone day.
-  const getDayRangeInTimezone = (tz) => {
-    const now = new Date()
-
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(now)
-
-    const y = parts.find((p) => p.type === "year")?.value
-    const m = parts.find((p) => p.type === "month")?.value
-    const d = parts.find((p) => p.type === "day")?.value
-
-    // Construct "local midnight" string then interpret as UTC-like; we’ll correct by using timezone formatting above.
-    // Practical approach: create two dates by formatting again with timeZone.
-    const startLocal = new Date(`${y}-${m}-${d}T00:00:00`)
-    const endLocal = new Date(`${y}-${m}-${d}T23:59:59.999`)
-
-    // This is usually fine for daily summaries; if you need absolute precision for DST edge cases,
-    // we can switch to a timezone lib (luxon/date-fns-tz).
-    return { start: startLocal, end: endLocal }
-  }
-
   useEffect(() => {
-    const fetchDeliveredOrdersToday = async () => {
+    const fetchHistoryOrders = async () => {
       setLoading(true)
       setError(null)
       try {
-        const { start, end } = getDayRangeInTimezone(TIMEZONE)
-
         const q = query(
           collection(db, "orders"),
-          where("createdAt", ">=", Timestamp.fromDate(start)),
-          where("createdAt", "<=", Timestamp.fromDate(end))
+          where("paymentStatus", "in", ["delivered", "returned"])
         );
 
         const snapshot = await getDocs(q)
 
         const data = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(o => ["delivered", "returned"].includes(o.paymentStatus))
           .sort((a, b) => {
             // Sort by createdAt: oldest first (ascending)
             const getTime = (timestamp) => {
@@ -94,7 +63,7 @@ function History() {
       }
     }
 
-    fetchDeliveredOrdersToday()
+    fetchHistoryOrders()
   }, [])
 
   const formatDate = (timestamp) => {
@@ -138,12 +107,12 @@ function History() {
   const summary = useMemo(() => {
     const totalOrders = orders.length
     const totalRevenue = orders.reduce(
-      (sum, o) => sum + Number(o.totalPrice || 0),
+      (sum, o) => sum + Number(o.total || 0),
       0
     )
 
     const paymentBreakdown = orders.reduce((acc, o) => {
-      const m = o.orderData?.paymentMethod || "Unknown"
+      const m = o.paymentMethod || o.orderData?.paymentMethod || "Unknown"
       acc[m] = (acc[m] || 0) + 1
       return acc
     }, {})

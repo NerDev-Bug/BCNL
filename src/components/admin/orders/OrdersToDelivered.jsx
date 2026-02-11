@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, Timestamp, getDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { createDeliveryNotifications } from "../../../utils/notifications";
 
 import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
@@ -85,15 +86,59 @@ function OrdersToDelivered() {
   // Handle accepting an order (changing its status to 'delivered')
   const handleAcceptOrder = async orderId => {
     try {
+      // Get full order data first
       const orderRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        alert("Order not found.");
+        return;
+      }
+
+      const orderData = { id: orderSnap.id, ...orderSnap.data() };
+
+      // Update order status
       await updateDoc(orderRef, {
         paymentStatus: "delivered",
+        deliveredAt: Timestamp.now(),
       });
+
+      // Create delivery notifications for each product in the order
+      if (orderData.userId && orderData.items && orderData.items.length > 0) {
+        console.log("🔔 Attempting to create notifications for order:", orderData.id);
+        console.log("📋 Order data:", {
+          userId: orderData.userId,
+          itemsCount: orderData.items.length,
+          items: orderData.items
+        });
+        
+        try {
+          await createDeliveryNotifications(orderData);
+          console.log("✅ Notifications created successfully");
+        } catch (notifError) {
+          console.error("❌ Error creating notifications:", notifError);
+          console.error("Error details:", {
+            message: notifError.message,
+            code: notifError.code,
+            stack: notifError.stack
+          });
+          toast.error(`Order delivered but notification failed: ${notifError.message}`);
+          // Don't fail the whole operation if notifications fail
+        }
+      } else {
+        console.warn("⚠️ Cannot create notifications - missing data:", {
+          hasUserId: !!orderData.userId,
+          hasItems: !!orderData.items,
+          itemsLength: orderData.items?.length
+        });
+      }
+
       // Remove the order from the list immediately
       setOrders(orders.filter(order => order.id !== orderId));
+      toast.success("Order marked as delivered and customer notified!");
     } catch (err) {
       console.error("Error updating order:", err);
-      alert("Failed to update order status.");
+      toast.error("Failed to update order status.");
     }
   };
 

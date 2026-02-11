@@ -52,9 +52,8 @@ function ProductsPage() {
     price: "",
     description: "",
     category: "",
-    dailyLimit: "", // ✅ NEW
+    dailyLimit: "",
     imageFile: null,
-    productDiscount: "", // ✅ NEW
   });
 
   useEffect(() => {
@@ -86,30 +85,6 @@ function ProductsPage() {
 
     return data.secure_url;
   };
-
-  // ✅ Discount parser & validator
-  const parseDiscount = (value) => {
-    if (!value) return null;
-
-    const v = value.trim();
-
-    // Percentage discount: 10%
-    if (/^\d+(\.\d+)?%$/.test(v)) {
-      const percent = Number(v.replace("%", ""));
-      if (percent <= 0 || percent >= 100) return null;
-      return { type: "percent", value: percent };
-    }
-
-    // Fixed discount: 5 or €5
-    if (/^\d+(\.\d+)?€?$/.test(v)) {
-      const amount = Number(v.replace("€", ""));
-      if (amount <= 0) return null;
-      return { type: "fixed", value: amount };
-    }
-
-    return null;
-  };
-
 
   // 🔹 Fetch products
   useEffect(() => {
@@ -146,13 +121,6 @@ function ProductsPage() {
       return;
     }
 
-    // ✅ Validate discount
-    const discountParsed = parseDiscount(newProduct.productDiscount);
-    if (!discountParsed) {
-      alert("Invalid discount. Use e.g. 10% or 5€");
-      return;
-    }
-
     // ✅ allow blank, but if provided must be valid number >= 0
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
@@ -175,8 +143,8 @@ function ProductsPage() {
         description: newProduct.description,
         category: newProduct.category,
         available: true,
-        dailyLimit: limitNum, // ✅ NEW
-        productDiscount: discountParsed, // ✅ NEW
+        dailyLimit: limitNum,
+        productDiscount: null,
       });
 
       setProducts((prev) => [
@@ -189,8 +157,8 @@ function ProductsPage() {
           description: newProduct.description,
           category: newProduct.category,
           available: true,
-          dailyLimit: limitNum, // ✅ NEW
-          productDiscount: discountParsed, // ✅ NEW
+          dailyLimit: limitNum,
+          productDiscount: null,
         },
       ]);
 
@@ -215,12 +183,6 @@ function ProductsPage() {
       return;
     }
 
-    const discountParsed = parseDiscount(newProduct.productDiscount);
-    if (!discountParsed) {
-      alert("Invalid discount. Use e.g. 10% or 5€");
-      return;
-    }
-
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
         ? null
@@ -239,8 +201,7 @@ function ProductsPage() {
         price: Number(newProduct.price),
         description: newProduct.description,
         category: newProduct.category,
-        dailyLimit: limitNum, // ✅ NEW
-        productDiscount: discountParsed, // ✅ NEW
+        dailyLimit: limitNum,
       };
 
       if (newProduct.imageFile) {
@@ -274,14 +235,8 @@ function ProductsPage() {
       dailyLimit:
         product.dailyLimit === null || typeof product.dailyLimit === "undefined"
           ? ""
-          : String(product.dailyLimit), // ✅ NEW
+          : String(product.dailyLimit),
       imageFile: null,
-      productDiscount:
-        product.productDiscount?.type === "percent"
-          ? `${product.productDiscount.value}%`
-          : product.productDiscount?.type === "fixed"
-          ? `€${product.productDiscount.value}`
-          : "", // ✅ NEW
     });
     setShowModal(true);
   };
@@ -316,9 +271,8 @@ function ProductsPage() {
       price: "",
       description: "",
       category: "",
-      dailyLimit: "", // ✅ NEW
+      dailyLimit: "",
       imageFile: null,
-      productDiscount: "", // ✅ NEW
     });
   };
 
@@ -563,7 +517,7 @@ function ProductsPage() {
                   </div>
                 </div>
 
-                {/* Daily Limit and Discount Row */}
+                {/* Daily Limit */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-700">
@@ -580,25 +534,6 @@ function ProductsPage() {
                         setNewProduct({
                           ...newProduct,
                           dailyLimit: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Product Discount
-                      <span className="text-xs text-gray-500 ml-2">(e.g. 10% or 5€)</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
-                      placeholder="10% or 5€"
-                      value={newProduct.productDiscount}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          productDiscount: e.target.value,
                         })
                       }
                     />

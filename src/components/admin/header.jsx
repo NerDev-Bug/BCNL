@@ -1,12 +1,12 @@
 // src/components/admin/header.jsx
-import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline"
+import { BellIcon } from "@heroicons/react/24/outline"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import { auth } from "../../firebase"
 import { toast } from "react-toastify"
 
-function AdminHeader({ toggleSidebar, sidebarOpen }) {
+function AdminHeader({ sidebarOpen }) {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
@@ -36,59 +36,58 @@ function AdminHeader({ toggleSidebar, sidebarOpen }) {
 
   return (
     <header
-      className={`bg-white shadow-md p-4 flex justify-between items-center
-      fixed top-0 right-0 z-10 transition-all duration-300
-      ${sidebarOpen ? "left-64" : "left-0"}`}
+      className={`bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-4 flex justify-between items-center
+      fixed top-0 right-0 z-20 transition-all duration-300
+      ${sidebarOpen ? "left-64" : "left-20"}`}
     >
-      {/* Left */}
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={toggleSidebar}
-          className="p-2 rounded hover:bg-gray-100"
-        >
-          <Bars3Icon className="w-6 h-6 text-gray-700" />
-        </button>
+      {/* Left - Empty space for future content */}
+      <div className="flex items-center">
+        {/* Reserved for future content */}
       </div>
 
       {/* Right */}
-      <div className="flex items-center space-x-6 relative" ref={dropdownRef}>
-        <button className="p-2 rounded hover:bg-gray-200 transition">
-          <BellIcon className="w-5 h-5 text-gray-700" />
+      <div className="flex items-center space-x-4 relative" ref={dropdownRef}>
+        <button 
+          className="p-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-[#7A3DF0] transition-colors relative"
+          aria-label="Notifications"
+        >
+          <BellIcon className="w-5 h-5" />
         </button>
 
         {/* Profile Avatar */}
         <button
           onClick={() => setOpen((prev) => !prev)}
-          className="focus:outline-none"
+          className="focus:outline-none focus:ring-2 focus:ring-[#7A3DF0]/30 rounded-full transition-all"
+          aria-label="User menu"
         >
           <img
             src="/images/free-user-icon.png"
             alt="Admin Avatar"
-            className="w-8 h-8 rounded-full border"
+            className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#7A3DF0]/50 transition-colors"
           />
         </button>
 
         {/* Dropdown */}
         {open && (
-          <div className="absolute right-0 top-12 w-44 bg-white border rounded-md shadow-lg py-1">
+          <div className="absolute right-0 top-14 w-48 bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg shadow-lg py-2 z-50">
             <button
               onClick={() => {
                 navigate("/profile")
                 setOpen(false)
               }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5EBFF] hover:text-[#502455] transition-colors"
             >
               Profile
             </button>
 
-            <div className="border-t my-1" />
+            <div className="border-t border-gray-200 my-1" />
 
             <button
               onClick={() => {
                 handleLogout()
                 setOpen(false)
               }}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+              className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
             >
               Logout
             </button>

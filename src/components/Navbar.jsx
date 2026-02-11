@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged } from "firebase/auth"
@@ -36,7 +35,7 @@ function NavLink({ to, children, onClick }) {
 
 const BetaBadge = () => (
   <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[60]">
-    <div className="bg-yellow-300 text-black text-xs font-semibold px-3 py-2 rounded-b-lg shadow-lg tracking-wide relative rotate-[-90deg] origin-left">
+    <div className="bg-yellow-300 text-black text-md font-bold px-3 py-2 rounded-b-lg shadow-lg tracking-wide relative rotate-[-90deg] origin-left">
       BETA VERSION
     </div>
   </div>
@@ -69,13 +68,21 @@ function Navbar() {
       (snap) => {
         const items = snap.docs.map((d) => {
           const data = d.data()
+          const createdAtDate = data.createdAt?.toDate
+            ? data.createdAt.toDate()
+            : null
+
           return {
             id: d.id,
             message: data.message || "Notification",
-            time: data.createdAt?.toDate
-              ? data.createdAt.toDate().toLocaleString()
+            time: createdAtDate
+              ? createdAtDate.toLocaleString()
               : "Just now",
             read: !!data.read,
+            link: data.link || null,
+            type: data.type || "general",
+            data: data.data || null,
+            createdAt: createdAtDate,
           }
         })
 
@@ -216,7 +223,7 @@ function Navbar() {
             </Link>
 
             {/* Notification */}
-            <div className="relative mr-4 hidden md:block">
+            <div className="relative mr-3 md:mr-4">
               <button
                 onClick={() => setShowNotifications((v) => !v)}
                 aria-label="Notifications"
@@ -224,9 +231,24 @@ function Navbar() {
               >
                 <Bell className="w-6 h-6 text-gray-700 animate-pulse" />
 
-                {notifications.length > 0 && (
+                {notifications.filter((n) => {
+                  // Count only unread and not expired (within 1 day)
+                  if (n.read) return false
+                  if (!n.createdAt) return true
+                  const oneDayMs = 24 * 60 * 60 * 1000
+                  // eslint-disable-next-line react-hooks/purity
+                  return Date.now() - n.createdAt.getTime() <= oneDayMs
+                }).length > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2220] text-white text-[11px] font-bold flex items-center justify-center leading-none">
-                    {notifications.length > 99 ? "99+" : notifications.length}
+                    {(() => {
+                      const unreadCount = notifications.filter((n) => {
+                        if (n.read) return false
+                        if (!n.createdAt) return true
+                        const oneDayMs = 24 * 60 * 60 * 1000
+                        return Date.now() - n.createdAt.getTime() <= oneDayMs
+                      }).length
+                      return unreadCount > 99 ? "99+" : unreadCount
+                    })()}
                   </span>
                 )}
               </button>
