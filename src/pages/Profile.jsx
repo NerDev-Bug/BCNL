@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { auth } from "../firebase"
 import { signOut } from "firebase/auth"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -23,6 +23,7 @@ function Profile() {
   const [showAdminModal, setShowAdminModal] = useState(false)
 
   const navigate = useNavigate()
+  const location = useLocation()
 
   // ✅ put your admin UID(s) here
   const ADMIN_UIDS = ["righ6b8NVlhuhQ7uRXe83m92hqA2"]
@@ -35,6 +36,20 @@ function Profile() {
       setUser(auth.currentUser)
     }
   }, [navigate])
+
+  // ✅ NEW: read ?tab=rewards and set active tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const tab = params.get("tab")
+
+    if (tab) {
+      // allow only known tabs (and admin only if allowed)
+      const allowed = ["info", "rewards", "orders", "payment", "password"]
+      if (allowed.includes(tab)) setActiveTab(tab)
+      if (tab === "admin" && isAdmin) setActiveTab("admin")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, isAdmin])
 
   useEffect(() => {
     setAnimateKey((k) => k + 1)
