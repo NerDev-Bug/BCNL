@@ -5,14 +5,19 @@ export default function TabsHeader({ activeTab, setActiveTab }) {
     { key: "stories", label: "Our Stories" },
     { key: "testimonials", label: "Testimonials" },
     { key: "events", label: "Events" },
+    { key: "pickup", label: "Pickup" }, // ✅ NEW TAB
   ]
 
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Pages Management</h1>
-          <p className="text-sm text-gray-500">Manage your website content and sections</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">
+            Pages Management
+          </h1>
+          <p className="text-sm text-gray-500">
+            Manage your website content and sections
+          </p>
         </div>
       </div>
 

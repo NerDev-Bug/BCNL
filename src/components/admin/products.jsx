@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { db } from "../../firebase";
+import { useState, useEffect } from "react"
+import { db } from "../../firebase"
 import {
   collection,
   addDoc,
@@ -7,106 +7,83 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-} from "firebase/firestore";
-import DataTable from "../common/DataTable";
-import Search from "../common/Search";
-import Filter from "../common/Filter";
-import Pagination from "../common/Pagination";
-import { StatusBadge } from "../common/StatusBadge";
-import { Trash2, Edit2 } from "lucide-react";
+  writeBatch,
+} from "firebase/firestore"
+import DataTable from "../common/DataTable"
+import Search from "../common/Search"
+import Filter from "../common/Filter"
+import Pagination from "../common/Pagination"
+import { StatusBadge } from "../common/StatusBadge"
+import { Edit2, Trash2, Eye, EyeOff, Power } from "lucide-react"
 
 function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [search, setSearch] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("")
+  const [menuFilter, setMenuFilter] = useState("") // "" | "shown" | "hidden"
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+
+  // ✅ NEW: selection for bulk actions
+  const [selectedIds, setSelectedIds] = useState([])
 
   // Extract unique categories for filter options
   const categories = Array.from(
     new Set(products.map((p) => p.category).filter(Boolean))
-  );
-
-
-  const filteredProducts = products.filter((product) => {
-    const q = search.toLowerCase();
-
-    const matchesSearch =
-      product.name?.toLowerCase().includes(q) ||
-      product.category?.toLowerCase().includes(q);
-
-    const matchesCategory =
-      !categoryFilter || product.category === categoryFilter;
-
-    return matchesSearch && matchesCategory;
-  });
-
-
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    price: "",
-    description: "",
-    category: "",
-    dailyLimit: "",
-    imageFile: null,
-  });
+  )
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, categoryFilter]);
+    setCurrentPage(1)
+  }, [search, categoryFilter, menuFilter])
 
-  const productsCollection = collection(db, "products");
+  const productsCollection = collection(db, "products")
 
   // 🔹 Cloudinary config
-  const CLOUD_NAME = "drgjco3qx";
-  const UPLOAD_PRESET = "products_unsigned";
+  const CLOUD_NAME = "drgjco3qx"
+  const UPLOAD_PRESET = "products_unsigned"
 
   // 🔹 Upload image
   const uploadToCloudinary = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", UPLOAD_PRESET)
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+      { method: "POST", body: formData }
+    )
 
-    const data = await res.json();
-    if (!data.secure_url) throw new Error("Upload failed");
-
-    return data.secure_url;
-  };
+    const data = await res.json()
+    if (!data.secure_url) throw new Error("Upload failed")
+    return data.secure_url
+  }
 
   // 🔹 Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const snapshot = await getDocs(productsCollection);
+        const snapshot = await getDocs(productsCollection)
         setProducts(
           snapshot.docs.map((d) => ({
             id: d.id,
             ...d.data(),
           }))
-        );
+        )
       } catch (err) {
-        console.error("Error fetching products:", err);
+        console.error("Error fetching products:", err)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchProducts();
+    fetchProducts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [])
 
   // 🔹 Add product
   const handleAddProduct = async () => {
@@ -117,26 +94,25 @@ function ProductsPage() {
       !newProduct.category ||
       !newProduct.imageFile
     ) {
-      alert("Fill all fields");
-      return;
+      alert("Fill all fields")
+      return
     }
 
-    // ✅ allow blank, but if provided must be valid number >= 0
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
         ? null
-        : Number(newProduct.dailyLimit);
+        : Number(newProduct.dailyLimit)
 
     if (limitNum !== null && (Number.isNaN(limitNum) || limitNum < 0)) {
-      alert("Daily limit must be a number (0 or more).");
-      return;
+      alert("Daily limit must be a number (0 or more).")
+      return
     }
 
     try {
-      setUploading(true);
-      const imageUrl = await uploadToCloudinary(newProduct.imageFile);
+      setUploading(true)
+      const imageUrl = await uploadToCloudinary(newProduct.imageFile)
 
-      const docRef = await addDoc(productsCollection, {
+      const payload = {
         name: newProduct.name,
         price: Number(newProduct.price),
         image: imageUrl,
@@ -145,31 +121,23 @@ function ProductsPage() {
         available: true,
         dailyLimit: limitNum,
         productDiscount: null,
-      });
 
-      setProducts((prev) => [
-        ...prev,
-        {
-          id: docRef.id,
-          name: newProduct.name,
-          price: Number(newProduct.price),
-          image: imageUrl,
-          description: newProduct.description,
-          category: newProduct.category,
-          available: true,
-          dailyLimit: limitNum,
-          productDiscount: null,
-        },
-      ]);
+        // ✅ NEW: default show on menu
+        showOnMenu: true,
+      }
 
-      resetModal();
+      const docRef = await addDoc(productsCollection, payload)
+
+      setProducts((prev) => [...prev, { id: docRef.id, ...payload }])
+
+      resetModal()
     } catch (err) {
-      console.error(err);
-      alert("Failed to add product");
+      console.error(err)
+      alert("Failed to add product")
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   // 🔹 Update product
   const handleUpdateProduct = async () => {
@@ -179,22 +147,22 @@ function ProductsPage() {
       !newProduct.description ||
       !newProduct.category
     ) {
-      alert("Fill all fields");
-      return;
+      alert("Fill all fields")
+      return
     }
 
     const limitNum =
       newProduct.dailyLimit === "" || newProduct.dailyLimit === null
         ? null
-        : Number(newProduct.dailyLimit);
+        : Number(newProduct.dailyLimit)
 
     if (limitNum !== null && (Number.isNaN(limitNum) || limitNum < 0)) {
-      alert("Daily limit must be a number (0 or more).");
-      return;
+      alert("Daily limit must be a number (0 or more).")
+      return
     }
 
     try {
-      setUploading(true);
+      setUploading(true)
 
       let updatedData = {
         name: newProduct.name,
@@ -202,31 +170,32 @@ function ProductsPage() {
         description: newProduct.description,
         category: newProduct.category,
         dailyLimit: limitNum,
-      };
-
-      if (newProduct.imageFile) {
-        updatedData.image = await uploadToCloudinary(newProduct.imageFile);
+        // ✅ keep showOnMenu as-is (don’t overwrite here)
       }
 
-      await updateDoc(doc(db, "products", editingId), updatedData);
+      if (newProduct.imageFile) {
+        updatedData.image = await uploadToCloudinary(newProduct.imageFile)
+      }
+
+      await updateDoc(doc(db, "products", editingId), updatedData)
 
       setProducts((prev) =>
         prev.map((p) => (p.id === editingId ? { ...p, ...updatedData } : p))
-      );
+      )
 
-      resetModal();
+      resetModal()
     } catch (err) {
-      console.error(err);
-      alert("Failed to update product");
+      console.error(err)
+      alert("Failed to update product")
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   // 🔹 Edit product
   const handleEdit = (product) => {
-    setIsEditing(true);
-    setEditingId(product.id);
+    setIsEditing(true)
+    setEditingId(product.id)
     setNewProduct({
       name: product.name ?? "",
       price: product.price ?? "",
@@ -237,35 +206,80 @@ function ProductsPage() {
           ? ""
           : String(product.dailyLimit),
       imageFile: null,
-    });
-    setShowModal(true);
-  };
+    })
+    setShowModal(true)
+  }
 
   // 🔹 Delete product
   const handleDelete = async (product) => {
-    if (!window.confirm(`Delete ${product.name}?`)) return;
+    if (!window.confirm(`Delete ${product.name}?`)) return
 
-    await deleteDoc(doc(db, "products", product.id));
-    setProducts((prev) => prev.filter((p) => p.id !== product.id));
-  };
+    await deleteDoc(doc(db, "products", product.id))
+    setProducts((prev) => prev.filter((p) => p.id !== product.id))
+    setSelectedIds((prev) => prev.filter((id) => id !== product.id))
+  }
 
   // 🔹 Toggle availability
   const toggleAvailability = async (product) => {
     await updateDoc(doc(db, "products", product.id), {
       available: !product.available,
-    });
+    })
 
     setProducts((prev) =>
       prev.map((p) =>
         p.id === product.id ? { ...p, available: !p.available } : p
       )
-    );
-  };
+    )
+  }
+
+  // ✅ NEW: Toggle showOnMenu (per product)
+  const toggleShowOnMenu = async (product) => {
+    const next = !Boolean(product.showOnMenu)
+    await updateDoc(doc(db, "products", product.id), {
+      showOnMenu: next,
+    })
+
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, showOnMenu: next } : p))
+    )
+  }
+
+  // ✅ NEW: bulk set showOnMenu for selected products
+  const bulkSetShowOnMenu = async (value) => {
+    if (selectedIds.length === 0) {
+      alert("Select at least 1 product first.")
+      return
+    }
+
+    try {
+      setUploading(true)
+      const batch = writeBatch(db)
+
+      selectedIds.forEach((id) => {
+        batch.update(doc(db, "products", id), { showOnMenu: value })
+      })
+
+      await batch.commit()
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          selectedIds.includes(p.id) ? { ...p, showOnMenu: value } : p
+        )
+      )
+
+      setSelectedIds([])
+    } catch (e) {
+      console.error("Bulk update failed:", e)
+      alert("Bulk update failed")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const resetModal = () => {
-    setShowModal(false);
-    setIsEditing(false);
-    setEditingId(null);
+    setShowModal(false)
+    setIsEditing(false)
+    setEditingId(null)
     setNewProduct({
       name: "",
       price: "",
@@ -273,18 +287,86 @@ function ProductsPage() {
       category: "",
       dailyLimit: "",
       imageFile: null,
-    });
-  };
+    })
+  }
 
-  // 🔹 Pagination logic (same as OrdersPending)
-  const totalPages = Math.ceil(filteredProducts.length / pageSize);
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    price: "",
+    description: "",
+    category: "",
+    dailyLimit: "",
+    imageFile: null,
+  })
+
+  // ✅ Filters
+  const filteredProducts = products.filter((product) => {
+    const q = search.toLowerCase()
+
+    const matchesSearch =
+      product.name?.toLowerCase().includes(q) ||
+      product.category?.toLowerCase().includes(q)
+
+    const matchesCategory =
+      !categoryFilter || product.category === categoryFilter
+
+    const isShown = Boolean(product.showOnMenu)
+    const matchesMenu =
+      !menuFilter ||
+      (menuFilter === "shown" && isShown) ||
+      (menuFilter === "hidden" && !isShown)
+
+    return matchesSearch && matchesCategory && matchesMenu
+  })
+
+  // 🔹 Pagination
+  const totalPages = Math.ceil(filteredProducts.length / pageSize)
 
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
-  );
+  )
+
+  // ✅ NEW: select helpers
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAllCurrentPage = () => {
+    const idsOnPage = paginatedProducts.map((p) => p.id)
+    const allSelected = idsOnPage.every((id) => selectedIds.includes(id))
+
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !idsOnPage.includes(id)))
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...idsOnPage])))
+    }
+  }
 
   const columns = [
+    // ✅ NEW: Select checkbox column
+    {
+      key: "__select",
+      header: (
+        <input
+          type="checkbox"
+          onChange={toggleSelectAllCurrentPage}
+          checked={
+            paginatedProducts.length > 0 &&
+            paginatedProducts.every((p) => selectedIds.includes(p.id))
+          }
+        />
+      ),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.includes(row.id)}
+          onChange={() => toggleSelectOne(row.id)}
+        />
+      ),
+    },
     {
       key: "image",
       header: "Image",
@@ -311,18 +393,32 @@ function ProductsPage() {
       header: "Category",
       render: (row) => row.category,
     },
-
-    // ✅ NEW COLUMN
     {
       key: "productDiscount",
       header: "Product Discount",
       render: (row) => {
-        if (!row.productDiscount) return "—";
+        if (!row.productDiscount) return "—"
         return row.productDiscount.type === "percent"
           ? `${row.productDiscount.value}%`
-          : `€${row.productDiscount.value}`;
+          : `€${row.productDiscount.value}`
       },
     },
+
+    // ✅ NEW: show on menu column
+    {
+      key: "showOnMenu",
+      header: "Menu",
+      render: (row) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+            row.showOnMenu ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {row.showOnMenu ? "Shown" : "Hidden"}
+        </span>
+      ),
+    },
+
     {
       key: "available",
       header: "Status",
@@ -335,40 +431,66 @@ function ProductsPage() {
       header: "Daily Limit",
       render: (row) => row.dailyLimit ?? "—",
     },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleEdit(row)}
-            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 border border-blue-200"
-            title="Edit product"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => toggleAvailability(row)}
-            className={`px-3 py-2 rounded-lg text-white font-medium transition-all duration-200 ${
-              row.available
-                ? "bg-yellow-500 hover:bg-yellow-600 shadow-sm"
-                : "bg-gray-500 hover:bg-gray-600 shadow-sm"
-            }`}
-            title={row.available ? "Disable product" : "Enable product"}
-          >
-            {row.available ? "Disable" : "Enable"}
-          </button>
-          <button
-            onClick={() => handleDelete(row)}
-            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200"
-            title="Delete product"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+{
+  key: "actions",
+  header: "Actions",
+  render: (row) => (
+    <div className="flex items-center justify-center gap-2 min-w-[150px]">
+      {/* EDIT */}
+      <button
+        onClick={() => handleEdit(row)}
+        title="Edit product"
+        className="p-2 rounded-lg bg-blue-50 text-blue-600
+          hover:bg-blue-100 border border-blue-200 transition"
+      >
+        <Edit2 className="w-4 h-4" />
+      </button>
+
+      {/* SHOW / HIDE ON MENU */}
+      <button
+        onClick={() => toggleShowOnMenu(row)}
+        title={row.showOnMenu ? "Hide from menu" : "Show on menu"}
+        className={`p-2 rounded-lg border transition
+          ${
+            row.showOnMenu
+              ? "bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+              : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+          }`}
+      >
+        {row.showOnMenu ? (
+          <Eye className="w-4 h-4" />
+        ) : (
+          <EyeOff className="w-4 h-4" />
+        )}
+      </button>
+
+      {/* ENABLE / DISABLE */}
+      <button
+        onClick={() => toggleAvailability(row)}
+        title={row.available ? "Disable product" : "Enable product"}
+        className={`p-2 rounded-lg border transition
+          ${
+            row.available
+              ? "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100"
+              : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+          }`}
+      >
+        <Power className="w-4 h-4" />
+      </button>
+
+      {/* DELETE */}
+      <button
+        onClick={() => handleDelete(row)}
+        title="Delete product"
+        className="p-2 rounded-lg bg-red-50 text-red-600
+          hover:bg-red-100 border border-red-200 transition"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  ),
+}
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
@@ -377,8 +499,12 @@ function ProductsPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">Products Management</h1>
-              <p className="text-sm text-gray-500">Manage your product catalog, pricing, and availability</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                Products Management
+              </h1>
+              <p className="text-sm text-gray-500">
+                Manage your product catalog, pricing, availability, and menu display
+              </p>
             </div>
 
             <button
@@ -390,7 +516,7 @@ function ProductsPage() {
             </button>
           </div>
 
-          {/* Search + Filter */}
+          {/* ✅ TOP BAR: Search + Filters + Bulk menu controls */}
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[250px]">
@@ -409,17 +535,51 @@ function ProductsPage() {
                   onChange={setCategoryFilter}
                 />
               </div>
+
+              {/* ✅ NEW: Menu display filter */}
+              <div className="min-w-[220px]">
+                <Filter
+                  label="Menu Display"
+                  value={menuFilter}
+                  options={[
+                    "shown",
+                    "hidden",
+                  ]}
+                  onChange={setMenuFilter}
+                />
+              </div>
+
+              {/* ✅ NEW: Bulk actions */}
+              <div className="flex gap-2">
+                <button
+                  disabled={uploading || selectedIds.length === 0}
+                  onClick={() => bulkSetShowOnMenu(true)}
+                  className="px-4 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Show selected products on the menu"
+                >
+                  Show Selected
+                </button>
+                <button
+                  disabled={uploading || selectedIds.length === 0}
+                  onClick={() => bulkSetShowOnMenu(false)}
+                  className="px-4 py-3 rounded-xl bg-gray-700 text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Hide selected products from the menu"
+                >
+                  Hide Selected
+                </button>
+              </div>
+            </div>
+
+            {/* selected count */}
+            <div className="mt-3 text-xs text-gray-500">
+              Selected: <span className="font-semibold">{selectedIds.length}</span>
             </div>
           </div>
         </div>
 
         {/* TABLE */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable
-            columns={columns}
-            data={paginatedProducts}
-            loading={loading}
-          />
+          <DataTable columns={columns} data={paginatedProducts} loading={loading} />
         </div>
 
         {/* PAGINATION */}
@@ -445,7 +605,9 @@ function ProductsPage() {
                       {isEditing ? "Edit Product" : "Add New Product"}
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                      {isEditing ? "Update product information" : "Fill in the details to add a new product"}
+                      {isEditing
+                        ? "Update product information"
+                        : "Fill in the details to add a new product"}
                     </p>
                   </div>
                   <button
@@ -469,10 +631,7 @@ function ProductsPage() {
                     placeholder="Enter product name"
                     value={newProduct.name}
                     onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        name: e.target.value,
-                      })
+                      setNewProduct({ ...newProduct, name: e.target.value })
                     }
                   />
                 </div>
@@ -491,10 +650,7 @@ function ProductsPage() {
                       placeholder="0.00"
                       value={newProduct.price}
                       onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          price: e.target.value,
-                        })
+                        setNewProduct({ ...newProduct, price: e.target.value })
                       }
                     />
                   </div>
@@ -508,10 +664,7 @@ function ProductsPage() {
                       placeholder="e.g. cookies, cakes"
                       value={newProduct.category}
                       onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          category: e.target.value,
-                        })
+                        setNewProduct({ ...newProduct, category: e.target.value })
                       }
                     />
                   </div>
@@ -522,7 +675,9 @@ function ProductsPage() {
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-700">
                       Daily Limit
-                      <span className="text-xs text-gray-500 ml-2">(optional)</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        (optional)
+                      </span>
                     </label>
                     <input
                       type="number"
@@ -531,10 +686,7 @@ function ProductsPage() {
                       placeholder="Leave empty for unlimited"
                       value={newProduct.dailyLimit}
                       onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          dailyLimit: e.target.value,
-                        })
+                        setNewProduct({ ...newProduct, dailyLimit: e.target.value })
                       }
                     />
                   </div>
@@ -551,10 +703,7 @@ function ProductsPage() {
                     placeholder="Enter product description..."
                     value={newProduct.description}
                     onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        description: e.target.value,
-                      })
+                      setNewProduct({ ...newProduct, description: e.target.value })
                     }
                   />
                 </div>
@@ -582,18 +731,10 @@ function ProductsPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          imageFile: e.target.files[0],
-                        })
+                        setNewProduct({ ...newProduct, imageFile: e.target.files[0] })
                       }
                     />
                   </label>
-                  {isEditing && newProduct.imageFile && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      New image will replace the existing one
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -629,7 +770,7 @@ function ProductsPage() {
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export default ProductsPage;
+export default ProductsPage

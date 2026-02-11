@@ -7,8 +7,7 @@ import { Bell } from "lucide-react"
 
 // ✅ Realtime wishlist badge
 import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore"
-
-import DeliveryLayout from "./layouts/delivery"
+ 
 import LoginModal from "./LoginModal"
 import RegisterModal from "./RegisterModal"
 import Cart from "./Cart"
@@ -324,7 +323,6 @@ function Navbar() {
           </div>
         )}
 
-        {!isMobileMenuOpen && <DeliveryLayout />}
       </nav>
 
       {/* MODALS */}

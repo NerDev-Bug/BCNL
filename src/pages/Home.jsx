@@ -10,13 +10,20 @@ import Events from "../components/home/events"
 import PickUp from "../components/home/pickUp"
 
 const DEFAULT_HOME = {
-  heading: "Homemade cakes and pastries",
-  estText: "est. 2019",
-  subheading: "Home of the first Ube Flan Cake in Wageningen",
-  primaryBtnText: "Order Now",
-  primaryBtnLink: "/menu",
-  secondaryBtnText: "Contact us",
-  whatsappLink: "https://wa.me/639105171791?text=Hi%20I%20need%20help",
+  heading: "Small Batch Artisan Bakery in Wageningen",
+  subheading: "Freshly baked cakes, pastries, and sweets",
+
+  // ✅ Next Bake Day (admin-controlled fields)
+  nextBakeDate: "", // "2026-04-26"
+  nextBakeSlotsText: "limited slots",
+  nextBakeTitle: "Next Bake Day",
+
+  // ✅ Buttons
+  menuLink: "/menu",
+  preorderLink: "/order",
+  comingSoonLink: "/menu#coming-soon",
+
+  // ✅ Images
   bgImage: "./images/purple_Bg.png",
   cakeImage: "./images/Cakehome.png",
   showHeroImageOnMobile: false,
@@ -41,6 +48,15 @@ function Home() {
     load()
   }, [])
 
+  // ✅ Format date nicely
+  const formattedBakeDate = homeContent.nextBakeDate
+    ? new Date(homeContent.nextBakeDate).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })
+    : ""
+
   return (
     <>
       {/* Hero Section */}
@@ -49,45 +65,55 @@ function Home() {
           <div className="flex flex-col md:flex-row">
             {/* ✅ RIGHT TEXT SIDE */}
             <div className="flex flex-1 items-center justify-center px-6 md:px-12 order-1 md:order-2 min-h-screen md:min-h-0">
-              <div className="max-w-xl text-center mx-auto">
-                <p className="text-4xl md:text-6xl text-[#502455] leading-tight font-semibold font-cooper">
-                  {homeContent.heading}{" "}
-                  <span className="text-base align-bottom font-normal">
-                    {homeContent.estText}
-                  </span>
-                </p>
+              <div className="max-w-xl text-left mx-auto">
+                {/* TITLE */}
+                <h1 className="text-4xl md:text-5xl font-cooper text-[#502455] leading-tight font-semibold">
+                  {homeContent.heading}
+                </h1>
 
-                <p className="mt-6 text-xl text-gray-700">
+                <p className="mt-4 text-lg text-gray-700">
                   {homeContent.subheading}
                 </p>
 
-                <div className="mt-8 flex justify-center items-center space-x-4 px-4 py-4">
-                  <button
-                    className="px-6 py-3 rounded-md border border-[#7B2220] text-[#7B2220] bg-white"
-                    onClick={() =>
-                      window.open(homeContent.whatsappLink, "_blank")
-                    }
-                  >
-                    {homeContent.secondaryBtnText}
-                  </button>
+                {/* ✅ NEXT BAKE DAY (CONNECTED TO ADMIN) */}
+                {homeContent.nextBakeDate && (
+                  <div className="mt-6 inline-block bg-[#FFF2C6] text-[#5B1E5D] px-5 py-3 rounded-xl font-medium">
+                    {homeContent.nextBakeTitle || "Next Bake Day"}:{" "}
+                    <strong>{formattedBakeDate}</strong>
 
-                  {homeContent.primaryBtnLink?.startsWith("http") ? (
-                    <a
-                      href={homeContent.primaryBtnLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-6 py-3 rounded-md bg-[#7B2220] text-white"
-                    >
-                      {homeContent.primaryBtnText}
-                    </a>
-                  ) : (
-                    <Link
-                      to={homeContent.primaryBtnLink || "/menu"}
-                      className="px-6 py-3 rounded-md bg-[#7B2220] text-white"
-                    >
-                      {homeContent.primaryBtnText}
-                    </Link>
-                  )}
+                    {!!homeContent.nextBakeSlotsText && (
+                      <span className="block text-sm opacity-80">
+                        ({homeContent.nextBakeSlotsText})
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* BUTTONS */}
+                <div className="mt-8 flex flex-col gap-4 max-w-sm">
+                  {/* See Today's Menu */}
+                  <Link
+                    to={homeContent.menuLink || "/menu"}
+                    className="flex items-center justify-center gap-2 bg-[#FFE4A3] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
+                  >
+                    🍰 See Today&apos;s Menu →
+                  </Link>
+
+                  {/* Pre-Order */}
+                  <Link
+                    to={homeContent.preorderLink || "/order"}
+                    className="flex items-center justify-center gap-2 bg-[#5B1E5D] text-white font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
+                  >
+                    🛍 Pre-Order for Pickup →
+                  </Link>
+
+                  {/* Coming Soon */}
+                  <Link
+                    to={homeContent.comingSoonLink || "/menu#coming-soon"}
+                    className="flex items-center justify-center gap-2 border border-[#5B1E5D] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:bg-[#5B1E5D]/10 transition"
+                  >
+                    → See What&apos;s Coming Soon
+                  </Link>
                 </div>
               </div>
             </div>

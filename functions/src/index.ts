@@ -24,8 +24,8 @@ setGlobalOptions({ maxInstances: 10 })
 const WEBHOOK_URL = "https://webhook-nmsgrcdlaa-uc.a.run.app"
 const REDIRECT_URL =
   process.env.NODE_ENV === "production"
-    ? "https://bakecorner-nl.vercel.app/payment-success"
-    : "http://localhost:5173/payment-success"
+  ? "http://localhost:5173/payment-success"
+  : "https://bakecorner-nl.vercel.app/payment-success"
 
 /**
  * ✅ Create Mollie payment (CALLABLE)

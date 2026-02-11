@@ -18,6 +18,7 @@ import FavoritesTab from "./pages_components/FavoritesTab"
 import StoriesTab from "./pages_components/StoriesTab"
 import TestimonialsTab from "./pages_components/TestimonialsTab"
 import EventsTab from "./pages_components/EventsTab"
+import PickupTab from "./pages_components/PickupTab"
 import Loading from "../common/Loading"
 
 export default function Pages() {
@@ -401,6 +402,7 @@ export default function Pages() {
           )}
 
           {activeTab === "events" && <EventsTab />}
+          {activeTab === "pickup" && <PickupTab />}
         </div>
 
         {/* Save Button - Fixed at bottom */}

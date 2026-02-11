@@ -33,33 +33,42 @@ export default function HomeTab({
     try {
       setUploadingCake(true)
       const url = await uploadToCloudinary(file)
-      update("cakeImage", url) // ✅ save to form
+      update("cakeImage", url)
     } catch (err) {
       console.error(err)
-      alert("Cake image upload failed. Please try again.")
+      alert("Cake image upload failed.")
     } finally {
       setUploadingCake(false)
-      e.target.value = "" // reset
+      e.target.value = ""
     }
   }
 
   return (
     <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 mb-6">
       <div className="mb-6 pb-4 border-b border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900">Home Page Settings</h2>
-        <p className="text-sm text-gray-500 mt-1">Configure your homepage hero section</p>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Home Page Settings
+        </h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Configure your homepage hero section
+        </p>
       </div>
 
       <div className="space-y-6">
+
+        {/* =========================
+            HERO TEXT
+        ========================== */}
+
         {/* Heading */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-gray-700">
-            Heading <span className="text-red-500">*</span>
+            Heading
           </label>
           <input
             value={form.heading || ""}
             onChange={(e) => update("heading", e.target.value)}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
             placeholder="Homemade cakes and pastries"
           />
         </div>
@@ -72,7 +81,7 @@ export default function HomeTab({
           <input
             value={form.estText || ""}
             onChange={(e) => update("estText", e.target.value)}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
             placeholder="est. 2019"
           />
         </div>
@@ -85,13 +94,65 @@ export default function HomeTab({
           <input
             value={form.subheading || ""}
             onChange={(e) => update("subheading", e.target.value)}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all"
-            placeholder="Home of the first Ube Flan Cake in Wageningen"
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+            placeholder="Freshly baked cakes and pastries"
           />
         </div>
 
-        {/* Cake Image Upload */}
-        <div className="space-y-3">
+        {/* =========================
+            ✅ NEW: NEXT BAKE DAY
+        ========================== */}
+
+        <div className="border-t pt-6 space-y-4">
+          <h3 className="text-lg font-bold text-gray-900">
+            Next Bake Day Settings
+          </h3>
+
+          {/* Bake Date */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Next Bake Day
+            </label>
+            <input
+              type="date"
+              value={form.nextBakeDate || ""}
+              onChange={(e) => update("nextBakeDate", e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+            />
+          </div>
+
+          {/* Limited Slots Text */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Slots Label
+            </label>
+            <input
+              value={form.nextBakeSlotsText || ""}
+              onChange={(e) => update("nextBakeSlotsText", e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+              placeholder="limited slots"
+            />
+          </div>
+
+          {/* Optional Banner Text */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Bake Banner Title
+            </label>
+            <input
+              value={form.nextBakeTitle || ""}
+              onChange={(e) => update("nextBakeTitle", e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3"
+              placeholder="Next Bake Day"
+            />
+          </div>
+        </div>
+
+        {/* =========================
+            IMAGE UPLOAD
+        ========================== */}
+
+        <div className="space-y-3 border-t pt-6">
           <label className="block text-sm font-semibold text-gray-700">
             Hero Cake Image
           </label>
@@ -101,32 +162,20 @@ export default function HomeTab({
               type="button"
               onClick={handleCakePick}
               disabled={uploadingCake}
-              className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-medium hover:border-[#7B2220] hover:text-[#7B2220] hover:bg-[#7B2220]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white"
             >
-              {uploadingCake ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin">⏳</span> Uploading...
-                </span>
-              ) : (
-                "📷 Upload Image"
-              )}
+              {uploadingCake ? "Uploading..." : "📷 Upload Image"}
             </button>
 
             {form.cakeImage ? (
-              <div className="relative group">
-                <img
-                  src={form.cakeImage}
-                  alt="Cake Preview"
-                  className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 shadow-md"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-all duration-200 flex items-center justify-center">
-                  <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Preview</span>
-                </div>
-              </div>
+              <img
+                src={form.cakeImage}
+                alt="Cake Preview"
+                className="h-24 w-24 rounded-xl object-cover border"
+              />
             ) : (
-              <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-3 rounded-xl border border-gray-200">
-                <span>📷</span>
-                <span>No image uploaded yet</span>
+              <div className="text-sm text-gray-500">
+                No image uploaded yet
               </div>
             )}
           </div>

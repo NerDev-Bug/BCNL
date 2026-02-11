@@ -2,7 +2,13 @@ import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Search } from "lucide-react"
 import { db, auth } from "../firebase"
-import { collection, getDocs, onSnapshot } from "firebase/firestore"
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { useCart } from "../context/CartContext"
 import { flyToCart } from "../utils/flyToCart"
@@ -23,57 +29,51 @@ export default function Menu() {
   const [productRatings, setProductRatings] = useState({}) // { productId: { average: number, count: number } }
 
   useEffect(() => {
-    const hasSeenMenuAd = localStorage.getItem("menuAdSeen");
-
-    if (!hasSeenMenuAd) {
-      setShowAd(true);
-    }
-  }, []);
+    const hasSeenMenuAd = localStorage.getItem("menuAdSeen")
+    if (!hasSeenMenuAd) setShowAd(true)
+  }, [])
 
   const handleCloseAd = () => {
-    localStorage.setItem("menuAdSeen", "true");
-    setShowAd(false);
-  };
+    localStorage.setItem("menuAdSeen", "true")
+    setShowAd(false)
+  }
 
   // Fetch product ratings from reviews (subcollection)
   const fetchProductRatings = async (productIds) => {
     const ratingsMap = {}
-    
+
     for (const productId of productIds) {
       try {
         const reviewsRef = collection(db, "products", productId, "reviews")
         const reviewsSnap = await getDocs(reviewsRef)
         const reviews = reviewsSnap.docs.map((d) => d.data())
-        
+
         if (reviews.length > 0) {
           const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0)
           const average = sum / reviews.length
-          ratingsMap[productId] = {
-            average: average,
-            count: reviews.length
-          }
+          ratingsMap[productId] = { average, count: reviews.length }
         } else {
-          ratingsMap[productId] = {
-            average: 0,
-            count: 0
-          }
+          ratingsMap[productId] = { average: 0, count: 0 }
         }
       } catch (error) {
         console.error(`Error fetching reviews for product ${productId}:`, error)
-        ratingsMap[productId] = {
-          average: 0,
-          count: 0
-        }
+        ratingsMap[productId] = { average: 0, count: 0 }
       }
     }
-    
+
     setProductRatings(ratingsMap)
   }
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const snap = await getDocs(collection(db, "products"))
+        // ✅ ONLY show products admin marked for menu
+        const q = query(
+          collection(db, "products"),
+          where("showOnMenu", "==", true)
+        )
+
+        const snap = await getDocs(q)
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         setProducts(data)
 
@@ -82,8 +82,8 @@ export default function Menu() {
         ).sort((a, b) => a.localeCompare(b))
 
         setCategories(uniqueCats)
-        
-        // Fetch ratings for all products
+
+        // ✅ Fetch ratings only for shown products
         const productIds = data.map((p) => p.id)
         await fetchProductRatings(productIds)
       } catch (err) {
@@ -118,6 +118,7 @@ export default function Menu() {
   return (
     <div className="w-full">
       {showAd && <PolicyAdsModal onClose={handleCloseAd} />}
+
       <div
         className="w-full border-y-2 border-black min-h-[250px] flex items-center justify-center"
         style={{
@@ -142,7 +143,10 @@ export default function Menu() {
           >
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative w-full md:flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={18} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  size={18}
+                />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -218,10 +222,10 @@ export default function Menu() {
 
                         {/* ⭐ Rating Stars */}
                         <div className="flex items-center justify-center gap-2 mt-2">
-                          <StarRating 
-                            rating={productRatings[product.id]?.average || 0} 
-                            interactive={false} 
-                            size="xs" 
+                          <StarRating
+                            rating={productRatings[product.id]?.average || 0}
+                            interactive={false}
+                            size="xs"
                             color="primary"
                           />
                           {productRatings[product.id]?.count > 0 && (
@@ -230,7 +234,10 @@ export default function Menu() {
                             </span>
                           )}
                         </div>
-                        <p className="text-center mt-2 font-semibold text-[#7B2220]">€{product.price}</p>
+
+                        <p className="text-center mt-2 font-semibold text-[#7B2220]">
+                          €{product.price}
+                        </p>
 
                         <div className="mt-4 flex gap-4">
                           <button
@@ -267,10 +274,9 @@ export default function Menu() {
                               disabled={!product.available}
                               onClick={(e) => {
                                 if (!product.available) return
-                                const img =
-                                  e.currentTarget
-                                    .closest(".group")
-                                    .querySelector("img")
+                                const img = e.currentTarget
+                                  .closest(".group")
+                                  .querySelector("img")
                                 const success = addToCart(product)
                                 if (!success) return window.openLoginModal?.()
                                 flyToCart(img)
