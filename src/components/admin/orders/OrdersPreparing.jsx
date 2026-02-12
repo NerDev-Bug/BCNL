@@ -1,6 +1,7 @@
 // OrdersPreparing.jsx
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { createOrderToDeliveredNotification } from "../../../utils/notifications";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
@@ -74,22 +75,41 @@ function OrdersPreparing() {
       toast.success("Preparing order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
+      toast.error("Failed to delete order");
     }
   };
 
   // ✅ New: Handle Accept Order (preparing -> to_delivered)
   const handleAcceptOrder = async orderId => {
     try {
+      // Get full order data first
       const orderRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        toast.error("Order not found");
+        return;
+      }
+
+      const orderData = { id: orderSnap.id, ...orderSnap.data() };
+
       await updateDoc(orderRef, {
         paymentStatus: "to_delivered",
       });
 
+      // Send notification to customer
+      try {
+        await createOrderToDeliveredNotification(orderData);
+      } catch (notifError) {
+        console.error("Error creating order to delivered notification:", notifError);
+      }
+
       // Remove the order from the list immediately
       setOrders(orders.filter(order => order.id !== orderId));
+      toast.success("Order marked as delivered and customer notified!");
     } catch (err) {
       console.error("Error updating order:", err);
-      alert("Failed to update order status.");
+      toast.error("Failed to update order status.");
     }
   };
 

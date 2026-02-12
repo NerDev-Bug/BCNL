@@ -2,10 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { toast } from "react-toastify";
 
 import DataTable from "../common/DataTable";
 import Search from "../common/Search";
 import Pagination from "../common/Pagination";
+import ConfirmationModal from "../common/ConfirmationModal";
 
 function DiscountsPage() {
   const [products, setProducts] = useState([]);
@@ -16,6 +18,20 @@ function DiscountsPage() {
   const [updating, setUpdating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // ✅ Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "confirm",
+    confirmButtonColor: "bg-[#7B2220]",
+  });
+
+  const closeConfirmationModal = () => {
+    setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
+  };
 
   useEffect(() => {
     const fetchDiscounted = async () => {
@@ -133,21 +149,58 @@ function DiscountsPage() {
 
   const clearSelection = () => setSelectedIds(new Set());
 
-  const handleApplyDiscount = async () => {
+  // ✅ Confirmation wrapper for Apply Discount
+  const confirmApplyDiscount = () => {
     const parsed = parseDiscount(discountInput);
     if (!parsed) {
-      alert("Invalid discount. Use e.g. 10% or 5€");
+      setConfirmationModal({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Invalid discount. Use e.g. 10% or 5€",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      });
       return;
     }
 
     if (!selectedIds.size) {
-      alert("Select at least one product.");
+      setConfirmationModal({
+        isOpen: true,
+        title: "No Selection",
+        message: "Select at least one product.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      });
       return;
     }
 
+    const discountText = parsed.type === "percent" 
+      ? `${parsed.value}%` 
+      : `€${parsed.value}`;
+
+    setConfirmationModal({
+      isOpen: true,
+      title: "Apply Discount",
+      message: `Are you sure you want to apply ${discountText} discount to ${selectedIds.size} selected product(s)?`,
+      onConfirm: () => {
+        closeConfirmationModal();
+        handleApplyDiscount(parsed);
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-[#7B2220]",
+    });
+  };
+
+  const handleApplyDiscount = async (parsed) => {
     setUpdating(true);
     try {
       const ids = Array.from(selectedIds);
+      const count = ids.length;
+      const discountText = parsed.type === "percent" 
+        ? `${parsed.value}%` 
+        : `€${parsed.value}`;
 
       await Promise.all(
         ids.map((id) =>
@@ -162,23 +215,66 @@ function DiscountsPage() {
           selectedIds.has(p.id) ? { ...p, productDiscount: parsed } : p
         )
       );
+
+      // ✅ Clear input and selection after success
+      setDiscountInput("");
+      clearSelection();
+
+      // ✅ Show success toast
+      toast.success(
+        `Successfully applied ${discountText} discount to ${count} product(s)!`,
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
     } catch (err) {
       console.error("Failed to apply discount:", err);
-      alert("Failed to apply discount. Check console.");
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to apply discount. Check console.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      });
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleClearDiscount = async () => {
+  // ✅ Confirmation wrapper for Clear Discount
+  const confirmClearDiscount = () => {
     if (!selectedIds.size) {
-      alert("Select at least one product.");
+      setConfirmationModal({
+        isOpen: true,
+        title: "No Selection",
+        message: "Select at least one product.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      });
       return;
     }
 
+    setConfirmationModal({
+      isOpen: true,
+      title: "Clear Discount",
+      message: `Are you sure you want to remove discounts from ${selectedIds.size} selected product(s)? This action cannot be undone.`,
+      onConfirm: () => {
+        handleClearDiscount();
+        closeConfirmationModal();
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-red-600",
+    });
+  };
+
+  const handleClearDiscount = async () => {
     setUpdating(true);
     try {
       const ids = Array.from(selectedIds);
+      const count = ids.length;
 
       await Promise.all(
         ids.map((id) =>
@@ -193,12 +289,30 @@ function DiscountsPage() {
           selectedIds.has(p.id) ? { ...p, productDiscount: null } : p
         )
       );
+
+      // ✅ Clear selection after success
+      clearSelection();
+
+      // ✅ Show success toast
+      toast.success(
+        `Successfully removed discounts from ${count} product(s)!`,
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
     } catch (err) {
       console.error("Failed to clear discount:", err);
-      alert("Failed to clear discount. Check console.");
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to clear discount. Check console.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      });
     } finally {
       setUpdating(false);
-      clearSelection();
     }
   };
 
@@ -343,7 +457,7 @@ function DiscountsPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleApplyDiscount}
+                onClick={confirmApplyDiscount}
                 disabled={updating || !selectedIds.size}
                 className="px-4 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] disabled:opacity-60 disabled:cursor-not-allowed"
               >
@@ -351,7 +465,7 @@ function DiscountsPage() {
               </button>
               <button
                 type="button"
-                onClick={handleClearDiscount}
+                onClick={confirmClearDiscount}
                 disabled={updating || !selectedIds.size}
                 className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed"
               >
@@ -380,6 +494,22 @@ function DiscountsPage() {
             />
           </div>
         )}
+
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmationModal.isOpen}
+          onClose={closeConfirmationModal}
+          onConfirm={() => {
+            if (confirmationModal.onConfirm) {
+              confirmationModal.onConfirm();
+            }
+          }}
+          title={confirmationModal.title}
+          message={confirmationModal.message}
+          type={confirmationModal.type}
+          confirmButtonColor={confirmationModal.confirmButtonColor}
+          loading={updating}
+        />
       </div>
     </div>
   );

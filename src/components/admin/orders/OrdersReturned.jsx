@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
@@ -7,6 +7,8 @@ import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import { toast } from "react-toastify";
 import Pagination from "../../common/Pagination";
+import ConfirmationModal from "../../common/ConfirmationModal";
+import { createReturnApprovedNotification, createReturnRejectedNotification } from "../../../utils/notifications";
 
 function OrdersReturned() {
     const [orders, setOrders] = useState([]);
@@ -14,6 +16,10 @@ function OrdersReturned() {
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(10);
+    
+    // Confirmation modal states
+    const [rejectModal, setRejectModal] = useState({ isOpen: false, orderId: null });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, orderId: null });
 
     useEffect(() => {
         const fetchReturnOrders = async () => {
@@ -85,11 +91,28 @@ function OrdersReturned() {
     // Handle approving a return request
     const handleApproveReturn = async (orderId) => {
         try {
+            // Get full order data first
             const orderRef = doc(db, "orders", orderId);
+            const orderSnap = await getDoc(orderRef);
+            
+            if (!orderSnap.exists()) {
+                toast.error("Order not found");
+                return;
+            }
+
+            const orderData = { id: orderSnap.id, ...orderSnap.data() };
+
             await updateDoc(orderRef, {
                 paymentStatus: "returned",
                 returnApprovedAt: new Date(),
             });
+            
+            // Send notification to customer
+            try {
+                await createReturnApprovedNotification(orderData);
+            } catch (notifError) {
+                console.error("Error creating return approved notification:", notifError);
+            }
             
             setOrders(orders.map(order => 
                 order.id === orderId 
@@ -103,17 +126,41 @@ function OrdersReturned() {
         }
     };
 
+    // Open reject confirmation modal
+    const openRejectModal = (orderId) => {
+        setRejectModal({ isOpen: true, orderId });
+    };
+
     // Handle rejecting a return request (revert to delivered)
-    const handleRejectReturn = async (orderId) => {
-        const confirmed = window.confirm("Are you sure you want to reject this return request? The order will be reverted to 'delivered' status.");
-        if (!confirmed) return;
+    const confirmRejectReturn = async () => {
+        if (!rejectModal.orderId) return;
+
+        const orderId = rejectModal.orderId;
+        setRejectModal({ isOpen: false, orderId: null });
 
         try {
+            // Get full order data first
             const orderRef = doc(db, "orders", orderId);
+            const orderSnap = await getDoc(orderRef);
+            
+            if (!orderSnap.exists()) {
+                toast.error("Order not found");
+                return;
+            }
+
+            const orderData = { id: orderSnap.id, ...orderSnap.data() };
+
             await updateDoc(orderRef, {
                 paymentStatus: "delivered",
                 returnRejectedAt: new Date(),
             });
+            
+            // Send notification to customer
+            try {
+                await createReturnRejectedNotification(orderData);
+            } catch (notifError) {
+                console.error("Error creating return rejected notification:", notifError);
+            }
             
             setOrders(orders.filter(order => order.id !== orderId));
             toast.success("Return request rejected. Order reverted to delivered status.");
@@ -123,10 +170,17 @@ function OrdersReturned() {
         }
     };
 
+    // Open delete confirmation modal
+    const openDeleteModal = (orderId) => {
+        setDeleteModal({ isOpen: true, orderId });
+    };
+
     // Handle deleting an order
-    const handleDeleteOrder = async orderId => {
-        const confirmed = window.confirm("Are you sure you want to delete this order?");
-        if (!confirmed) return;
+    const confirmDeleteOrder = async () => {
+        if (!deleteModal.orderId) return;
+
+        const orderId = deleteModal.orderId;
+        setDeleteModal({ isOpen: false, orderId: null });
 
         try {
             const orderDeleteRef = doc(db, "orders", orderId);
@@ -217,13 +271,13 @@ function OrdersReturned() {
                             ✓ Approve
                         </button>
                         <button
-                            onClick={() => handleRejectReturn(row.id)}
+                            onClick={() => openRejectModal(row.id)}
                             className="px-3 py-1 text-[11px] font-medium text-white bg-orange-600 rounded-full hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 w-full justify-center inline-flex items-center gap-1"
                         >
                             ✗ Reject
                         </button>
                         <RowActions 
-                            onDelete={() => handleDeleteOrder(row.id)}
+                            onDelete={() => openDeleteModal(row.id)}
                         />
                     </div>
                 );
@@ -231,7 +285,7 @@ function OrdersReturned() {
             // For already approved returns, just show delete
             return (
                 <RowActions 
-                    onDelete={() => handleDeleteOrder(row.id)}
+                    onDelete={() => openDeleteModal(row.id)}
                 />
             );
         },
@@ -251,6 +305,30 @@ function OrdersReturned() {
             currentPage={currentPage} 
             totalPages={totalPages} 
             onPageChange={setCurrentPage} 
+            />
+
+            {/* Reject Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={rejectModal.isOpen}
+                onClose={() => setRejectModal({ isOpen: false, orderId: null })}
+                onConfirm={confirmRejectReturn}
+                title="Reject Return Request"
+                message="Are you sure you want to reject this return request? The order will be reverted to 'delivered' status."
+                confirmText="Yes, Reject"
+                cancelText="Cancel"
+                confirmButtonColor="bg-orange-600"
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, orderId: null })}
+                onConfirm={confirmDeleteOrder}
+                title="Delete Order"
+                message="Are you sure you want to delete this order? This action cannot be undone."
+                confirmText="Yes, Delete"
+                cancelText="Cancel"
+                confirmButtonColor="bg-red-600"
             />
         </div>
     );

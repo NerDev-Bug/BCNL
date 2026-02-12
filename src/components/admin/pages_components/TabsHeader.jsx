@@ -5,7 +5,8 @@ export default function TabsHeader({ activeTab, setActiveTab }) {
     { key: "stories", label: "Our Stories" },
     { key: "testimonials", label: "Testimonials" },
     { key: "events", label: "Events" },
-    { key: "pickup", label: "Pickup" }, // ✅ NEW TAB
+    { key: "pickup", label: "Pickup" },
+    { key: "policy", label: "Policy & Ads" }, // ✅ NEW TAB
   ]
 
   return (

@@ -4,13 +4,17 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
+  doc,
 } from "firebase/firestore"
 import { db } from "../../../firebase"
+import { toast } from "react-toastify"
 
 import DataTable from "../../common/DataTable"
 import { StatusBadge } from "../../common/StatusBadge"
 import { RowActions } from "../../common/RowActions"
 import Pagination from "../../common/Pagination"
+import ConfirmationModal from "../../common/ConfirmationModal"
 
 // ✅ PDF
 import jsPDF from "jspdf"
@@ -23,6 +27,22 @@ function History() {
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
+
+  // ✅ Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "confirm",
+    confirmButtonColor: "bg-[#7B2220]",
+    confirmText: "Yes, Delete",
+    cancelText: "Cancel",
+  })
+
+  const closeConfirmationModal = () => {
+    setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+  }
 
   // ✅ Netherlands timezone
   const TIMEZONE = "Europe/Amsterdam"
@@ -95,12 +115,38 @@ function History() {
     })
   }
 
-  const handleDeleteOrder = async (orderId) => {
-    try {
-      console.log("Delete order:", orderId)
-    } catch (err) {
-      console.error("Error deleting order:", err)
-    }
+  const handleDeleteOrder = (order) => {
+    const orderId = typeof order === "string" ? order : order.id
+    const orderNumber = `#${orderId.slice(0, 4)}`
+    const customerName = typeof order === "object" ? order.orderData?.receiverName || "Unknown" : "Unknown"
+
+    setConfirmationModal({
+      isOpen: true,
+      title: "Delete Order",
+      message: `Are you sure you want to delete order ${orderNumber}${customerName !== "Unknown" ? ` for ${customerName}` : ""}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "orders", orderId))
+          setOrders((prev) => prev.filter((o) => o.id !== orderId))
+          closeConfirmationModal()
+          toast.success("History order deleted successfully")
+        } catch (err) {
+          console.error("Error deleting order:", err)
+          setConfirmationModal({
+            isOpen: true,
+            title: "Error",
+            message: "Failed to delete order. Check permissions / rules.",
+            onConfirm: closeConfirmationModal,
+            type: "alert",
+            confirmButtonColor: "bg-red-600",
+          })
+        }
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-red-600",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+    })
   }
 
   // ✅ Summary (whole day)
@@ -269,7 +315,7 @@ function History() {
       header: "Action",
       render: (row) => (
         <RowActions
-          onDelete={() => handleDeleteOrder(row.id)}
+          onDelete={() => handleDeleteOrder(row)}
         />
       ),
     },
@@ -297,6 +343,24 @@ function History() {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={closeConfirmationModal}
+        onConfirm={() => {
+          if (confirmationModal.onConfirm) {
+            confirmationModal.onConfirm()
+          }
+        }}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmButtonColor={confirmationModal.confirmButtonColor}
+        confirmText={confirmationModal.confirmText || "Confirm"}
+        cancelText={confirmationModal.cancelText || "Cancel"}
+        loading={false}
       />
     </div>
   )

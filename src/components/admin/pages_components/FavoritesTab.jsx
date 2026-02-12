@@ -1,3 +1,5 @@
+import ProductDropdown from "./ProductDropdown"
+
 export default function FavoritesTab({
   form,
   update,
@@ -148,22 +150,15 @@ export default function FavoritesTab({
               <h3 className="font-semibold text-gray-900 mb-4">Select 3 Favorite Products</h3>
               <div className="grid md:grid-cols-3 gap-6">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Favorite #{i + 1} <span className="text-red-500">*</span>
-                    </label>
-                    <select
+                  <div key={i}>
+                    <ProductDropdown
+                      label={`Favorite #${i + 1}`}
                       value={form.favoritesProductIds?.[i] || ""}
-                      onChange={(e) => setFavoriteAt(i, e.target.value)}
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none transition-all bg-white"
-                    >
-                      <option value="">— Select product —</option>
-                      {allProducts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name || "Unnamed"} {p.price != null ? `• €${p.price}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                      options={allProducts}
+                      onChange={(productId) => setFavoriteAt(i, productId)}
+                      disabled={productsLoading}
+                    />
+                    <p className="text-xs text-red-500 mt-1 ml-1">* Required</p>
                   </div>
                 ))}
               </div>

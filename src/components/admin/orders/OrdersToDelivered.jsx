@@ -150,9 +150,10 @@ function OrdersToDelivered() {
       setOrders(orders.filter(order => order.id !== orderId));
       // You can implement delete logic here if needed
       console.log("Delete order:", orderId);
-      toast.success("To Delivered order deleted successfully");
+      toast.success("Order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
+      toast.error("Failed to delete order");
     }
   };
 

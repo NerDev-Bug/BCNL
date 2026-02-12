@@ -1,6 +1,6 @@
 // src/components/admin/customers.jsx
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../../firebase";
 
 import DataTable from "../common/DataTable";
@@ -8,6 +8,7 @@ import Search from "../common/Search";
 import Filter from "../common/Filter";
 import Pagination from "../common/Pagination";
 import { StatusBadge } from "../common/StatusBadge";
+import ConfirmationModal from "../common/ConfirmationModal";
 
 function CustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -19,6 +20,23 @@ function CustomersPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // ✅ Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "confirm",
+    confirmButtonColor: "bg-[#7B2220]",
+  });
+
+  // ✅ delete loading per row
+  const [deletingId, setDeletingId] = useState(null);
+
+  const closeConfirmationModal = () => {
+    setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
+  };
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -122,6 +140,37 @@ function CustomersPage() {
     setCurrentPage(1);
   }, [search, roleFilter, statusFilter]);
 
+  // ---------- DELETE ----------
+  const openDelete = (customer) => {
+    setConfirmationModal({
+      isOpen: true,
+      title: "Delete Customer",
+      message: `Are you sure you want to delete "${customer.username || customer.email}"? This action cannot be undone. This deletes only the Firestore document in users. Firebase Auth account is not removed unless you delete it via Admin SDK.`,
+      onConfirm: async () => {
+        try {
+          setDeletingId(customer.id);
+          await deleteDoc(doc(db, "users", customer.id));
+          setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+          closeConfirmationModal();
+        } catch (err) {
+          console.error("Delete failed:", err);
+          setConfirmationModal({
+            isOpen: true,
+            title: "Error",
+            message: "Delete failed. Check permissions / rules.",
+            onConfirm: closeConfirmationModal,
+            type: "alert",
+            confirmButtonColor: "bg-red-600",
+          });
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-red-600",
+    });
+  };
+
   const totalPages = Math.ceil(filteredCustomers.length / pageSize) || 1;
   const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * pageSize,
@@ -163,6 +212,23 @@ function CustomersPage() {
       key: "createdAt",
       header: "Joined At",
       render: (row) => formatDate(row.createdAt),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openDelete(row)}
+            disabled={deletingId === row.id}
+            className="px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete customer"
+          >
+            {deletingId === row.id ? "⏳ Deleting..." : "🗑️ Delete"}
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -252,6 +318,24 @@ function CustomersPage() {
             />
           </div>
         )}
+
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmationModal.isOpen}
+          onClose={closeConfirmationModal}
+          onConfirm={() => {
+            if (confirmationModal.onConfirm) {
+              confirmationModal.onConfirm();
+            }
+          }}
+          title={confirmationModal.title}
+          message={confirmationModal.message}
+          type={confirmationModal.type}
+          confirmButtonColor={confirmationModal.confirmButtonColor}
+          confirmText="Yes, Delete"
+          cancelText="Cancel"
+          loading={deletingId !== null}
+        />
       </div>
     </div>
   );

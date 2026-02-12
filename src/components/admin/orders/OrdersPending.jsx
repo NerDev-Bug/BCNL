@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { createOrderPreparingNotification } from "../../../utils/notifications";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
@@ -70,15 +71,34 @@ function OrdersPending() {
   // Handle accepting an order (changing its status to 'preparing')
   const handleAcceptOrder = async orderId => {
     try {
+      // Get full order data first
       const orderRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderRef);
+      
+      if (!orderSnap.exists()) {
+        toast.error("Order not found");
+        return;
+      }
+
+      const orderData = { id: orderSnap.id, ...orderSnap.data() };
+
       await updateDoc(orderRef, {
         paymentStatus: "preparing",
       });
+      
+      // Send notification to customer
+      try {
+        await createOrderPreparingNotification(orderData);
+      } catch (notifError) {
+        console.error("Error creating order preparing notification:", notifError);
+      }
+      
       // Remove the order from the list immediately
       setOrders(orders.filter(order => order.id !== orderId));
+      toast.success("Order marked as preparing!");
     } catch (err) {
       console.error("Error updating order:", err);
-      alert("Failed to update order status.");
+      toast.error("Failed to update order status.");
     }
   };
 
@@ -90,9 +110,10 @@ function OrdersPending() {
       setOrders(orders.filter(order => order.id !== orderId));
       // You can implement delete logic here if needed
       console.log("Delete order:", orderId);
-      toast.success("Pending order deleted successfully");
+      toast.success("Order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
+      toast.error("Failed to delete order");
     }
   };
 

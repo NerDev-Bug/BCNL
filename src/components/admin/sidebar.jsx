@@ -50,15 +50,20 @@ function AdminSidebar({ isOpen }) {
     }
   }, []);
 
-  // ✅ Real‑time low‑stock products count
+  // ✅ Real‑time low‑stock products count (based on dailyLimit)
   useEffect(() => {
     try {
       const productsRef = collection(db, "products");
-      // Adjust this threshold to match your POS rules
-      const q = query(productsRef, where("stock", "<=", 5));
+      // Check products with dailyLimit <= 5
+      const q = query(productsRef, where("dailyLimit", "<=", 5));
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        setLowStockCount(snapshot.size);
+        // Filter out products with dailyLimit <= 0 or null
+        const validLowStock = snapshot.docs.filter((doc) => {
+          const data = doc.data();
+          return typeof data.dailyLimit === "number" && data.dailyLimit > 0;
+        });
+        setLowStockCount(validLowStock.length);
       });
 
       return unsubscribe;

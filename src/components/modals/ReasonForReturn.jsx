@@ -25,11 +25,16 @@ function ReasonForReturn({ order, onClose }) {
     setSubmitting(true);
     try {
       const orderRef = doc(db, "orders", order.id);
-      await updateDoc(orderRef, {
+      const updatedOrder = {
         paymentStatus: "return_requested",
         returnReason: reason.trim(),
         returnRequestedAt: Timestamp.now(),
-      });
+      };
+      await updateDoc(orderRef, updatedOrder);
+
+      // ✅ Note: Admin notification will be created automatically by the admin-side listener
+      // when it detects the order status change to "return_requested"
+      // This avoids permission issues on the customer side
 
       toast.success("Return request submitted successfully. Waiting for admin approval.");
       onClose();

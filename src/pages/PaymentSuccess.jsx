@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "react-toastify"
 import { httpsCallable } from "firebase/functions"
-import { functions } from "../firebase"
+import { functions, db } from "../firebase"
 import { useCart } from "../context/CartContext"
+import { doc, getDoc } from "firebase/firestore"
+import { decreaseProductLimits } from "../utils/productLimits"
 
 // ✅ Cloud Function you create (recommended)
 // It should verify Mollie payment/order status server-side.
@@ -25,6 +27,7 @@ export default function PaymentSuccess() {
 
   // prevent double actions (refresh + rerender)
   const clearedRef = useRef(false)
+  const limitsDecreasedRef = useRef(false)
 
   const orderId = params.get("orderId") || ""
   const paymentId = params.get("paymentId") || ""
@@ -101,6 +104,24 @@ export default function PaymentSuccess() {
           if (!clearedRef.current) {
             clearedRef.current = true
             clearCart?.()
+          }
+
+          // ✅ Decrease product limits once
+          if (!limitsDecreasedRef.current && orderId) {
+            limitsDecreasedRef.current = true
+            try {
+              const orderRef = doc(db, "orders", orderId)
+              const orderSnap = await getDoc(orderRef)
+              
+              if (orderSnap.exists()) {
+                const orderData = { id: orderSnap.id, ...orderSnap.data() }
+                await decreaseProductLimits(orderData)
+                console.log("✅ Product limits decreased for order:", orderId)
+              }
+            } catch (limitError) {
+              console.error("Error decreasing product limits:", limitError)
+              // Don't show error to user, just log it
+            }
           }
         } else if (s === "pending" || s === "open") {
           setStatus("pending")

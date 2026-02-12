@@ -8,6 +8,7 @@ import CheckOutModal from "./modals/CheckOutModal"
 import OrderConfirmation from "./modals/Payment"
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
+import { createNewOrderAdminNotification } from "../utils/notifications"
 
 // Callable cloud function for Mollie payment
 const createPayment = httpsCallable(functions, "createPayment")
@@ -95,6 +96,29 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
       })
 
       const orderId = orderRef.id // ✅ Firestore doc id
+
+      // ✅ Send admin notification for new order
+      try {
+        const orderData = {
+          id: orderId,
+          userId: user.uid,
+          email: user.email || null,
+          orderData: pendingOrder,
+          total: Number(totalPrice.toFixed(2)),
+          items: cartItems.map((item) => ({
+            cartItemId: item.id,
+            productId: item.productId || null,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            customization: item.customization || null,
+          })),
+        };
+        await createNewOrderAdminNotification(orderData);
+      } catch (notifError) {
+        console.error("Error creating new order admin notification:", notifError);
+        // Don't fail the order creation if notification fails
+      }
 
       // ✅ 2) Call Mollie payment function using Firestore orderId
       const result = await createPayment({

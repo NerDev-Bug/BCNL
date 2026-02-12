@@ -10,6 +10,7 @@ import {
 import { db } from "../../firebase"
 import DataTable from "../common/DataTable"
 import { StatusBadge } from "../common/StatusBadge"
+import ConfirmationModal from "../common/ConfirmationModal"
 
 function UsersPage() {
   const [users, setUsers] = useState([])
@@ -22,12 +23,22 @@ function UsersPage() {
   // ✅ view tabs
   const [activeViewTab, setActiveViewTab] = useState("account") // account | address | other
 
-  // ✅ delete confirm modal
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState(null)
+  // ✅ Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "confirm",
+    confirmButtonColor: "bg-[#7B2220]",
+  })
 
   // ✅ delete loading per row
   const [deletingId, setDeletingId] = useState(null)
+
+  const closeConfirmationModal = () => {
+    setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+  }
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -59,12 +70,12 @@ function UsersPage() {
     const onKey = (e) => {
       if (e.key === "Escape") {
         if (viewOpen) closeView()
-        if (deleteOpen) closeDelete()
+        if (confirmationModal.isOpen) closeConfirmationModal()
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [viewOpen, deleteOpen])
+  }, [viewOpen, confirmationModal.isOpen])
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "—"
@@ -106,29 +117,33 @@ function UsersPage() {
 
   // ---------- DELETE ----------
   const openDelete = (user) => {
-    setUserToDelete(user)
-    setDeleteOpen(true)
-  }
-
-  const closeDelete = () => {
-    setDeleteOpen(false)
-    setUserToDelete(null)
-  }
-
-  const confirmDelete = async () => {
-    if (!userToDelete?.id) return
-
-    try {
-      setDeletingId(userToDelete.id)
-      await deleteDoc(doc(db, "users", userToDelete.id))
-      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
-      closeDelete()
-    } catch (err) {
-      console.error("Delete failed:", err)
-      alert("Delete failed. Check permissions / rules.")
-    } finally {
-      setDeletingId(null)
-    }
+    setConfirmationModal({
+      isOpen: true,
+      title: "Delete User",
+      message: `Are you sure you want to delete "${user.username || user.email}"? This action cannot be undone. This deletes only the Firestore document in users. Firebase Auth account is not removed unless you delete it via Admin SDK.`,
+      onConfirm: async () => {
+        try {
+          setDeletingId(user.id)
+          await deleteDoc(doc(db, "users", user.id))
+          setUsers((prev) => prev.filter((u) => u.id !== user.id))
+          closeConfirmationModal()
+        } catch (err) {
+          console.error("Delete failed:", err)
+          setConfirmationModal({
+            isOpen: true,
+            title: "Error",
+            message: "Delete failed. Check permissions / rules.",
+            onConfirm: closeConfirmationModal,
+            type: "alert",
+            confirmButtonColor: "bg-red-600",
+          })
+        } finally {
+          setDeletingId(null)
+        }
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-red-600",
+    })
   }
 
   // ---------- TABLE ----------
@@ -407,79 +422,23 @@ function UsersPage() {
         </>
       )}
 
-      {/* ✅ DELETE CONFIRM MODAL */}
-      {deleteOpen && (
-        <>
-          {/* overlay */}
-          <div onClick={closeDelete} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-
-          {/* modal */}
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="w-full max-w-[600px] bg-white rounded-2xl shadow-2xl overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-red-600">Delete User</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      This action cannot be undone
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 space-y-6 bg-gray-50">
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">User Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Detail label="Email" value={userToDelete?.email} />
-                    <Detail label="Username" value={userToDelete?.username} />
-                    <Detail label="User ID" value={userToDelete?.id} />
-                    <Detail label="Role" value={userToDelete?.role || "User"} />
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <p className="text-sm text-yellow-800">
-                    <span className="font-semibold">Note:</span> This deletes only the Firestore document in <b>users</b>. Firebase
-                    Auth account is not removed unless you delete it via Admin SDK.
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-8 py-6 border-t border-gray-200 bg-white flex items-center justify-end gap-3">
-                <button
-                  onClick={closeDelete}
-                  disabled={deletingId === userToDelete?.id}
-                  className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={confirmDelete}
-                  disabled={deletingId === userToDelete?.id}
-                  className="px-8 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {deletingId === userToDelete?.id ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      <span>Deleting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🗑️</span>
-                      <span>Yes, Delete</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={closeConfirmationModal}
+        onConfirm={() => {
+          if (confirmationModal.onConfirm) {
+            confirmationModal.onConfirm()
+          }
+        }}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        type={confirmationModal.type}
+        confirmButtonColor={confirmationModal.confirmButtonColor}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        loading={deletingId !== null}
+      />
     </div>
   )
 }

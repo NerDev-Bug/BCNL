@@ -74,9 +74,10 @@ function OrdersDelivered() {
         setOrders(orders.filter(order => order.id !== orderId));
         // You can implement delete logic here if needed
         console.log("Delete order:", orderId);
-        toast.success("Pending order deleted successfully");
+        toast.success("Order deleted successfully");
     } catch (err) {
         console.error("Error deleting order:", err);
+        toast.error("Failed to delete order");
     }
     };
 
@@ -154,7 +155,7 @@ function OrdersDelivered() {
     return (
         <div className="pt-4">
             <h2 className="mb-4 text-lg font-semibold">
-            Preparing Orders
+            Delivered Orders
             </h2>
 
             <DataTable columns={columns} data={paginatedOrders} loading={loading} />

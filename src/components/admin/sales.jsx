@@ -15,6 +15,9 @@ import Search from "../common/Search";
 import Filter from "../common/Filter";
 import Pagination from "../common/Pagination";
 import { StatusBadge } from "../common/StatusBadge";
+import ConfirmationModal from "../common/ConfirmationModal";
+import { createRefundNotification } from "../../utils/notifications";
+import { toast } from "react-toastify";
 
 function SalesPage() {
   const [orders, setOrders] = useState([]);
@@ -27,6 +30,12 @@ function SalesPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    order: null,
+  });
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -140,11 +149,15 @@ function SalesPage() {
 
   const handleMarkRefunded = async (order) => {
     if (order.paymentStatus === "returned") return;
+    setConfirmModal({ isOpen: true, order });
+  };
 
-    const confirmed = window.confirm(
-      "Mark this transaction as refunded / returned?"
-    );
-    if (!confirmed) return;
+  const confirmMarkRefunded = async () => {
+    const order = confirmModal.order;
+    if (!order || order.paymentStatus === "returned") {
+      setConfirmModal({ isOpen: false, order: null });
+      return;
+    }
 
     try {
       setUpdatingId(order.id);
@@ -158,11 +171,22 @@ function SalesPage() {
           o.id === order.id ? { ...o, paymentStatus: "returned" } : o
         )
       );
+
+      // Send notification to customer
+      try {
+        await createRefundNotification(order);
+      } catch (notifError) {
+        console.error("Error creating refund notification:", notifError);
+        // Don't fail the whole operation if notification fails
+      }
+
+      toast.success("Order marked as refunded and customer notified!");
     } catch (err) {
       console.error("Failed to mark as refunded:", err);
-      alert("Failed to update transaction. Check console.");
+      toast.error("Failed to update transaction. Please try again.");
     } finally {
       setUpdatingId(null);
+      setConfirmModal({ isOpen: false, order: null });
     }
   };
 
@@ -315,6 +339,18 @@ function SalesPage() {
           </div>
         )}
       </div>
+
+      {/* CONFIRMATION MODAL */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onConfirm={confirmMarkRefunded}
+        onCancel={() => setConfirmModal({ isOpen: false, order: null })}
+        title="Mark as Refunded"
+        message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as refunded/returned? The customer will be notified.`}
+        confirmText="Mark as Refunded"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

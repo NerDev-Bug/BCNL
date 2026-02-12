@@ -237,11 +237,6 @@ export default function ProductDetails() {
       return;
     }
 
-    if (!userComment.trim()) {
-      toast.info("Please write a review comment");
-      return;
-    }
-
     try {
       const reviewRef = doc(collection(db, "products", id, "reviews"));
       await setDoc(reviewRef, {
@@ -249,7 +244,7 @@ export default function ProductDetails() {
         userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
         userEmail: user.email || null,
         rating: userRating,
-        comment: userComment.trim(),
+        comment: userComment.trim() || null, // Optional comment
         createdAt: serverTimestamp(),
       });
 
@@ -549,11 +544,13 @@ export default function ProductDetails() {
                   </div>
 
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Review <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
                     <textarea
                       value={userComment}
                       onChange={(e) => setUserComment(e.target.value)}
-                      placeholder="Share your experience with this product..."
+                      placeholder="Share your experience with this product... (optional)"
                       rows={4}
                       className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#7B2220] transition-colors resize-none"
                     />
@@ -562,7 +559,7 @@ export default function ProductDetails() {
 
                   <button
                     onClick={handleSubmitReview}
-                    disabled={userRating === 0 || !userComment.trim()}
+                    disabled={userRating === 0}
                     className="w-full bg-[#7B2220] text-white px-6 py-3 rounded-lg hover:bg-[#502455] transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
                   >
                     Submit Review

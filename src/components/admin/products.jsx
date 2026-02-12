@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { db } from "../../firebase"
 import {
   collection,
@@ -14,6 +14,7 @@ import Search from "../common/Search"
 import Filter from "../common/Filter"
 import Pagination from "../common/Pagination"
 import { StatusBadge } from "../common/StatusBadge"
+import ConfirmationModal from "../common/ConfirmationModal"
 import { Edit2, Trash2, Eye, EyeOff, Power } from "lucide-react"
 
 function ProductsPage() {
@@ -32,6 +33,31 @@ function ProductsPage() {
   // ✅ NEW: selection for bulk actions
   const [selectedIds, setSelectedIds] = useState([])
 
+  // ✅ Confirmation modal state
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "confirm",
+    confirmButtonColor: "bg-[#7B2220]",
+    confirmText: "Confirm",
+    cancelText: "Cancel",
+  })
+
+  // ✅ No products modal state
+  const [noProductsModal, setNoProductsModal] = useState({
+    isOpen: false,
+  })
+
+  const closeConfirmationModal = () => {
+    setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+  }
+
+  const closeNoProductsModal = () => {
+    setNoProductsModal({ isOpen: false })
+  }
+
   // Extract unique categories for filter options
   const categories = Array.from(
     new Set(products.map((p) => p.category).filter(Boolean))
@@ -40,8 +66,6 @@ function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [search, categoryFilter, menuFilter])
-
-  const productsCollection = collection(db, "products")
 
   // 🔹 Cloudinary config
   const CLOUD_NAME = "drgjco3qx"
@@ -63,17 +87,70 @@ function ProductsPage() {
     return data.secure_url
   }
 
+  // ✅ Daily reset function - reset all shown products to hidden
+  const resetDailyMenuProducts = useCallback(async () => {
+    try {
+      const productsCollection = collection(db, "products")
+      const snapshot = await getDocs(productsCollection)
+      const shownProducts = snapshot.docs.filter(
+        (d) => d.data().showOnMenu === true
+      )
+
+      if (shownProducts.length > 0) {
+        const batch = writeBatch(db)
+        shownProducts.forEach((docSnapshot) => {
+          batch.update(doc(db, "products", docSnapshot.id), {
+            showOnMenu: false,
+          })
+        })
+        await batch.commit()
+
+        // Update local state
+        setProducts((prev) =>
+          prev.map((p) => ({ ...p, showOnMenu: false }))
+        )
+      }
+    } catch (err) {
+      console.error("Error resetting daily menu products:", err)
+    }
+  }, [])
+
+  // ✅ Check if it's a new day and reset if needed
+  useEffect(() => {
+    const checkAndResetDaily = async () => {
+      const today = new Date().toDateString()
+      const lastResetDate = localStorage.getItem("productsMenuLastReset")
+
+      if (lastResetDate !== today) {
+        // It's a new day, reset all shown products to hidden
+        await resetDailyMenuProducts()
+        localStorage.setItem("productsMenuLastReset", today)
+      }
+    }
+
+    checkAndResetDaily()
+  }, [resetDailyMenuProducts])
+
   // 🔹 Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        const productsCollection = collection(db, "products")
         const snapshot = await getDocs(productsCollection)
-        setProducts(
-          snapshot.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-        )
+        const productsData = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        setProducts(productsData)
+
+        // ✅ Check if there are any products shown in menu
+        const hasShownProducts = productsData.some((p) => p.showOnMenu === true)
+        if (!hasShownProducts) {
+          // Wait a bit for the reset to complete, then show modal
+          setTimeout(() => {
+            setNoProductsModal({ isOpen: true })
+          }, 500)
+        }
       } catch (err) {
         console.error("Error fetching products:", err)
       } finally {
@@ -82,7 +159,6 @@ function ProductsPage() {
     }
 
     fetchProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 🔹 Add product
@@ -94,7 +170,14 @@ function ProductsPage() {
       !newProduct.category ||
       !newProduct.imageFile
     ) {
-      alert("Fill all fields")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Fill all fields",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      })
       return
     }
 
@@ -104,7 +187,14 @@ function ProductsPage() {
         : Number(newProduct.dailyLimit)
 
     if (limitNum !== null && (Number.isNaN(limitNum) || limitNum < 0)) {
-      alert("Daily limit must be a number (0 or more).")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Daily limit must be a number (0 or more).",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      })
       return
     }
 
@@ -126,6 +216,7 @@ function ProductsPage() {
         showOnMenu: true,
       }
 
+      const productsCollection = collection(db, "products")
       const docRef = await addDoc(productsCollection, payload)
 
       setProducts((prev) => [...prev, { id: docRef.id, ...payload }])
@@ -133,7 +224,14 @@ function ProductsPage() {
       resetModal()
     } catch (err) {
       console.error(err)
-      alert("Failed to add product")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to add product",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      })
     } finally {
       setUploading(false)
     }
@@ -147,7 +245,14 @@ function ProductsPage() {
       !newProduct.description ||
       !newProduct.category
     ) {
-      alert("Fill all fields")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Fill all fields",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      })
       return
     }
 
@@ -157,7 +262,14 @@ function ProductsPage() {
         : Number(newProduct.dailyLimit)
 
     if (limitNum !== null && (Number.isNaN(limitNum) || limitNum < 0)) {
-      alert("Daily limit must be a number (0 or more).")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Daily limit must be a number (0 or more).",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      })
       return
     }
 
@@ -186,7 +298,14 @@ function ProductsPage() {
       resetModal()
     } catch (err) {
       console.error(err)
-      alert("Failed to update product")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to update product",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      })
     } finally {
       setUploading(false)
     }
@@ -211,12 +330,34 @@ function ProductsPage() {
   }
 
   // 🔹 Delete product
-  const handleDelete = async (product) => {
-    if (!window.confirm(`Delete ${product.name}?`)) return
-
-    await deleteDoc(doc(db, "products", product.id))
-    setProducts((prev) => prev.filter((p) => p.id !== product.id))
-    setSelectedIds((prev) => prev.filter((id) => id !== product.id))
+  const handleDelete = (product) => {
+    setConfirmationModal({
+      isOpen: true,
+      title: "Delete Product",
+      message: `Are you sure you want to delete "${product.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "products", product.id))
+          setProducts((prev) => prev.filter((p) => p.id !== product.id))
+          setSelectedIds((prev) => prev.filter((id) => id !== product.id))
+          closeConfirmationModal()
+        } catch (err) {
+          console.error("Delete failed:", err)
+          setConfirmationModal({
+            isOpen: true,
+            title: "Error",
+            message: "Failed to delete product",
+            onConfirm: closeConfirmationModal,
+            type: "alert",
+            confirmButtonColor: "bg-red-600",
+          })
+        }
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-red-600",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+    })
   }
 
   // 🔹 Toggle availability
@@ -234,7 +375,7 @@ function ProductsPage() {
 
   // ✅ NEW: Toggle showOnMenu (per product)
   const toggleShowOnMenu = async (product) => {
-    const next = !Boolean(product.showOnMenu)
+    const next = !product.showOnMenu
     await updateDoc(doc(db, "products", product.id), {
       showOnMenu: next,
     })
@@ -247,7 +388,14 @@ function ProductsPage() {
   // ✅ NEW: bulk set showOnMenu for selected products
   const bulkSetShowOnMenu = async (value) => {
     if (selectedIds.length === 0) {
-      alert("Select at least 1 product first.")
+      setConfirmationModal({
+        isOpen: true,
+        title: "No Selection",
+        message: "Select at least 1 product first.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      })
       return
     }
 
@@ -270,7 +418,14 @@ function ProductsPage() {
       setSelectedIds([])
     } catch (e) {
       console.error("Bulk update failed:", e)
-      alert("Bulk update failed")
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Bulk update failed",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      })
     } finally {
       setUploading(false)
     }
@@ -392,16 +547,6 @@ function ProductsPage() {
       key: "category",
       header: "Category",
       render: (row) => row.category,
-    },
-    {
-      key: "productDiscount",
-      header: "Product Discount",
-      render: (row) => {
-        if (!row.productDiscount) return "—"
-        return row.productDiscount.type === "percent"
-          ? `${row.productDiscount.value}%`
-          : `€${row.productDiscount.value}`
-      },
     },
 
     // ✅ NEW: show on menu column
@@ -561,7 +706,19 @@ function ProductsPage() {
                 </button>
                 <button
                   disabled={uploading || selectedIds.length === 0}
-                  onClick={() => bulkSetShowOnMenu(false)}
+                  onClick={() => {
+                    setConfirmationModal({
+                      isOpen: true,
+                      title: "Hide Products",
+                      message: `Are you sure you want to hide ${selectedIds.length} selected product(s) from the menu?`,
+                      onConfirm: () => {
+                        bulkSetShowOnMenu(false)
+                        closeConfirmationModal()
+                      },
+                      type: "confirm",
+                      confirmButtonColor: "bg-gray-700",
+                    })
+                  }}
                   className="px-4 py-3 rounded-xl bg-gray-700 text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Hide selected products from the menu"
                 >
@@ -768,6 +925,36 @@ function ProductsPage() {
             </div>
           </div>
         )}
+
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmationModal.isOpen}
+          onClose={closeConfirmationModal}
+          onConfirm={() => {
+            if (confirmationModal.onConfirm) {
+              confirmationModal.onConfirm()
+            }
+          }}
+          title={confirmationModal.title}
+          message={confirmationModal.message}
+          type={confirmationModal.type}
+          confirmButtonColor={confirmationModal.confirmButtonColor}
+          confirmText={confirmationModal.confirmText || "Confirm"}
+          cancelText={confirmationModal.cancelText || "Cancel"}
+          loading={uploading}
+        />
+
+        {/* No Products Modal */}
+        <ConfirmationModal
+          isOpen={noProductsModal.isOpen}
+          onClose={closeNoProductsModal}
+          onConfirm={closeNoProductsModal}
+          title="No Products in Menu"
+          message="You don't have any items/products in Menu for today. I would advise you to add a product/items to display."
+          type="alert"
+          confirmButtonColor="bg-[#7B2220]"
+          confirmText="Got it"
+        />
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 // Orders.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import History from "./orders/History"
 import OrdersPending from "./orders/OrdersPending"
 import OrdersPreparing from "./orders/OrdersPreparing"
@@ -8,7 +9,18 @@ import OrdersDelivered from "./orders/OrdersDelivered"
 import OrdersReturned from "./orders/OrdersReturned"
 
 function OrdersPage() {
-  const [activeTab, setActiveTab] = useState("history");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  
+  // Set initial tab from URL or default to "history"
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "history");
+
+  // Update tab when URL changes
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   const tabs = [
     { label: "Orders History", key: "history" },
@@ -55,7 +67,11 @@ function OrdersPage() {
               return (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    // Update URL without page reload
+                    setSearchParams({ tab: tab.key });
+                  }}
                   className={`
                     relative px-6 py-3 text-sm font-semibold transition-all duration-200
                     rounded-t-lg border-b-2 border-transparent

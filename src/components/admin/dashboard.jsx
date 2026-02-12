@@ -136,8 +136,8 @@ function AdminDashboard() {
   const lowStockProducts = useMemo(
     () =>
       products
-        .filter((p) => typeof p.stock === "number" && p.stock <= 5)
-        .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
+        .filter((p) => typeof p.dailyLimit === "number" && p.dailyLimit <= 5 && p.dailyLimit > 0)
+        .sort((a, b) => (a.dailyLimit ?? 0) - (b.dailyLimit ?? 0))
         .slice(0, 5),
     [products]
   );
@@ -509,7 +509,7 @@ function LowStockPanel({ products, loading }) {
               </div>
               <div className="text-right">
                 <p className="text-[0.75rem] font-semibold text-amber-800">
-                  Stock: {p.stock ?? 0}
+                  Limit: {p.dailyLimit ?? 0}
                 </p>
                 <p className="text-[0.65rem] text-amber-700/80">
                   Reorder soon

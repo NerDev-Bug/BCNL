@@ -206,7 +206,14 @@ export const webhook = onRequest({ secrets: [MOLLIE_API_KEY] }, async (req, res)
 
     // ✅ If we have orderId, update Firestore
     if (orderId) {
-      await db.collection("orders").doc(orderId).set(
+      const orderRef = db.collection("orders").doc(orderId)
+      const orderSnap = await orderRef.get()
+      
+      // Check if this is a status change to "paid" (successful payment)
+      const wasPaid = orderSnap.exists && orderSnap.data()?.paymentStatus === "paid"
+      const isNowPaid = payment.status === "paid" || payment.status === "authorized"
+      
+      await orderRef.set(
         {
           paymentStatus: payment.status || "open",
           paymentId: payment.id,
@@ -214,6 +221,63 @@ export const webhook = onRequest({ secrets: [MOLLIE_API_KEY] }, async (req, res)
         },
         { merge: true }
       )
+
+      // ✅ Decrease product limits only when payment becomes "paid" (not if already paid)
+      if (isNowPaid && !wasPaid && orderSnap.exists) {
+        try {
+          const orderData = orderSnap.data()
+          const items = orderData?.items || []
+          
+          if (items.length > 0) {
+            const batch = db.batch()
+            const productUpdates: Array<{ productId: string; quantity: number }> = []
+            
+            for (const item of items) {
+              if (item.productId) {
+                productUpdates.push({
+                  productId: item.productId,
+                  quantity: item.quantity || 1,
+                })
+              }
+            }
+            
+            // Get all products and update their limits
+            for (const { productId, quantity } of productUpdates) {
+              try {
+                const productRef = db.collection("products").doc(productId)
+                const productSnap = await productRef.get()
+                
+                if (productSnap.exists) {
+                  const productData = productSnap.data()
+                  const updateData: any = {}
+                  
+                  // Decrease dailyLimit if it exists and is a number
+                  if (typeof productData?.dailyLimit === "number" && productData.dailyLimit > 0) {
+                    updateData.dailyLimit = FieldValue.increment(-quantity)
+                  }
+                  
+                  // Decrease pickupLeft if it exists and is a number
+                  if (typeof productData?.pickupLeft === "number" && productData.pickupLeft > 0) {
+                    updateData.pickupLeft = FieldValue.increment(-quantity)
+                  }
+                  
+                  if (Object.keys(updateData).length > 0) {
+                    batch.update(productRef, updateData)
+                  }
+                }
+              } catch (err) {
+                logger.error(`Error updating product ${productId}:`, err)
+              }
+            }
+            
+            await batch.commit()
+            logger.info(`Decreased product limits for order ${orderId}`)
+          }
+        } catch (err) {
+          logger.error("Error decreasing product limits:", err)
+          // Don't fail the webhook if limit update fails
+        }
+      }
     }
 
     res.status(200).send("OK")

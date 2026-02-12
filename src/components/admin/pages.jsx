@@ -11,6 +11,7 @@ import {
   where,
   Timestamp,
 } from "firebase/firestore"
+import { toast } from "react-toastify"
 
 import TabsHeader from "./pages_components/TabsHeader"
 import HomeTab from "./pages_components/HomeTab"
@@ -19,6 +20,7 @@ import StoriesTab from "./pages_components/StoriesTab"
 import TestimonialsTab from "./pages_components/TestimonialsTab"
 import EventsTab from "./pages_components/EventsTab"
 import PickupTab from "./pages_components/PickupTab"
+import PolicyTab from "./pages_components/PolicyTab"
 import Loading from "../common/Loading"
 
 export default function Pages() {
@@ -40,6 +42,14 @@ export default function Pages() {
   // ✅ auto favorites (weekly most bought)
   const [autoFavoritesLoading, setAutoFavoritesLoading] = useState(false)
   const [autoFavoritesPreview, setAutoFavoritesPreview] = useState([])
+
+  // ✅ ratings for testimonials picker
+  const [allRatings, setAllRatings] = useState([])
+  const [ratingsLoading, setRatingsLoading] = useState(true)
+
+  // ✅ auto testimonials (top rated with comments)
+  const [autoTestimonialsLoading, setAutoTestimonialsLoading] = useState(false)
+  const [autoTestimonialsPreview, setAutoTestimonialsPreview] = useState([])
 
   /**
    * ✅ HOME FORM (separate doc: pages/home)
@@ -77,6 +87,16 @@ export default function Pages() {
     ],
     favoritesMode: "manual", // "manual" | "weeklyMostBought"
     favoritesProductIds: ["", "", ""],
+    testimonialsMode: "manual", // "manual" | "autoTopRated"
+    testimonialsRatingIds: ["", "", ""], // IDs from ratings collection
+  })
+
+  /**
+   * ✅ POLICY & ADS FORM (doc: pages/policyAds)
+   */
+  const [policyForm, setPolicyForm] = useState({
+    title: "Policy",
+    content: "Please be advised that any changes, cancellations, or special requests related to your order must be made at least five (5) days before the scheduled delivery date, as orders that are already within this preparation period may have begun processing, sourcing of ingredients, or production, and therefore we cannot guarantee modifications, refunds, or adjustments once the order is within five days of delivery.",
   })
 
   // ✅ Load Home content (pages/home)
@@ -123,6 +143,14 @@ export default function Pages() {
                   data.favoritesProductIds?.[2] || "",
                 ]
               : prev.favoritesProductIds,
+            testimonialsMode: data.testimonialsMode || prev.testimonialsMode || "manual",
+            testimonialsRatingIds: Array.isArray(data.testimonialsRatingIds)
+              ? [
+                  data.testimonialsRatingIds?.[0] || "",
+                  data.testimonialsRatingIds?.[1] || "",
+                  data.testimonialsRatingIds?.[2] || "",
+                ]
+              : prev.testimonialsRatingIds || ["", "", ""],
           }))
         }
       } catch (e) {
@@ -132,6 +160,25 @@ export default function Pages() {
       }
     }
     loadOurStory()
+  }, [])
+
+  // ✅ Load Policy & Ads content (pages/policyAds)
+  useEffect(() => {
+    const loadPolicy = async () => {
+      try {
+        const snap = await getDoc(doc(db, "pages", "policyAds"))
+        if (snap.exists()) {
+          const data = snap.data()
+          setPolicyForm((prev) => ({
+            ...prev,
+            ...data,
+          }))
+        }
+      } catch (e) {
+        console.error("Failed to load policy:", e)
+      }
+    }
+    loadPolicy()
   }, [])
 
   // ✅ Load all products for favorites
@@ -153,6 +200,41 @@ export default function Pages() {
     loadProducts()
   }, [])
 
+  // ✅ Load all ratings for testimonials (including those without comments)
+  useEffect(() => {
+    const loadRatings = async () => {
+      try {
+        const snap = await getDocs(collection(db, "ratings"))
+        const items = snap.docs
+          .map((d) => {
+            const data = d.data()
+            let createdAt = new Date()
+            if (data.createdAt?.toDate) {
+              createdAt = data.createdAt.toDate()
+            } else if (data.createdAt?.seconds) {
+              createdAt = new Date(data.createdAt.seconds * 1000)
+            }
+            return {
+              id: d.id,
+              ...data,
+              createdAt,
+            }
+          })
+          .sort((a, b) => {
+            // Sort by rating (desc) then by date (desc)
+            if (b.rating !== a.rating) return (b.rating || 0) - (a.rating || 0)
+            return b.createdAt - a.createdAt
+          })
+        setAllRatings(items)
+      } catch (e) {
+        console.error("Failed to load ratings:", e)
+      } finally {
+        setRatingsLoading(false)
+      }
+    }
+    loadRatings()
+  }, [])
+
   // ✅ Safe nested update for ourStory form
   const update = (path, value) => {
     setForm((prev) => {
@@ -168,6 +250,11 @@ export default function Pages() {
   // ✅ Simple update for home form (flat)
   const updateHome = (key, value) => {
     setHomeForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // ✅ Simple update for policy form (flat)
+  const updatePolicy = (key, value) => {
+    setPolicyForm((prev) => ({ ...prev, [key]: value }))
   }
 
   // ✅ Cloudinary upload (images)
@@ -197,25 +284,15 @@ export default function Pages() {
       update(fieldPath, transformCloudinaryUrl(imageUrl))
     } catch (err) {
       console.error("Cloudinary upload failed:", err)
-      alert("Upload failed. Check console.")
+      toast.error("Upload failed. Check console.", {
+        position: "top-right",
+        autoClose: 3000,
+      })
     } finally {
       setUploading(false)
     }
   }
 
-  const addTestimonial = () => {
-    setForm((prev) => ({
-      ...prev,
-      testimonials: [...(prev.testimonials || []), { text: "", author: "" }],
-    }))
-  }
-
-  const removeTestimonial = (idx) => {
-    setForm((prev) => ({
-      ...prev,
-      testimonials: prev.testimonials.filter((_, i) => i !== idx),
-    }))
-  }
 
   const setFavoriteAt = (index, productId) => {
     setForm((prev) => {
@@ -235,6 +312,109 @@ export default function Pages() {
       next.favoritesProductIds = ids
       return next
     })
+  }
+
+  const setTestimonialAt = (index, ratingId) => {
+    setForm((prev) => {
+      const next = structuredClone(prev)
+      const ids = [...(next.testimonialsRatingIds || ["", "", ""])]
+      ids[index] = ratingId
+
+      // prevent duplicates
+      const seen = new Set()
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i]
+        if (!id) continue
+        if (seen.has(id)) ids[i] = ""
+        else seen.add(id)
+      }
+
+      // Update testimonials array based on selected rating IDs
+      const testimonials = ids.map((id) => {
+        if (!id) return { text: "", author: "" }
+        const rating = allRatings.find((r) => r.id === id)
+        if (!rating) return { text: "", author: "" }
+        
+        // Use comment if available, otherwise use rating as text
+        const text = rating.comment && rating.comment.trim()
+          ? rating.comment
+          : rating.rating
+          ? `Rated ${rating.rating} out of 5 stars`
+          : "Customer feedback"
+        
+        return {
+          text,
+          author: rating.rating ? `Customer (${rating.rating}⭐)` : "Customer",
+        }
+      })
+
+      next.testimonialsRatingIds = ids
+      next.testimonials = testimonials
+      return next
+    })
+  }
+
+  const computeAutoTopRatedTestimonials = async () => {
+    setAutoTestimonialsLoading(true)
+    try {
+      // Get top 3 highest rated testimonials (prefer those with comments, but include all)
+      const top3 = allRatings
+        .slice(0, 3)
+        .map((r) => r.id)
+
+      const padded = [top3[0] || "", top3[1] || "", top3[2] || ""]
+
+      // Update testimonialsRatingIds
+      setForm((prev) => {
+        const next = structuredClone(prev)
+        next.testimonialsRatingIds = padded
+
+        // Update testimonials array
+        const testimonials = padded.map((id) => {
+          if (!id) return { text: "", author: "" }
+          const rating = allRatings.find((r) => r.id === id)
+          if (!rating) return { text: "", author: "" }
+          
+          // Use comment if available, otherwise use rating as text
+          const text = rating.comment && rating.comment.trim()
+            ? rating.comment
+            : rating.rating
+            ? `Rated ${rating.rating} out of 5 stars`
+            : "Customer feedback"
+          
+          return {
+            text,
+            author: rating.rating ? `Customer (${rating.rating}⭐)` : "Customer",
+          }
+        })
+
+        next.testimonials = testimonials
+        return next
+      })
+
+      // Set preview
+      const preview = padded
+        .filter(Boolean)
+        .map((id) => {
+          const r = allRatings.find((x) => x.id === id)
+          return {
+            id,
+            comment: (r?.comment && r.comment.trim()) ? r.comment : null,
+            rating: r?.rating || 0,
+            createdAt: r?.createdAt || new Date(),
+          }
+        })
+
+      setAutoTestimonialsPreview(preview)
+    } catch (e) {
+      console.error("Failed to compute auto testimonials:", e)
+      toast.error("Failed to compute auto testimonials. Check console.", {
+        position: "top-right",
+        autoClose: 3000,
+      })
+    } finally {
+      setAutoTestimonialsLoading(false)
+    }
   }
 
   // ✅ Week range (Mon-Sun)
@@ -302,7 +482,10 @@ export default function Pages() {
       setAutoFavoritesPreview(preview)
     } catch (e) {
       console.error("Failed to compute weekly most bought:", e)
-      alert("Failed to compute weekly most bought. Check console.")
+      toast.error("Failed to compute weekly most bought. Check console.", {
+        position: "top-right",
+        autoClose: 3000,
+      })
     } finally {
       setAutoFavoritesLoading(false)
     }
@@ -318,7 +501,23 @@ export default function Pages() {
           { ...homeForm, updatedAt: serverTimestamp() },
           { merge: true }
         )
-        alert("Home updated!")
+        toast.success("Home page updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+        })
+        return
+      }
+
+      if (activeTab === "policy") {
+        await setDoc(
+          doc(db, "pages", "policyAds"),
+          { ...policyForm, updatedAt: serverTimestamp() },
+          { merge: true }
+        )
+        toast.success("Policy & Ads updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+        })
         return
       }
 
@@ -328,10 +527,16 @@ export default function Pages() {
         { ...form, updatedAt: serverTimestamp() },
         { merge: true }
       )
-      alert("Our Story updated!")
+      toast.success("Page updated successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      })
     } catch (err) {
       console.error("Save failed:", err)
-      alert("Save failed. Check console.")
+      toast.error("Save failed. Check console.", {
+        position: "top-right",
+        autoClose: 3000,
+      })
     } finally {
       setSaving(false)
     }
@@ -396,13 +601,23 @@ export default function Pages() {
             <TestimonialsTab
               form={form}
               update={update}
-              addTestimonial={addTestimonial}
-              removeTestimonial={removeTestimonial}
+              allRatings={allRatings}
+              ratingsLoading={ratingsLoading}
+              autoTestimonialsLoading={autoTestimonialsLoading}
+              autoTestimonialsPreview={autoTestimonialsPreview}
+              computeAutoTopRatedTestimonials={computeAutoTopRatedTestimonials}
+              setTestimonialAt={setTestimonialAt}
             />
           )}
 
           {activeTab === "events" && <EventsTab />}
           {activeTab === "pickup" && <PickupTab />}
+          {activeTab === "policy" && (
+            <PolicyTab
+              form={policyForm}
+              update={updatePolicy}
+            />
+          )}
         </div>
 
         {/* Save Button - Fixed at bottom */}
@@ -423,7 +638,13 @@ export default function Pages() {
             ) : (
               <>
                 <span>💾</span>
-                <span>{activeTab === "home" ? "Save Home" : "Save Changes"}</span>
+                <span>
+                  {activeTab === "home"
+                    ? "Save Home"
+                    : activeTab === "policy"
+                    ? "Save Policy & Ads"
+                    : "Save Changes"}
+                </span>
               </>
             )}
           </button>

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Order from "./pages/Order";
 import Menu from "./pages/Menu";
@@ -50,6 +50,8 @@ function App() {
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/products" element={<ProductsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
+          {/* Redirect old /admin/orders/returned to new query param format */}
+          <Route path="/admin/orders/returned" element={<Navigate to="/admin/orders?tab=returned" replace />} />
           <Route path="/admin/sales" element={<SalesPage />} />
           <Route path="/admin/customers" element={<CustomersPage />} />
           <Route path="/admin/reports" element={<ReportsPage />} />

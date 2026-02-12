@@ -17,10 +17,12 @@ import {
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import StarRating from "../common/StarRating";
 
 function ReportsPage() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ordersRange, setOrdersRange] = useState("7d"); // 7d | 30d | 365d
 
@@ -28,9 +30,10 @@ function ReportsPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [ordersSnap, productsSnap] = await Promise.all([
+        const [ordersSnap, productsSnap, ratingsSnap] = await Promise.all([
           getDocs(collection(db, "orders")),
           getDocs(collection(db, "products")),
+          getDocs(collection(db, "ratings")),
         ]);
 
         setOrders(
@@ -45,6 +48,23 @@ function ReportsPage() {
             id: d.id,
             ...d.data(),
           }))
+        );
+
+        setRatings(
+          ratingsSnap.docs.map((d) => {
+            const data = d.data();
+            let createdAt = new Date();
+            if (data.createdAt?.toDate) {
+              createdAt = data.createdAt.toDate();
+            } else if (data.createdAt?.seconds) {
+              createdAt = new Date(data.createdAt.seconds * 1000);
+            }
+            return {
+              id: d.id,
+              ...data,
+              createdAt,
+            };
+          })
         );
       } catch (err) {
         console.error("Failed to load reports data:", err);
@@ -64,9 +84,12 @@ function ReportsPage() {
     );
     const avgTicket = totalOrders ? totalRevenue / totalOrders : 0;
 
-    const lowStockCount = products.filter(
-      (p) => typeof p.stock === "number" && p.stock <= 5
-    ).length;
+    const lowStockProducts = products
+      .filter((p) => typeof p.dailyLimit === "number" && p.dailyLimit <= 5 && p.dailyLimit > 0)
+      .sort((a, b) => (a.dailyLimit ?? 0) - (b.dailyLimit ?? 0))
+      .slice(0, 5);
+    
+    const lowStockCount = lowStockProducts.length;
 
     // Date range for charts
     const now = new Date();
@@ -123,24 +146,94 @@ function ReportsPage() {
       }
     );
 
-    // Payment method breakdown (same filtered range)
-    const paymentBreakdown = filteredOrders.reduce((acc, o) => {
-      const method =
-        o.orderData?.paymentMethod || o.paymentMethod || "Unknown";
-      acc[method] = (acc[method] || 0) + 1;
+    // Calculate rating statistics
+    const ratingStats = ratings.reduce((acc, r) => {
+      const rating = r.rating || 0;
+      acc.total += 1;
+      acc.sum += rating;
+      acc.distribution[rating] = (acc.distribution[rating] || 0) + 1;
       return acc;
-    }, {});
+    }, {
+      total: 0,
+      sum: 0,
+      distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    });
+
+    const averageRating = ratingStats.total > 0 
+      ? ratingStats.sum / ratingStats.total 
+      : 0;
+
+    // Calculate returned orders statistics
+    const returnedOrders = orders.filter(
+      (o) => o.paymentStatus === "return_requested" || o.paymentStatus === "returned"
+    );
+
+    const returnedOrdersStats = {
+      total: returnedOrders.length,
+      pending: returnedOrders.filter((o) => o.paymentStatus === "return_requested").length,
+      approved: returnedOrders.filter((o) => o.paymentStatus === "returned").length,
+      totalValue: returnedOrders.reduce((sum, o) => sum + Number(o.total || 0), 0),
+    };
+
+    // Returned orders over time
+    const returnedDayBuckets = new Map();
+    for (let i = rangeDays - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      returnedDayBuckets.set(key, { pending: 0, approved: 0, total: 0 });
+    }
+
+    returnedOrders.forEach((o) => {
+      const ts = o.returnRequestedAt || o.createdAt;
+      if (!ts) return;
+
+      const date =
+        typeof ts === "object" && ts.seconds
+          ? new Date(ts.seconds * 1000)
+          : new Date(ts);
+      const key = date.toISOString().slice(0, 10);
+
+      if (returnedDayBuckets.has(key)) {
+        const bucket = returnedDayBuckets.get(key);
+        bucket.total += 1;
+        if (o.paymentStatus === "return_requested") {
+          bucket.pending += 1;
+        } else if (o.paymentStatus === "returned") {
+          bucket.approved += 1;
+        }
+      }
+    });
+
+    const returnedOrdersOverTime = Array.from(returnedDayBuckets.entries()).map(
+      ([key, value]) => {
+        const d = new Date(key);
+        const label = d.toLocaleDateString("en-US", {
+          month: "2-digit",
+          day: "2-digit",
+        });
+
+        return { key, label, ...value };
+      }
+    );
 
     return {
       totalOrders,
       totalRevenue,
       avgTicket,
       lowStockCount,
+      lowStockProducts,
       ordersOverTime,
-      paymentBreakdown,
+      returnedOrdersStats,
+      returnedOrdersOverTime,
+      ratingStats: {
+        average: averageRating,
+        total: ratingStats.total,
+        distribution: ratingStats.distribution,
+      },
       rangeDays,
     };
-  }, [orders, products, ordersRange]);
+  }, [orders, products, ordersRange, ratings]);
 
   const downloadCsv = (rows, filename) => {
     if (!rows || !rows.length) {
@@ -204,6 +297,41 @@ function ReportsPage() {
     downloadCsv(rows, "bcnl-inventory-report.csv");
   };
 
+  const exportReturnedOrdersCsv = () => {
+    const returnedOrders = orders.filter(
+      (o) => o.paymentStatus === "return_requested" || o.paymentStatus === "returned"
+    );
+
+    const rows = returnedOrders.map((o) => {
+      const createdAt = o.createdAt?.seconds
+        ? new Date(o.createdAt.seconds * 1000).toISOString()
+        : "";
+      const returnRequestedAt = o.returnRequestedAt?.seconds
+        ? new Date(o.returnRequestedAt.seconds * 1000).toISOString()
+        : "";
+      const returnRejectedAt = o.returnRejectedAt?.seconds
+        ? new Date(o.returnRejectedAt.seconds * 1000).toISOString()
+        : "";
+
+      return {
+        orderId: o.id,
+        orderDate: createdAt,
+        customer: o.orderData?.receiverName || "",
+        contact: o.orderData?.contactNumber || "",
+        email: o.email || "",
+        paymentMethod: o.orderData?.paymentMethod || o.paymentMethod || "",
+        total: o.total || 0,
+        status: o.paymentStatus === "return_requested" ? "Pending Approval" : "Returned",
+        returnReason: o.returnReason || "",
+        returnRequestedAt: returnRequestedAt,
+        returnRejectedAt: returnRejectedAt || "",
+        items: o.items?.map((item) => `${item.name} (x${item.quantity})`).join("; ") || "",
+      };
+    });
+
+    downloadCsv(rows, `returned-orders-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
   const exportOrdersOverTimeCsv = () => {
     const rows = summary.ordersOverTime.map((d) => ({
       date: d.key,
@@ -241,49 +369,6 @@ function ReportsPage() {
     doc.save(`bcnl-orders-trend-${ordersRange}.pdf`);
   };
 
-  const exportPaymentBreakdownCsv = () => {
-    const entries = Object.entries(summary.paymentBreakdown || {});
-    if (!entries.length) {
-      alert("No payment data to export for this range.");
-      return;
-    }
-
-    const rows = entries.map(([method, count]) => ({
-      method,
-      count,
-    }));
-
-    downloadCsv(rows, `bcnl-payment-methods-${ordersRange}.csv`);
-  };
-
-  const exportPaymentBreakdownPdf = () => {
-    const entries = Object.entries(summary.paymentBreakdown || {});
-    if (!entries.length) {
-      alert("No payment data to export for this range.");
-      return;
-    }
-
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Payment Method Breakdown", 14, 16);
-
-    doc.setFontSize(11);
-    const label =
-      ordersRange === "30d"
-        ? "Last 30 days"
-        : ordersRange === "365d"
-        ? "Last 365 days"
-        : "Last 7 days";
-    doc.text(label, 14, 24);
-
-    autoTable(doc, {
-      startY: 32,
-      head: [["Method", "Orders"]],
-      body: entries.map(([method, count]) => [method, count]),
-    });
-
-    doc.save(`bcnl-payment-methods-${ordersRange}.pdf`);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
@@ -320,8 +405,9 @@ function ReportsPage() {
           <KpiCard
             label="Low Stock Products"
             value={summary.lowStockCount}
-            helper="Items with stock ≤ 5"
+            helper="Items with dailyLimit ≤ 5"
             loading={loading}
+            variant={summary.lowStockCount > 0 ? "warning" : "default"}
           />
         </div>
 
@@ -375,35 +461,83 @@ function ReportsPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                  Payment Methods
+                  Website Rating
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Distribution of orders by payment method (same range).
+                  Average rating and distribution of customer ratings.
                 </p>
               </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={exportPaymentBreakdownCsv}
-                  className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
-                >
-                  CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportPaymentBreakdownPdf}
-                  className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
-                >
-                  PDF
-                </button>
-              </div>
             </div>
-            <PaymentMethodChart
-              breakdown={summary.paymentBreakdown}
-              total={summary.totalOrders}
+            <RatingChart
+              ratingStats={summary.ratingStats}
               loading={loading}
             />
           </div>
+        </div>
+
+        {/* RETURNED ORDERS REPORT */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Returned Orders Report
+              </h2>
+              <p className="text-xs text-gray-500">
+                Overview of return requests and approved returns.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={exportReturnedOrdersCsv}
+                className="px-3 py-1.5 rounded-md border border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
+                disabled={loading || !summary.returnedOrdersStats.total}
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Returned Orders Statistics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+              <p className="text-xs text-red-600 font-medium mb-1">Total Returns</p>
+              <p className="text-2xl font-bold text-red-700">
+                {loading ? "…" : summary.returnedOrdersStats.total}
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                €{loading ? "…" : summary.returnedOrdersStats.totalValue.toFixed(2)} value
+              </p>
+            </div>
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+              <p className="text-xs text-orange-600 font-medium mb-1">Pending Approval</p>
+              <p className="text-2xl font-bold text-orange-700">
+                {loading ? "…" : summary.returnedOrdersStats.pending}
+              </p>
+              <p className="text-xs text-orange-600 mt-1">Awaiting review</p>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-xs text-gray-600 font-medium mb-1">Approved Returns</p>
+              <p className="text-2xl font-bold text-gray-700">
+                {loading ? "…" : summary.returnedOrdersStats.approved}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Processed</p>
+            </div>
+          </div>
+
+          {/* Returned Orders Chart */}
+          <ReturnedOrdersChart
+            data={summary.returnedOrdersOverTime}
+            loading={loading}
+          />
+        </div>
+
+        {/* LOW STOCK ALERTS */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <LowStockPanel
+            products={summary.lowStockProducts}
+            loading={loading}
+          />
         </div>
 
         {/* EXPORT CARDS */}
@@ -429,18 +563,40 @@ function ReportsPage() {
   );
 }
 
-function KpiCard({ label, value, helper, loading }) {
+function KpiCard({ label, value, helper, loading, variant = "default" }) {
+  const variantStyles = {
+    default: {
+      border: "border-gray-100",
+      valueColor: "text-[#502455]",
+      bgGradient: "",
+    },
+    warning: {
+      border: "border-orange-200",
+      valueColor: "text-orange-600",
+      bgGradient: "bg-gradient-to-br from-orange-50/50 to-transparent",
+    },
+    success: {
+      border: "border-green-200",
+      valueColor: "text-green-600",
+      bgGradient: "bg-gradient-to-br from-green-50/50 to-transparent",
+    },
+  };
+
+  const styles = variantStyles[variant] || variantStyles.default;
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4 flex flex-col justify-between min-h-[120px]">
-      <div>
+    <div
+      className={`bg-white rounded-2xl shadow-sm border ${styles.border} px-5 py-4 flex flex-col justify-between min-h-[120px] relative overflow-hidden ${styles.bgGradient}`}
+    >
+      <div className="relative z-10">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           {label}
         </p>
-        <p className="mt-3 text-2xl font-bold text-[#502455]">
+        <p className={`mt-3 text-2xl font-bold ${styles.valueColor}`}>
           {loading ? "…" : value}
         </p>
       </div>
-      <p className="mt-2 text-xs text-gray-500">{helper}</p>
+      <p className="mt-2 text-xs text-gray-500 relative z-10">{helper}</p>
     </div>
   );
 }
@@ -536,6 +692,178 @@ function WeeklyOrdersChart({ data, loading }) {
   );
 }
 
+function RatingChart({ ratingStats, loading }) {
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-20 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-6 bg-gray-100 rounded-full animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!ratingStats || ratingStats.total === 0) {
+    return (
+      <div className="h-40 flex flex-col items-center justify-center text-xs text-gray-400">
+        <p className="mb-2">No ratings yet.</p>
+        <p className="text-[0.65rem]">Customers can rate the website monthly.</p>
+      </div>
+    );
+  }
+
+  const { average, total, distribution } = ratingStats;
+
+  return (
+    <div className="space-y-4">
+      {/* Average Rating Display */}
+      <div className="flex flex-col items-center justify-center py-4 bg-gradient-to-br from-[#7B2220]/5 to-[#502455]/5 rounded-xl">
+        <p className="text-xs text-gray-600 mb-1.5">Average Rating</p>
+        <div className="flex items-center gap-2">
+          <StarRating rating={average} size="md" color="primary" />
+          <div className="text-left">
+            <p className="text-2xl font-bold text-gray-900">{average.toFixed(1)}</p>
+            <p className="text-[10px] text-gray-500">out of 5.0</p>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-2">
+          Based on {total} rating{total !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {/* Rating Distribution - Pie Chart */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-700 mb-3">Rating Distribution</h4>
+        
+        {/* Check if there's actual distribution (more than one rating category) */}
+        {Object.values(distribution).filter(count => count > 0).length <= 1 ? (
+          <div className="flex flex-col items-center justify-center py-4 px-3 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="text-center mb-3">
+              <p className="text-xs text-gray-600 mb-1">All ratings are {average === 5 ? "5 stars" : average === 4 ? "4 stars" : average === 3 ? "3 stars" : average === 2 ? "2 stars" : "1 star"} ⭐</p>
+              <p className="text-[10px] text-gray-500">Distribution will appear when ratings vary</p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = distribution[star] || 0;
+                const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : "0.0";
+                const isActive = count > 0;
+                return (
+                  <div
+                    key={star}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border ${
+                      isActive
+                        ? "bg-green-50 border-green-200"
+                        : "bg-gray-50 border-gray-200"
+                    }`}
+                  >
+                    <span className="text-[10px] font-medium text-gray-700">{star} ⭐</span>
+                    <span className={`text-[10px] font-semibold ${isActive ? "text-green-700" : "text-gray-400"}`}>
+                      {count} ({percentage}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl p-3 border border-gray-200">
+            <div className="h-48 flex items-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "white",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    }}
+                    formatter={(value, name) => {
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+                      return [`${value} rating${value !== 1 ? "s" : ""} (${percentage}%)`, `${name} star${name !== "1" ? "s" : ""}`];
+                    }}
+                  />
+                  <Pie
+                    data={[
+                      { name: "5", value: distribution[5] || 0, fill: "#10B981" },
+                      { name: "4", value: distribution[4] || 0, fill: "#34D399" },
+                      { name: "3", value: distribution[3] || 0, fill: "#FBBF24" },
+                      { name: "2", value: distribution[2] || 0, fill: "#FB923C" },
+                      { name: "1", value: distribution[1] || 0, fill: "#F87171" },
+                    ]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={70}
+                    innerRadius={35}
+                    paddingAngle={2}
+                    label={({ percent }) => {
+                      if (percent < 0.05) return null; // Don't show labels for very small segments
+                      return `${(percent * 100).toFixed(0)}%`;
+                    }}
+                    labelLine={false}
+                  >
+                    {[
+                      { fill: "#10B981" }, // 5 stars - emerald green
+                      { fill: "#34D399" }, // 4 stars - light emerald
+                      { fill: "#FBBF24" }, // 3 stars - amber
+                      { fill: "#FB923C" }, // 2 stars - orange
+                      { fill: "#F87171" }, // 1 star - red
+                    ].map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.fill}
+                        stroke="white"
+                        strokeWidth={2}
+                        style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))" }}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Custom Legend */}
+            <div className="grid grid-cols-5 gap-1.5 mt-3 pt-3 border-t border-gray-200">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = distribution[star] || 0;
+                const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : "0.0";
+                const colors = {
+                  5: "#10B981",
+                  4: "#34D399",
+                  3: "#FBBF24",
+                  2: "#FB923C",
+                  1: "#F87171",
+                };
+                return (
+                  <div
+                    key={star}
+                    className="flex flex-col items-center p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-0.5 mb-0.5">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: colors[star] }}
+                      />
+                      <span className="text-[10px] font-medium text-gray-700">{star}⭐</span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-gray-900">{count}</span>
+                    <span className="text-[9px] text-gray-500">{percentage}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PaymentMethodChart({ breakdown, total, loading }) {
   if (loading) {
     return (
@@ -620,6 +948,144 @@ function PaymentMethodChart({ breakdown, total, loading }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function LowStockPanel({ products, loading }) {
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">
+            Low Stock Alerts
+          </h3>
+          <p className="text-xs text-gray-500">
+            First {products?.length || 0} products with dailyLimit ≤ 5.
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-10 bg-gray-100 rounded-xl animate-pulse"
+            />
+          ))}
+        </div>
+      ) : !products || !products.length ? (
+        <div className="h-28 flex items-center justify-center text-xs text-gray-400">
+          No low stock items. 🎉
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-2 text-xs"
+            >
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-[0.7rem] font-semibold text-amber-700">
+                  {p.name?.[0] || "P"}
+                </span>
+                <div>
+                  <p className="font-semibold text-gray-800 truncate max-w-[10rem]">
+                    {p.name || "Unnamed product"}
+                  </p>
+                  <p className="text-[0.65rem] text-gray-500">
+                    {p.category || "Uncategorized"}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[0.75rem] font-semibold text-amber-800">
+                  Limit: {p.dailyLimit ?? 0}
+                </p>
+                <p className="text-[0.65rem] text-amber-700/80">
+                  Reorder soon
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReturnedOrdersChart({ data, loading }) {
+  if (loading) {
+    return (
+      <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+    );
+  }
+
+  if (!data || !data.length || data.every((d) => d.total === 0)) {
+    return (
+      <div className="h-64 flex items-center justify-center text-xs text-gray-400">
+        <div className="text-center">
+          <p className="mb-2">No returned orders in this period.</p>
+          <p className="text-[0.65rem]">Return requests will appear here once customers submit them.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#6b7280" }}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#9ca3af" }}
+          />
+          <Tooltip
+            cursor={{ fill: "rgba(239, 68, 68, 0.04)" }}
+            formatter={(value, name) => {
+              if (name === "pending") return [value, "Pending Approval"];
+              if (name === "approved") return [value, "Approved Returns"];
+              return [value, "Total Returns"];
+            }}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+            iconSize={10}
+            formatter={(value) => {
+              if (value === "pending") return "Pending Approval";
+              if (value === "approved") return "Approved Returns";
+              return "Total";
+            }}
+          />
+          <Bar
+            dataKey="total"
+            fill="#EF4444"
+            radius={[10, 10, 0, 0]}
+            name="total"
+          />
+          <Bar
+            dataKey="pending"
+            fill="#F97316"
+            radius={[10, 10, 0, 0]}
+            name="pending"
+          />
+          <Bar
+            dataKey="approved"
+            fill="#6B7280"
+            radius={[10, 10, 0, 0]}
+            name="approved"
+          />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
