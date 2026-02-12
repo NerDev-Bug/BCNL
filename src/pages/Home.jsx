@@ -20,8 +20,8 @@ const DEFAULT_HOME = {
 
   // ✅ Buttons
   menuLink: "/menu",
-  preorderLink: "/order",
-  comingSoonLink: "/menu#coming-soon",
+  preorderLink: "/menu",
+  comingSoonLink: "/events",
 
   // ✅ Images
   bgImage: "./images/purple_Bg.png",
@@ -106,18 +106,18 @@ function Home() {
                   </Link>
 
                   <Link
-                    to={homeContent.preorderLink || "/order"}
+                    to={homeContent.preorderLink || "/menu"}
                     className="w-full flex items-center justify-center gap-2 bg-[#5B1E5D] text-white font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
                   >
                     🛍 Pre-Order for Pickup →
                   </Link>
 
                   <Link
-                    to={homeContent.comingSoonLink || "/menu#coming-soon"}
-                    className="w-full flex items-center justify-center gap-2 border border-[#5B1E5D] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:bg-[#5B1E5D]/10 transition"
-                  >
-                    → See What&apos;s Coming Soon
-                  </Link>
+  to="/events"
+  className="w-full flex items-center justify-center gap-2 border border-[#5B1E5D] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:bg-[#5B1E5D]/10 transition"
+>
+  → See What&apos;s Coming Soon
+</Link>
                 </div>
               </div>
             </div>

@@ -1,17 +1,33 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { Link } from "react-router-dom"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "../../firebase"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 function PickUp() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // scroll ref
+  const scrollRef = useRef(null)
+
+  const scrollLeft = () => {
+    scrollRef.current?.scrollBy({
+      left: -300,
+      behavior: "smooth",
+    })
+  }
+
+  const scrollRight = () => {
+    scrollRef.current?.scrollBy({
+      left: 300,
+      behavior: "smooth",
+    })
+  }
+
   useEffect(() => {
     const load = async () => {
       try {
-        // ✅ only show products you enabled for pickup
-        // Add: pickupEnabled: true in product doc
         const q = query(
           collection(db, "products"),
           where("pickupEnabled", "==", true)
@@ -33,11 +49,12 @@ function PickUp() {
 
   const cards = useMemo(() => {
     return items.map((p) => {
-      // ✅ read remaining directly from Firestore dailyLimit
-      const leftRaw = typeof p.dailyLimit === "number" ? p.dailyLimit : null
-      const left = leftRaw === null ? null : Math.max(0, Number(leftRaw) || 0)
+      const leftRaw =
+        typeof p.dailyLimit === "number" ? p.dailyLimit : null
 
-      // ✅ sold out rules
+      const left =
+        leftRaw === null ? null : Math.max(0, Number(leftRaw) || 0)
+
       const soldOut = p.available === false || left === 0
 
       return {
@@ -51,7 +68,7 @@ function PickUp() {
   return (
     <section className="w-full py-10">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header like image */}
+        {/* Header */}
         <div className="flex items-center gap-2 mb-5">
           <span className="text-[#5B1E5D] text-xl">→</span>
           <h2 className="text-lg md:text-xl font-semibold text-[#3b1b3d]">
@@ -59,18 +76,16 @@ function PickUp() {
           </h2>
         </div>
 
-        {/* Cards */}
+        {/* Loading */}
         {loading ? (
-          <div
-            className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2
-                       [-ms-overflow-style:none] [scrollbar-width:none]
-                       [&::-webkit-scrollbar]:hidden"
-          >
+          <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2
+            [-ms-overflow-style:none] [scrollbar-width:none]
+            [&::-webkit-scrollbar]:hidden">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="min-w-[260px] max-w-[260px] snap-start
-                           bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
               >
                 <div className="h-40 bg-gray-100 animate-pulse" />
                 <div className="p-4">
@@ -85,77 +100,103 @@ function PickUp() {
             No pickup items available right now.
           </div>
         ) : (
-          <div
-            className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2
-                       [-ms-overflow-style:none] [scrollbar-width:none]
-                       [&::-webkit-scrollbar]:hidden"
-          >
-            {cards.slice(0, 6).map((p) => {
-              const badgeText = p.soldOut
-                ? "SOLD OUT"
-                : p.left !== null
-                ? `${p.left} left`
-                : "Available"
+          <div className="relative">
+            {/* LEFT ICON BUTTON */}
+            <button
+              onClick={scrollLeft}
+              className="absolute -left-4 top-1/2 -translate-y-1/2 z-10
+              w-10 h-10 rounded-full bg-white shadow-md
+              flex items-center justify-center
+              hover:scale-105 transition"
+            >
+              <ChevronLeft size={20} />
+            </button>
 
-              return (
-                <div
-                  key={p.id}
-                  className="min-w-[260px] max-w-[260px] snap-start
-                             bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-                >
-                  {/* Image + badge */}
-                  <div className="relative">
-                    {p.soldOut ? (
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="w-full h-44 object-cover opacity-70"
-                      />
-                    ) : (
-                      <Link to={`/product/${p.id}`}>
+            {/* RIGHT ICON BUTTON */}
+            <button
+              onClick={scrollRight}
+              className="absolute -right-4 top-1/2 -translate-y-1/2 z-10
+              w-10 h-10 rounded-full bg-white shadow-md
+              flex items-center justify-center
+              hover:scale-105 transition"
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            {/* SCROLL CONTAINER */}
+            <div
+              ref={scrollRef}
+              className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2
+              [-ms-overflow-style:none] [scrollbar-width:none]
+              [&::-webkit-scrollbar]:hidden"
+            >
+              {cards.slice(0, 6).map((p) => {
+                const badgeText = p.soldOut
+                  ? "SOLD OUT"
+                  : p.left !== null
+                  ? `${p.left} left`
+                  : "Available"
+
+                return (
+                  <div
+                    key={p.id}
+                    className="min-w-[260px] max-w-[260px] snap-start
+                    bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                  >
+                    {/* Image */}
+                    <div className="relative">
+                      {p.soldOut ? (
                         <img
                           src={p.image}
                           alt={p.name}
-                          className="w-full h-44 object-cover"
+                          className="w-full h-44 object-cover opacity-70"
                         />
-                      </Link>
-                    )}
+                      ) : (
+                        <Link to={`/product/${p.id}`}>
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="w-full h-44 object-cover"
+                          />
+                        </Link>
+                      )}
 
-                    <div className="absolute top-3 right-3">
-                      <span
-                        className={[
-                          "px-3 py-1 rounded-lg text-xs font-semibold tracking-wide",
-                          p.soldOut
-                            ? "bg-[#F6E6C9] text-[#4A2B1A]"
-                            : "bg-white/95 text-[#2b2b2b] border border-gray-200",
-                        ].join(" ")}
-                      >
-                        {badgeText}
-                      </span>
+                      <div className="absolute top-3 right-3">
+                        <span
+                          className={[
+                            "px-3 py-1 rounded-lg text-xs font-semibold tracking-wide",
+                            p.soldOut
+                              ? "bg-[#F6E6C9] text-[#4A2B1A]"
+                              : "bg-white/95 text-[#2b2b2b] border border-gray-200",
+                          ].join(" ")}
+                        >
+                          {badgeText}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Text */}
+                    <div className="p-4 text-center">
+                      <p className="font-semibold text-[#3b1b3d]">
+                        {p.name}
+                      </p>
+
+                      {p.left !== null && (
+                        <p className="text-sm text-[#3b1b3d]/80">
+                          ({p.left} left)
+                        </p>
+                      )}
+
+                      {!p.soldOut && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Tap to view &amp; order
+                        </p>
+                      )}
                     </div>
                   </div>
-
-                  {/* Text */}
-                  <div className="p-4 text-center">
-                    <p className="font-semibold text-[#3b1b3d]">{p.name}</p>
-
-                    {/* (x left) line like image */}
-                    {p.left !== null && (
-                      <p className="text-sm text-[#3b1b3d]/80">
-                        ({p.left} left)
-                      </p>
-                    )}
-
-                    {/* Optional: click hint */}
-                    {!p.soldOut && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Tap to view &amp; order
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
