@@ -48,7 +48,6 @@ function Home() {
     load()
   }, [])
 
-  // ✅ Format date nicely
   const formattedBakeDate = homeContent.nextBakeDate
     ? new Date(homeContent.nextBakeDate).toLocaleDateString("en-US", {
         weekday: "long",
@@ -60,12 +59,18 @@ function Home() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative max-w-screen-2xl mx-auto min-h-screen overflow-hidden">
+      <section
+        className="
+          relative max-w-screen-2xl mx-auto overflow-hidden
+          pt-28 md:pt-0
+        "
+      >
         <div className="w-full">
           <div className="flex flex-col md:flex-row">
             {/* ✅ RIGHT TEXT SIDE */}
-            <div className="flex flex-1 items-center justify-center px-6 md:px-12 order-1 md:order-2 min-h-screen md:min-h-0">
-              <div className="max-w-xl text-left mx-auto">
+            <div className="flex flex-1 items-start md:items-center justify-center px-6 md:px-12 order-1 md:order-2">
+              {/* ✅ CENTER EVERYTHING */}
+              <div className="max-w-xl text-center mx-auto flex flex-col items-center py-10 md:py-0">
                 {/* TITLE */}
                 <h1 className="text-4xl md:text-5xl font-cooper text-[#502455] leading-tight font-semibold">
                   {homeContent.heading}
@@ -75,42 +80,41 @@ function Home() {
                   {homeContent.subheading}
                 </p>
 
-                {/* ✅ NEXT BAKE DAY (CONNECTED TO ADMIN) */}
+                {/* ✅ NEXT BAKE DAY (CENTERED) */}
                 {homeContent.nextBakeDate && (
-                  <div className="mt-6 inline-block bg-[#FFF2C6] text-[#5B1E5D] px-5 py-3 rounded-xl font-medium">
-                    {homeContent.nextBakeTitle || "Next Bake Day"}:{" "}
-                    <strong>{formattedBakeDate}</strong>
+                  <div className="mt-6 bg-[#FFF2C6] text-[#5B1E5D] px-6 py-4 rounded-xl font-medium text-center w-full max-w-md">
+                    <span className="font-semibold">
+                      {homeContent.nextBakeTitle || "Next Bake Day"}:{" "}
+                      <strong>{formattedBakeDate}</strong>
+                    </span>
 
                     {!!homeContent.nextBakeSlotsText && (
-                      <span className="block text-sm opacity-80">
+                      <div className="text-sm opacity-80 mt-1">
                         ({homeContent.nextBakeSlotsText})
-                      </span>
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* BUTTONS */}
-                <div className="mt-8 flex flex-col gap-4 max-w-sm">
-                  {/* See Today's Menu */}
+                {/* ✅ BUTTONS (CENTERED + SAME WIDTH) */}
+                <div className="mt-8 flex flex-col gap-4 w-full max-w-md">
                   <Link
                     to={homeContent.menuLink || "/menu"}
-                    className="flex items-center justify-center gap-2 bg-[#FFE4A3] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
+                    className="w-full flex items-center justify-center gap-2 bg-[#FFE4A3] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
                   >
                     🍰 See Today&apos;s Menu →
                   </Link>
 
-                  {/* Pre-Order */}
                   <Link
                     to={homeContent.preorderLink || "/order"}
-                    className="flex items-center justify-center gap-2 bg-[#5B1E5D] text-white font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
+                    className="w-full flex items-center justify-center gap-2 bg-[#5B1E5D] text-white font-semibold px-6 py-4 rounded-xl hover:opacity-90 transition"
                   >
                     🛍 Pre-Order for Pickup →
                   </Link>
 
-                  {/* Coming Soon */}
                   <Link
                     to={homeContent.comingSoonLink || "/menu#coming-soon"}
-                    className="flex items-center justify-center gap-2 border border-[#5B1E5D] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:bg-[#5B1E5D]/10 transition"
+                    className="w-full flex items-center justify-center gap-2 border border-[#5B1E5D] text-[#5B1E5D] font-semibold px-6 py-4 rounded-xl hover:bg-[#5B1E5D]/10 transition"
                   >
                     → See What&apos;s Coming Soon
                   </Link>
@@ -142,14 +146,14 @@ function Home() {
         </div>
       </section>
 
-      {/* Events Section */}
-      <section>
-        <Events />
-      </section>
-
       {/* Pick-Up Orders Section */}
       <section>
         <PickUp />
+      </section>
+
+      {/* Events Section */}
+      <section>
+        <Events />
       </section>
 
       {/* Favorites Section */}

@@ -12,7 +12,10 @@ function PickUp() {
       try {
         // ✅ only show products you enabled for pickup
         // Add: pickupEnabled: true in product doc
-        const q = query(collection(db, "products"), where("pickupEnabled", "==", true))
+        const q = query(
+          collection(db, "products"),
+          where("pickupEnabled", "==", true)
+        )
         const snap = await getDocs(q)
 
         const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
@@ -30,15 +33,8 @@ function PickUp() {
 
   const cards = useMemo(() => {
     return items.map((p) => {
-      // ✅ remaining stock for pickup
-      // priority: pickupLeft -> dailyLimit -> null
-      const leftRaw =
-        typeof p.pickupLeft === "number"
-          ? p.pickupLeft
-          : typeof p.dailyLimit === "number"
-          ? p.dailyLimit
-          : null
-
+      // ✅ read remaining directly from Firestore dailyLimit
+      const leftRaw = typeof p.dailyLimit === "number" ? p.dailyLimit : null
       const left = leftRaw === null ? null : Math.max(0, Number(leftRaw) || 0)
 
       // ✅ sold out rules
@@ -65,11 +61,16 @@ function PickUp() {
 
         {/* Cards */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div
+            className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2
+                       [-ms-overflow-style:none] [scrollbar-width:none]
+                       [&::-webkit-scrollbar]:hidden"
+          >
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                className="min-w-[260px] max-w-[260px] snap-start
+                           bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
               >
                 <div className="h-40 bg-gray-100 animate-pulse" />
                 <div className="p-4">
@@ -84,7 +85,11 @@ function PickUp() {
             No pickup items available right now.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div
+            className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2
+                       [-ms-overflow-style:none] [scrollbar-width:none]
+                       [&::-webkit-scrollbar]:hidden"
+          >
             {cards.slice(0, 6).map((p) => {
               const badgeText = p.soldOut
                 ? "SOLD OUT"
@@ -95,7 +100,8 @@ function PickUp() {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                  className="min-w-[260px] max-w-[260px] snap-start
+                             bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
                 >
                   {/* Image + badge */}
                   <div className="relative">
@@ -143,7 +149,7 @@ function PickUp() {
                     {/* Optional: click hint */}
                     {!p.soldOut && (
                       <p className="text-xs text-gray-500 mt-2">
-                        Tap to view & order
+                        Tap to view &amp; order
                       </p>
                     )}
                   </div>

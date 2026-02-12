@@ -138,9 +138,9 @@ export default function Menu() {
       >
         <div className="py-8 px-4 max-w-6xl mx-auto">
           <div
-            className="border border-[#7B2220] rounded-md p-2 bg-[#502455] sticky z-20"
-            style={{ top: "100px" }}
-          >
+  className="border border-[#7B2220] rounded-md p-2 bg-[#502455] z-20 md:sticky"
+  style={{ top: "100px" }}
+>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative w-full md:flex-1">
                 <Search

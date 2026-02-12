@@ -43,15 +43,21 @@ function Events() {
     load()
   }, [])
 
-  const baseMedia = (remoteMedia && remoteMedia.length > 0) ? remoteMedia : fallbackMedia
+  const baseMedia =
+    remoteMedia && remoteMedia.length > 0 ? remoteMedia : fallbackMedia
 
-  // 🚫 important: if baseMedia length is 0, don’t render carousel logic
   if (!baseMedia || baseMedia.length === 0) {
-    return <div className="py-8 px-4 max-w-6xl mx-auto">No events yet.</div>
+    return (
+      <div className="py-8 px-4 max-w-6xl mx-auto">
+        No events yet.
+      </div>
+    )
   }
 
-  // Build: [clones][real][clones]
+  // ✅ keep “peek”
+  const SLIDE_W = 88 // percent width -> shows next slide peeking
   const CLONE_SETS = 2
+
   const extended = useMemo(() => {
     const clonesBefore = Array.from({ length: CLONE_SETS }, () => baseMedia).flat()
     const clonesAfter = Array.from({ length: CLONE_SETS }, () => baseMedia).flat()
@@ -65,7 +71,6 @@ function Events() {
 
   const [extIndex, setExtIndex] = useState(realStart)
 
-  // keep extIndex valid when baseMedia changes (after Firestore load)
   useEffect(() => {
     setExtIndex(realStart)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +117,8 @@ function Events() {
     const maxSafe = realEnd + baseLen
 
     if (extIndex < minSafe || extIndex > maxSafe) {
-      const normalizedBase = ((extIndex - realStart) % baseLen + baseLen) % baseLen
+      const normalizedBase =
+        ((extIndex - realStart) % baseLen + baseLen) % baseLen
       const newExt = realStart + normalizedBase
       setExtIndex(newExt)
       requestAnimationFrame(() => centerAt(newExt, "auto"))
@@ -175,9 +181,20 @@ function Events() {
   }, [modalOpen])
 
   return (
-    <div className="py-8 px-4 max-w-6xl mx-auto">
+    // ✅ make background NOT white so “peek area” blends nicely
+    <div
+      className="py-8 w-full"
+      style={{
+        // option A: use a solid color that matches your carousel theme
+        backgroundColor: "#e1f0fe",
+        // option B (recommended): use the same purple pattern you use elsewhere
+        // backgroundImage: "url('/images/gingham_pattern_purple_bg.jpg')",
+        // backgroundSize: "cover",
+        // backgroundPosition: "center",
+      }}
+    >
       <div
-        className="relative -mx-4"
+        className="relative w-full"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
@@ -196,7 +213,7 @@ function Events() {
                   key={`${item.src}-${i}`}
                   ref={(el) => (slideRefs.current[i] = el)}
                   className="shrink-0 cursor-pointer"
-                  style={{ width: "88%" }}
+                  style={{ width: `${SLIDE_W}%` }} // ✅ keep peek
                   onClick={() => {
                     if (isActive) openModal()
                     else setExtIndex(i)
@@ -208,7 +225,9 @@ function Events() {
                         src={item.src}
                         controls
                         className={`w-full h-full object-cover transition-all duration-500 ${
-                          isActive ? "opacity-100 scale-100" : "opacity-60 scale-[0.97]"
+                          isActive
+                            ? "opacity-100 scale-100"
+                            : "opacity-70 scale-[0.985]"
                         }`}
                       />
                     ) : (
@@ -217,7 +236,9 @@ function Events() {
                         alt=""
                         draggable={false}
                         className={`w-full h-full object-cover transition-all duration-500 ${
-                          isActive ? "opacity-100 scale-100" : "opacity-60 scale-[0.97]"
+                          isActive
+                            ? "opacity-100 scale-100"
+                            : "opacity-70 scale-[0.985]"
                         }`}
                       />
                     )}
@@ -228,10 +249,11 @@ function Events() {
           </div>
         </div>
 
+        {/* arrows */}
         <button
           type="button"
           onClick={prev}
-          className="absolute top-1/2 -translate-y-1/2 left-1 w-12 h-12 rounded-full bg-white/80 text-3xl shadow-md flex items-center justify-center hover:bg-white"
+          className="absolute top-1/2 -translate-y-1/2 left-3 w-12 h-12 rounded-full bg-white/90 text-3xl shadow-md flex items-center justify-center hover:bg-white"
           aria-label="Previous"
         >
           ‹
@@ -239,26 +261,28 @@ function Events() {
         <button
           type="button"
           onClick={next}
-          className="absolute top-1/2 -translate-y-1/2 right-1 w-12 h-12 rounded-full bg-white/80 text-3xl shadow-md flex items-center justify-center hover:bg-white"
+          className="absolute top-1/2 -translate-y-1/2 right-3 w-12 h-12 rounded-full bg-white/90 text-3xl shadow-md flex items-center justify-center hover:bg-white"
           aria-label="Next"
         >
           ›
         </button>
       </div>
 
+      {/* dots */}
       <div className="flex justify-center mt-4 gap-2">
         {baseMedia.map((_, i) => (
           <button
             key={i}
             onClick={() => goToBase(i)}
             className={`w-3 h-3 rounded-full transition-all ${
-              i === baseIndex ? "bg-[#7B2220] scale-110" : "bg-gray-300"
+              i === baseIndex ? "bg-[#7B2220] scale-110" : "bg-white/60"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
         ))}
       </div>
 
+      {/* modal */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4"
