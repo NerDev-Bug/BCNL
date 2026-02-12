@@ -99,18 +99,14 @@ function DiscountsPage() {
   const parseDiscount = (value) => {
     if (!value) return null;
 
-    const v = value.trim();
+    const v = value.trim().replace(",", ".");
 
-    if (/^\d+(\.\d+)?%$/.test(v)) {
-      const percent = Number(v.replace("%", ""));
+    // Only allow numbers (percentage)
+    if (/^\d+(\.\d+)?$/.test(v)) {
+      const percent = Number(v);
       if (percent <= 0 || percent >= 100) return null;
-      return { type: "percent", value: percent };
-    }
 
-    if (/^\d+(\.\d+)?€?$/.test(v)) {
-      const amount = Number(v.replace("€", ""));
-      if (amount <= 0) return null;
-      return { type: "fixed", value: amount };
+      return { type: "percent", value: percent };
     }
 
     return null;
@@ -443,14 +439,17 @@ function DiscountsPage() {
 
             <div className="flex flex-col gap-2 min-w-[220px]">
               <label className="text-xs font-semibold text-gray-600">
-                Discount to apply (e.g. 10% or 5€)
+                Discount to apply
               </label>
               <input
-                type="text"
+                type="number"
+                min='1'
+                max='99'
+                step='0.1'
                 value={discountInput}
                 onChange={(e) => setDiscountInput(e.target.value)}
                 className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none"
-                placeholder="10% or 5€"
+                placeholder="10 or 9"
               />
             </div>
 
