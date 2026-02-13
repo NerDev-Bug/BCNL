@@ -18,8 +18,9 @@ function OrdersReturned() {
     const [pageSize] = useState(10);
     
     // Confirmation modal states
-    const [rejectModal, setRejectModal] = useState({ isOpen: false, orderId: null });
-    const [deleteModal, setDeleteModal] = useState({ isOpen: false, orderId: null });
+    const [approveModal, setApproveModal] = useState({ isOpen: false, order: null });
+    const [rejectModal, setRejectModal] = useState({ isOpen: false, order: null });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
 
     useEffect(() => {
         const fetchReturnOrders = async () => {
@@ -52,6 +53,7 @@ function OrdersReturned() {
         } catch (err) {
             console.error(err);
             setError("Failed to load orders.");
+            toast.error("Failed to load returned orders. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -88,15 +90,27 @@ function OrdersReturned() {
         });
     };
 
-    // Handle approving a return request
-    const handleApproveReturn = async (orderId) => {
+    // Handle opening confirmation modal for approve
+    const handleApproveReturn = (order) => {
+        setApproveModal({ isOpen: true, order });
+    };
+
+    // Confirm approving a return request
+    const confirmApproveReturn = async () => {
+        const order = approveModal.order;
+        if (!order) {
+            setApproveModal({ isOpen: false, order: null });
+            return;
+        }
+
         try {
             // Get full order data first
-            const orderRef = doc(db, "orders", orderId);
+            const orderRef = doc(db, "orders", order.id);
             const orderSnap = await getDoc(orderRef);
             
             if (!orderSnap.exists()) {
                 toast.error("Order not found");
+                setApproveModal({ isOpen: false, order: null });
                 return;
             }
 
@@ -114,37 +128,41 @@ function OrdersReturned() {
                 console.error("Error creating return approved notification:", notifError);
             }
             
-            setOrders(orders.map(order => 
-                order.id === orderId 
-                    ? { ...order, paymentStatus: "returned" }
-                    : order
+            setOrders(orders.map(o => 
+                o.id === order.id 
+                    ? { ...o, paymentStatus: "returned" }
+                    : o
             ));
             toast.success("Return request approved successfully");
         } catch (err) {
             console.error("Error approving return:", err);
             toast.error("Failed to approve return request");
+        } finally {
+            setApproveModal({ isOpen: false, order: null });
         }
     };
 
     // Open reject confirmation modal
-    const openRejectModal = (orderId) => {
-        setRejectModal({ isOpen: true, orderId });
+    const openRejectModal = (order) => {
+        setRejectModal({ isOpen: true, order });
     };
 
-    // Handle rejecting a return request (revert to delivered)
+    // Confirm rejecting a return request (revert to delivered)
     const confirmRejectReturn = async () => {
-        if (!rejectModal.orderId) return;
-
-        const orderId = rejectModal.orderId;
-        setRejectModal({ isOpen: false, orderId: null });
+        const order = rejectModal.order;
+        if (!order) {
+            setRejectModal({ isOpen: false, order: null });
+            return;
+        }
 
         try {
             // Get full order data first
-            const orderRef = doc(db, "orders", orderId);
+            const orderRef = doc(db, "orders", order.id);
             const orderSnap = await getDoc(orderRef);
             
             if (!orderSnap.exists()) {
                 toast.error("Order not found");
+                setRejectModal({ isOpen: false, order: null });
                 return;
             }
 
@@ -162,34 +180,39 @@ function OrdersReturned() {
                 console.error("Error creating return rejected notification:", notifError);
             }
             
-            setOrders(orders.filter(order => order.id !== orderId));
+            setOrders(orders.filter(o => o.id !== order.id));
             toast.success("Return request rejected. Order reverted to delivered status.");
         } catch (err) {
             console.error("Error rejecting return:", err);
             toast.error("Failed to reject return request");
+        } finally {
+            setRejectModal({ isOpen: false, order: null });
         }
     };
 
     // Open delete confirmation modal
-    const openDeleteModal = (orderId) => {
-        setDeleteModal({ isOpen: true, orderId });
+    const openDeleteModal = (order) => {
+        setDeleteModal({ isOpen: true, order });
     };
 
-    // Handle deleting an order
+    // Confirm deleting an order
     const confirmDeleteOrder = async () => {
-        if (!deleteModal.orderId) return;
-
-        const orderId = deleteModal.orderId;
-        setDeleteModal({ isOpen: false, orderId: null });
+        const order = deleteModal.order;
+        if (!order) {
+            setDeleteModal({ isOpen: false, order: null });
+            return;
+        }
 
         try {
-            const orderDeleteRef = doc(db, "orders", orderId);
+            const orderDeleteRef = doc(db, "orders", order.id);
             await deleteDoc(orderDeleteRef);
-            setOrders(orders.filter(order => order.id !== orderId));
+            setOrders(orders.filter(o => o.id !== order.id));
             toast.success("Order deleted successfully");
         } catch (err) {
             console.error("Error deleting order:", err);
             toast.error("Failed to delete order");
+        } finally {
+            setDeleteModal({ isOpen: false, order: null });
         }
     };
 
@@ -265,19 +288,19 @@ function OrdersReturned() {
                 return (
                     <div className="flex flex-col gap-1 min-w-[120px]">
                         <button
-                            onClick={() => handleApproveReturn(row.id)}
+                            onClick={() => handleApproveReturn(row)}
                             className="px-3 py-1 text-[11px] font-medium text-white bg-green-600 rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 w-full justify-center inline-flex items-center gap-1"
                         >
                             ✓ Approve
                         </button>
                         <button
-                            onClick={() => openRejectModal(row.id)}
+                            onClick={() => openRejectModal(row)}
                             className="px-3 py-1 text-[11px] font-medium text-white bg-orange-600 rounded-full hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 w-full justify-center inline-flex items-center gap-1"
                         >
                             ✗ Reject
                         </button>
                         <RowActions 
-                            onDelete={() => openDeleteModal(row.id)}
+                            onDelete={() => openDeleteModal(row)}
                         />
                     </div>
                 );
@@ -285,7 +308,7 @@ function OrdersReturned() {
             // For already approved returns, just show delete
             return (
                 <RowActions 
-                    onDelete={() => openDeleteModal(row.id)}
+                    onDelete={() => openDeleteModal(row)}
                 />
             );
         },
@@ -307,14 +330,26 @@ function OrdersReturned() {
             onPageChange={setCurrentPage} 
             />
 
+            {/* Approve Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={approveModal.isOpen}
+                onClose={() => setApproveModal({ isOpen: false, order: null })}
+                onConfirm={confirmApproveReturn}
+                title="Approve Return Request"
+                message={`Are you sure you want to approve the return request for order #${approveModal.order?.id.slice(0, 6)}? The customer will be notified.`}
+                confirmText="Approve"
+                cancelText="Cancel"
+                confirmButtonColor="bg-green-600"
+            />
+
             {/* Reject Confirmation Modal */}
             <ConfirmationModal
                 isOpen={rejectModal.isOpen}
-                onClose={() => setRejectModal({ isOpen: false, orderId: null })}
+                onClose={() => setRejectModal({ isOpen: false, order: null })}
                 onConfirm={confirmRejectReturn}
                 title="Reject Return Request"
-                message="Are you sure you want to reject this return request? The order will be reverted to 'delivered' status."
-                confirmText="Yes, Reject"
+                message={`Are you sure you want to reject the return request for order #${rejectModal.order?.id.slice(0, 6)}? The order will be reverted to 'delivered' status and the customer will be notified.`}
+                confirmText="Reject"
                 cancelText="Cancel"
                 confirmButtonColor="bg-orange-600"
             />
@@ -322,11 +357,11 @@ function OrdersReturned() {
             {/* Delete Confirmation Modal */}
             <ConfirmationModal
                 isOpen={deleteModal.isOpen}
-                onClose={() => setDeleteModal({ isOpen: false, orderId: null })}
+                onClose={() => setDeleteModal({ isOpen: false, order: null })}
                 onConfirm={confirmDeleteOrder}
                 title="Delete Order"
-                message="Are you sure you want to delete this order? This action cannot be undone."
-                confirmText="Yes, Delete"
+                message={`Are you sure you want to delete order #${deleteModal.order?.id.slice(0, 6)}? This action cannot be undone.`}
+                confirmText="Delete"
                 cancelText="Cancel"
                 confirmButtonColor="bg-red-600"
             />

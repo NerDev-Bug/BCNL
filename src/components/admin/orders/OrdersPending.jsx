@@ -7,6 +7,7 @@ import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
 import Pagination from "../../common/Pagination";
+import ConfirmationModal from "../../common/ConfirmationModal";
 import { toast } from "react-toastify";
 import { ChevronDown } from "lucide-react";
 
@@ -16,6 +17,13 @@ function OrdersPending() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: null, // 'accept' or 'delete'
+    order: null,
+  });
 
 
   useEffect(() => {
@@ -47,6 +55,7 @@ function OrdersPending() {
       } catch (err) {
         console.error(err);
         setError("Failed to load orders.");
+        toast.error("Failed to load pending orders. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -68,15 +77,32 @@ function OrdersPending() {
     });
   };
 
-  // Handle accepting an order (changing its status to 'preparing')
-  const handleAcceptOrder = async orderId => {
+  // Handle opening confirmation modal for accept
+  const handleAcceptOrder = (order) => {
+    setConfirmModal({ isOpen: true, type: "accept", order });
+  };
+
+  // Handle opening confirmation modal for delete
+  const handleDeleteOrder = (order) => {
+    setConfirmModal({ isOpen: true, type: "delete", order });
+  };
+
+  // Confirm accepting an order (changing its status to 'preparing')
+  const confirmAcceptOrder = async () => {
+    const order = confirmModal.order;
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
+
     try {
       // Get full order data first
-      const orderRef = doc(db, "orders", orderId);
+      const orderRef = doc(db, "orders", order.id);
       const orderSnap = await getDoc(orderRef);
       
       if (!orderSnap.exists()) {
         toast.error("Order not found");
+        setConfirmModal({ isOpen: false, type: null, order: null });
         return;
       }
 
@@ -94,26 +120,35 @@ function OrdersPending() {
       }
       
       // Remove the order from the list immediately
-      setOrders(orders.filter(order => order.id !== orderId));
+      setOrders(orders.filter(o => o.id !== order.id));
       toast.success("Order marked as preparing!");
     } catch (err) {
       console.error("Error updating order:", err);
       toast.error("Failed to update order status.");
+    } finally {
+      setConfirmModal({ isOpen: false, type: null, order: null });
     }
   };
 
-  // Handle deleting an order
-  const handleDeleteOrder = async orderId => {
+  // Confirm deleting an order
+  const confirmDeleteOrder = async () => {
+    const order = confirmModal.order;
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
+
     try {
-      const orderDeleteRef = doc(db, "orders", orderId);
+      const orderDeleteRef = doc(db, "orders", order.id);
       await deleteDoc(orderDeleteRef);
-      setOrders(orders.filter(order => order.id !== orderId));
-      // You can implement delete logic here if needed
-      console.log("Delete order:", orderId);
+      setOrders(orders.filter(o => o.id !== order.id));
+      console.log("Delete order:", order.id);
       toast.success("Order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
       toast.error("Failed to delete order");
+    } finally {
+      setConfirmModal({ isOpen: false, type: null, order: null });
     }
   };
 
@@ -200,8 +235,8 @@ function OrdersPending() {
       header: "Action",
       render: row => (
         <RowActions 
-          onAccept={() => handleAcceptOrder(row.id)}
-          onDelete={() => handleDeleteOrder(row.id)}
+          onAccept={() => handleAcceptOrder(row)}
+          onDelete={() => handleDeleteOrder(row)}
           acceptLabel="Preparing"
         />
       ),
@@ -222,6 +257,34 @@ function OrdersPending() {
         totalPages={totalPages} 
         onPageChange={setCurrentPage} 
       />
+
+      {/* CONFIRMATION MODAL FOR ACCEPT */}
+      {confirmModal.type === "accept" && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onConfirm={confirmAcceptOrder}
+          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          title="Mark as Preparing"
+          message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as preparing? The customer will be notified.`}
+          confirmText="Mark as Preparing"
+          cancelText="Cancel"
+          confirmButtonColor="bg-green-600"
+        />
+      )}
+
+      {/* CONFIRMATION MODAL FOR DELETE */}
+      {confirmModal.type === "delete" && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onConfirm={confirmDeleteOrder}
+          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          title="Delete Order"
+          message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(0, 6)}? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmButtonColor="bg-red-600"
+        />
+      )}
     </div>
   );
 }

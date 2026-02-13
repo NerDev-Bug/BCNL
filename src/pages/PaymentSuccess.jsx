@@ -6,6 +6,7 @@ import { functions, db } from "../firebase"
 import { useCart } from "../context/CartContext"
 import { doc, getDoc } from "firebase/firestore"
 import { decreaseProductLimits } from "../utils/productLimits"
+import { processOrderRewardPoints } from "../utils/rewardPoints"
 
 // ✅ Cloud Function you create (recommended)
 // It should verify Mollie payment/order status server-side.
@@ -28,6 +29,10 @@ export default function PaymentSuccess() {
   // prevent double actions (refresh + rerender)
   const clearedRef = useRef(false)
   const limitsDecreasedRef = useRef(false)
+  const pointsProcessedRef = useRef(false)
+  
+  // reward points
+  const [pointsEarned, setPointsEarned] = useState(0)
 
   const orderId = params.get("orderId") || ""
   const paymentId = params.get("paymentId") || ""
@@ -40,11 +45,19 @@ export default function PaymentSuccess() {
   // close modal helper
   const closeAndGoHome = () => {
     setOpen(false)
+    // Store points in localStorage for congrats modal to show on home/profile
+    if (pointsEarned > 0) {
+      localStorage.setItem("pendingRewardPoints", String(pointsEarned))
+    }
     setTimeout(() => navigate("/"), 150)
   }
 
   const closeAndGoOrders = () => {
     setOpen(false)
+    // Store points in localStorage for congrats modal to show on home/profile
+    if (pointsEarned > 0) {
+      localStorage.setItem("pendingRewardPoints", String(pointsEarned))
+    }
     setTimeout(() => navigate("/profile"), 150) // adjust route if you have /orders
   }
 
@@ -123,6 +136,27 @@ export default function PaymentSuccess() {
               // Don't show error to user, just log it
             }
           }
+
+          // ✅ Process reward points once
+          if (!pointsProcessedRef.current && orderId) {
+            pointsProcessedRef.current = true
+            try {
+              const orderRef = doc(db, "orders", orderId)
+              const orderSnap = await getDoc(orderRef)
+              
+              if (orderSnap.exists()) {
+                const orderData = { id: orderSnap.id, ...orderSnap.data() }
+                const earned = await processOrderRewardPoints(orderData)
+                if (earned > 0) {
+                  setPointsEarned(earned)
+                  console.log(`✅ Reward points processed: +${earned} points`)
+                }
+              }
+            } catch (pointsError) {
+              console.error("Error processing reward points:", pointsError)
+              // Don't show error to user, just log it
+            }
+          }
         } else if (s === "pending" || s === "open") {
           setStatus("pending")
           setDetails(data)
@@ -151,7 +185,7 @@ export default function PaymentSuccess() {
     return () => {
       mounted = false
     }
-  }, [source.type, source.value, clearCart])
+  }, [source.type, source.value, orderId, clearCart])
 
   const title = useMemo(() => {
     if (loading) return "Checking your payment…"

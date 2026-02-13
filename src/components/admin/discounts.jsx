@@ -18,6 +18,8 @@ function DiscountsPage() {
   const [updating, setUpdating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+  const [editingRewardPoints, setEditingRewardPoints] = useState(null); // { productId: value }
+  const [rewardPointsInput, setRewardPointsInput] = useState("");
 
   // ✅ Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -312,6 +314,81 @@ function DiscountsPage() {
     }
   };
 
+  const confirmSaveRewardPoints = (productId, productName) => {
+    const pointsValue = parseInt(rewardPointsInput, 10);
+    
+    if (isNaN(pointsValue) || pointsValue < 0) {
+      setConfirmationModal({
+        isOpen: true,
+        title: "Invalid Input",
+        message: "Please enter a valid number (0 or greater).",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-[#7B2220]",
+      });
+      return;
+    }
+
+    const currentPoints = products.find(p => p.id === productId)?.rewardPoints || 0;
+    const isChanging = pointsValue !== currentPoints;
+
+    if (!isChanging) {
+      // No change, just close editing
+      setEditingRewardPoints(null);
+      setRewardPointsInput("");
+      return;
+    }
+
+    setConfirmationModal({
+      isOpen: true,
+      title: "Update Reward Points",
+      message: `Are you sure you want to update reward points for "${productName}" from ${currentPoints} to ${pointsValue}?`,
+      onConfirm: () => {
+        closeConfirmationModal();
+        handleSaveRewardPoints(productId);
+      },
+      type: "confirm",
+      confirmButtonColor: "bg-[#7B2220]",
+    });
+  };
+
+  const handleSaveRewardPoints = async (productId) => {
+    const pointsValue = parseInt(rewardPointsInput, 10);
+
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "products", productId), {
+        rewardPoints: pointsValue,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId ? { ...p, rewardPoints: pointsValue } : p
+        )
+      );
+
+      setEditingRewardPoints(null);
+      setRewardPointsInput("");
+
+      toast.success(`Reward points updated to ${pointsValue}`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (err) {
+      console.error("Failed to update reward points:", err);
+      setConfirmationModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to update reward points. Please try again.",
+        onConfirm: closeConfirmationModal,
+        type: "alert",
+        confirmButtonColor: "bg-red-600",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const columns = [
     {
       key: "select",
@@ -376,6 +453,88 @@ function DiscountsPage() {
       header: "Final Price",
       render: (row) =>
         `€${computeFinalPrice(row.price, row.productDiscount).toFixed(2)}`,
+    },
+    {
+      key: "rewardPoints",
+      header: "Reward Points",
+      render: (row) => {
+        const isEditing = editingRewardPoints === row.id;
+        const currentPoints = row.rewardPoints || 0;
+
+        if (isEditing) {
+          return (
+            <div 
+              className="flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={rewardPointsInput}
+                onChange={(e) => setRewardPointsInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    confirmSaveRewardPoints(row.id, row.name);
+                  } else if (e.key === "Escape") {
+                    setEditingRewardPoints(null);
+                    setRewardPointsInput("");
+                  }
+                }}
+                className="w-24 border-2 border-[#7B2220] rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-[#7B2220]/30 focus:border-[#7B2220] outline-none transition-all"
+                autoFocus
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  confirmSaveRewardPoints(row.id, row.name);
+                }}
+                disabled={updating}
+                className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Save"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingRewardPoints(null);
+                  setRewardPointsInput("");
+                }}
+                disabled={updating}
+                className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Cancel"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            className="flex items-center gap-2 cursor-pointer group"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingRewardPoints(row.id);
+              setRewardPointsInput(String(currentPoints));
+            }}
+          >
+            <span className="text-sm font-semibold text-gray-900 px-2 py-1 rounded-md bg-gray-50 group-hover:bg-gray-100 transition-colors">
+              {currentPoints}
+            </span>
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#7B2220]/10 text-[#7B2220] group-hover:bg-[#7B2220]/20 transition-all duration-200">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </span>
+          </div>
+        );
+      },
     },
   ];
 

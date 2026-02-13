@@ -16,6 +16,7 @@ import Pagination from "../common/Pagination"
 import { StatusBadge } from "../common/StatusBadge"
 import ConfirmationModal from "../common/ConfirmationModal"
 import { Edit2, Trash2, Eye, EyeOff, Power } from "lucide-react"
+import { toast } from "react-toastify"
 
 function ProductsPage() {
   const [products, setProducts] = useState([])
@@ -340,17 +341,12 @@ function ProductsPage() {
           await deleteDoc(doc(db, "products", product.id))
           setProducts((prev) => prev.filter((p) => p.id !== product.id))
           setSelectedIds((prev) => prev.filter((id) => id !== product.id))
+          toast.success(`Product "${product.name}" deleted successfully`)
           closeConfirmationModal()
         } catch (err) {
           console.error("Delete failed:", err)
-          setConfirmationModal({
-            isOpen: true,
-            title: "Error",
-            message: "Failed to delete product",
-            onConfirm: closeConfirmationModal,
-            type: "alert",
-            confirmButtonColor: "bg-red-600",
-          })
+          toast.error("Failed to delete product. Please try again.")
+          closeConfirmationModal()
         }
       },
       type: "confirm",
@@ -736,7 +732,30 @@ function ProductsPage() {
 
         {/* TABLE */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable columns={columns} data={paginatedProducts} loading={loading} />
+          <DataTable 
+            columns={columns} 
+            data={paginatedProducts} 
+            loading={loading}
+            getRowClassName={(row) => {
+              // Add gradient background color from yellow to red based on dailyLimit
+              if (typeof row.dailyLimit === 'number' && row.dailyLimit <= 5 && row.dailyLimit >= 0) {
+                const limit = row.dailyLimit;
+                // Gradient: 5=yellow, 4=yellow-orange, 3=orange, 2=red-orange, 1/0=red
+                if (limit === 5) {
+                  return 'bg-yellow-50 hover:bg-yellow-100';
+                } else if (limit === 4) {
+                  return 'bg-yellow-100 hover:bg-yellow-200';
+                } else if (limit === 3) {
+                  return 'bg-orange-100 hover:bg-orange-200';
+                } else if (limit === 2) {
+                  return 'bg-orange-200 hover:bg-orange-300';
+                } else if (limit === 1 || limit === 0) {
+                  return 'bg-red-100 hover:bg-red-200';
+                }
+              }
+              return '';
+            }}
+          />
         </div>
 
         {/* PAGINATION */}

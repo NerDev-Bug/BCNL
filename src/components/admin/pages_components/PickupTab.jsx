@@ -10,6 +10,8 @@ import {
 } from "firebase/firestore"
 import { db } from "../../../firebase"
 import { Eye, EyeOff, Save, RefreshCcw } from "lucide-react"
+import ConfirmationModal from "../../common/ConfirmationModal"
+import { toast } from "react-toastify"
 
 export default function PickupTab() {
   const [products, setProducts] = useState([])
@@ -21,6 +23,12 @@ export default function PickupTab() {
   const [bulkSaving, setBulkSaving] = useState(false)
 
   const [leftDraft, setLeftDraft] = useState({}) // { [id]: "3" }
+
+  // Confirmation modal state for save left
+  const [saveLeftModal, setSaveLeftModal] = useState({
+    isOpen: false,
+    product: null,
+  })
 
   useEffect(() => {
     // ✅ Only products that are shown on Menu today
@@ -117,7 +125,8 @@ export default function PickupTab() {
     }
   }
 
-  const savePickupLeft = async (p) => {
+  // Handle opening confirmation modal for save left
+  const handleSavePickupLeft = (p) => {
     const raw = leftDraft[p.id]
 
     // allow blank -> null
@@ -127,18 +136,43 @@ export default function PickupTab() {
         : Number(raw)
 
     if (value !== null && (Number.isNaN(value) || value < 0)) {
-      alert("Pickup left must be a number (0 or more) or empty.")
+      toast.error("Pickup left must be a number (0 or more) or empty.")
       return
     }
 
+    setSaveLeftModal({ isOpen: true, product: p })
+  }
+
+  // Confirm saving pickup left
+  const confirmSavePickupLeft = async () => {
+    const p = saveLeftModal.product
+    if (!p) {
+      setSaveLeftModal({ isOpen: false, product: null })
+      return
+    }
+
+    const raw = leftDraft[p.id]
+
+    // allow blank -> null
+    const value =
+      raw === "" || raw === null || typeof raw === "undefined"
+        ? null
+        : Number(raw)
+
     try {
       setSavingId(p.id)
-      await updateDoc(doc(db, "products", p.id), { pickupLeft: value })
+      // Update both pickupLeft and dailyLimit to the same value
+      await updateDoc(doc(db, "products", p.id), { 
+        pickupLeft: value,
+        dailyLimit: value
+      })
+      toast.success(`Pickup left and daily limit updated to ${value !== null ? value : 'empty'} for "${p.name}"`)
     } catch (e) {
       console.error("Failed to save pickupLeft:", e)
-      alert("Failed to save pickup left")
+      toast.error("Failed to save pickup left. Please try again.")
     } finally {
       setSavingId(null)
+      setSaveLeftModal({ isOpen: false, product: null })
     }
   }
 
@@ -375,7 +409,7 @@ export default function PickupTab() {
 
                       <button
                         disabled={!enabled || savingId === p.id || bulkSaving}
-                        onClick={() => savePickupLeft(p)}
+                        onClick={() => handleSavePickupLeft(p)}
                         title="Save left"
                         className="p-2 rounded-lg bg-[#7B2220] text-white hover:opacity-90 transition disabled:opacity-50"
                       >
@@ -393,6 +427,29 @@ export default function PickupTab() {
       <div className="mt-3 text-xs text-gray-500">
         Tip: Set <b>pickupLeft = 0</b> to show <b>SOLD OUT</b>.
       </div>
+
+      {/* CONFIRMATION MODAL FOR SAVE LEFT */}
+      <ConfirmationModal
+        isOpen={saveLeftModal.isOpen}
+        onClose={() => setSaveLeftModal({ isOpen: false, product: null })}
+        onConfirm={confirmSavePickupLeft}
+        title="Save Pickup Left"
+        message={
+          saveLeftModal.product
+            ? `Are you sure you want to update pickup left and daily limit to "${
+                leftDraft[saveLeftModal.product.id] === "" ||
+                leftDraft[saveLeftModal.product.id] === null ||
+                typeof leftDraft[saveLeftModal.product.id] === "undefined"
+                  ? "empty"
+                  : leftDraft[saveLeftModal.product.id]
+              }" for "${saveLeftModal.product.name}"?`
+            : "Are you sure you want to save this change?"
+        }
+        confirmText="Save"
+        cancelText="Cancel"
+        confirmButtonColor="bg-[#7B2220]"
+        loading={savingId !== null}
+      />
     </div>
   )
 }

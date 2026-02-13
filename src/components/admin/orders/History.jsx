@@ -78,6 +78,7 @@ function History() {
       } catch (err) {
         console.error(err)
         setError("Failed to load orders.")
+        toast.error("Failed to load orders. Please try again.")
       } finally {
         setLoading(false)
       }
@@ -132,6 +133,7 @@ function History() {
           toast.success("History order deleted successfully")
         } catch (err) {
           console.error("Error deleting order:", err)
+          toast.error("Failed to delete order. Please try again.")
           setConfirmationModal({
             isOpen: true,
             title: "Error",
@@ -243,9 +245,10 @@ function History() {
         .replaceAll(",", "")}.pdf`
 
       docPdf.save(filename)
+      toast.success("PDF generated and downloaded successfully!")
     } catch (err) {
       console.error(err)
-      alert("Failed to generate PDF.")
+      toast.error("Failed to generate PDF. Please try again.")
     } finally {
       setDownloading(false)
     }

@@ -108,7 +108,7 @@ function ExpandedItemRow({ item }) {
 /* =========================
    DataTable
    ========================= */
-function DataTable({ columns, data, rowKey = "id", loading = false }) {
+function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassName }) {
   const [expandedRows, setExpandedRows] = useState({});
 
   const toggleRow = rowId => {
@@ -163,11 +163,14 @@ function DataTable({ columns, data, rowKey = "id", loading = false }) {
               data.map(row => {
                 const rowId = row[rowKey];
                 const isOpen = expandedRows[rowId];
+                const customClassName = getRowClassName ? getRowClassName(row) : "";
+                const baseClassName = "hover:bg-gray-50 transition-colors duration-150 cursor-pointer";
+                const rowClassName = customClassName ? `${baseClassName} ${customClassName}` : baseClassName;
 
                 return (
                   <React.Fragment key={rowId}>
                     {/* MAIN ROW */}
-                    <tr className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer">
+                    <tr className={rowClassName}>
                       {columns.map(col => (
                         <td
                           key={col.key}

@@ -344,7 +344,7 @@ function SalesPage() {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onConfirm={confirmMarkRefunded}
-        onCancel={() => setConfirmModal({ isOpen: false, order: null })}
+        onClose={() => setConfirmModal({ isOpen: false, order: null })}
         title="Mark as Refunded"
         message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as refunded/returned? The customer will be notified.`}
         confirmText="Mark as Refunded"

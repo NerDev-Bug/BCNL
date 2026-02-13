@@ -10,6 +10,7 @@ import UserPasswordUpdate from "../components/profile/user-password-update"
 import UserRewards from "../components/profile/user-rewards"
 import UserPayment from "../components/profile/user-payment"
 import UserOrderHistory from "../components/profile/user-order-history"
+import CongratsModal from "../components/common/CongratsModal"
 
 function Profile() {
   const [user, setUser] = useState(null)
@@ -291,6 +292,9 @@ function Profile() {
           {activeTab === "password" && <UserPasswordUpdate user={user} />}
         </div>
       </div>
+
+      {/* Congrats Modal for Reward Points */}
+      <CongratsModal />
 
       <style>{`
         @keyframes tabEnter {

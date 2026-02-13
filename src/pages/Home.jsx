@@ -8,6 +8,7 @@ import OurStory from "../components/home/ourstory"
 import useScrollToHash from "../hooks/useScrollToHash"
 import Events from "../components/home/events"
 import PickUp from "../components/home/pickUp"
+import CongratsModal from "../components/common/CongratsModal"
 
 const DEFAULT_HOME = {
   heading: "Small Batch Artisan Bakery in Wageningen",
@@ -165,6 +166,9 @@ function Home() {
       <section id="our-story">
         <OurStory />
       </section>
+
+      {/* Congrats Modal for Reward Points */}
+      <CongratsModal />
     </>
   )
 }

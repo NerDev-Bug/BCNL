@@ -6,6 +6,7 @@ import { db } from "../../../firebase";
 import DataTable from "../../common/DataTable";
 import { StatusBadge } from "../../common/StatusBadge";
 import { RowActions } from "../../common/RowActions";
+import ConfirmationModal from "../../common/ConfirmationModal";
 import { toast } from "react-toastify";
 import Pagination from "../../common/Pagination";
 
@@ -15,6 +16,12 @@ function OrdersDelivered() {
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(10);
+
+    // Confirmation modal state
+    const [confirmModal, setConfirmModal] = useState({
+      isOpen: false,
+      order: null,
+    });
 
     useEffect(() => {
     const fetchPreparingOrders = async () => {
@@ -45,6 +52,7 @@ function OrdersDelivered() {
         } catch (err) {
         console.error(err);
         setError("Failed to load orders.");
+        toast.error("Failed to load delivered orders. Please try again.");
         } finally {
         setLoading(false);
         }
@@ -66,19 +74,31 @@ function OrdersDelivered() {
     });
     };
 
-    // Handle deleting an order
-    const handleDeleteOrder = async orderId => {
-    try {
-        const orderDeleteRef = doc(db, "orders", orderId);
+    // Handle opening confirmation modal for delete
+    const handleDeleteOrder = (order) => {
+      setConfirmModal({ isOpen: true, order });
+    };
+
+    // Confirm deleting an order
+    const confirmDeleteOrder = async () => {
+      const order = confirmModal.order;
+      if (!order) {
+        setConfirmModal({ isOpen: false, order: null });
+        return;
+      }
+
+      try {
+        const orderDeleteRef = doc(db, "orders", order.id);
         await deleteDoc(orderDeleteRef);
-        setOrders(orders.filter(order => order.id !== orderId));
-        // You can implement delete logic here if needed
-        console.log("Delete order:", orderId);
+        setOrders(orders.filter(o => o.id !== order.id));
+        console.log("Delete order:", order.id);
         toast.success("Order deleted successfully");
-    } catch (err) {
+      } catch (err) {
         console.error("Error deleting order:", err);
         toast.error("Failed to delete order");
-    }
+      } finally {
+        setConfirmModal({ isOpen: false, order: null });
+      }
     };
 
     // Compute paginated orders
@@ -143,7 +163,7 @@ function OrdersDelivered() {
         header: "Action",
         render: row => (
         <RowActions 
-            onDelete={() => handleDeleteOrder(row.id)}
+            onDelete={() => handleDeleteOrder(row)}
             // No "Accept" button because it's already delivered
         />
         ),
@@ -163,6 +183,18 @@ function OrdersDelivered() {
             currentPage={currentPage} 
             totalPages={totalPages} 
             onPageChange={setCurrentPage} 
+            />
+
+            {/* CONFIRMATION MODAL FOR DELETE */}
+            <ConfirmationModal
+              isOpen={confirmModal.isOpen}
+              onConfirm={confirmDeleteOrder}
+              onClose={() => setConfirmModal({ isOpen: false, order: null })}
+              title="Delete Order"
+              message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(0, 6)}? This action cannot be undone.`}
+              confirmText="Delete"
+              cancelText="Cancel"
+              confirmButtonColor="bg-red-600"
             />
         </div>
     );
