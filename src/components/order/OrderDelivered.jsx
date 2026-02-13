@@ -131,28 +131,38 @@ function OrderDelivered() {
       key: "action",
       header: "Action",
       render: (row) => {
-        // Check 7 days from DELIVERY date, not order creation date
-        // Use deliveredAt if available, otherwise fallback to createdAt (for old orders)
         const deliveryDate = row.deliveredAt || row.createdAt;
         const deliveryTimestamp = deliveryDate?.seconds
           ? new Date(deliveryDate.seconds * 1000)
           : new Date(deliveryDate);
 
         const now = new Date();
-        const diffInDays = Math.floor((now - deliveryTimestamp) / (1000 * 60 * 60 * 24));
-        const isReturnAllowed = diffInDays <= 7;
+        const diffInDays = Math.floor(
+          (now - deliveryTimestamp) / (1000 * 60 * 60 * 24)
+        );
 
-        if (!isReturnAllowed) return null; // Hides the button after 7 days from delivery
+        const hasRejectedReturn = !!row.returnRejectedAt;
+
+        // Disable if older than 7 days or rejected
+        const isDisabled = diffInDays > 7 || hasRejectedReturn;
 
         return (
           <button
             onClick={() => handleReturnClick(row)}
-            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+            disabled={isDisabled}
+            className={`px-3 py-1 text-white rounded text-sm ${
+              isDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
+            }`}
           >
-            Returned
+            {hasRejectedReturn
+              ? "Return Rejected"
+              : diffInDays > 7
+              ? "Return Expired"
+              : "Return"}
           </button>
         );
       },
+
     },
   ];
 

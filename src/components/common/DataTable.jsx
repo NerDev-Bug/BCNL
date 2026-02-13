@@ -127,7 +127,7 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
               {columns.map(col => (
                 <th
                   key={col.key}
-                  className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider"
+                  className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider"
                 >
                   {col.header}
                 </th>

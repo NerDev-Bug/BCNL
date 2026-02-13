@@ -27,7 +27,7 @@ export function StatusBadge({ value }) {
   };
 
   return (
-    <span className={`${base} ${styles[value?.toLowerCase()] || "bg-gray-100 text-gray-700"}`}>
+    <span className={`${base} ${styles[value?.toLowerCase()] || "bg-gray-100 text-gray-700 text-center"}`}>
       {value || "N/A"}
     </span>
   );
