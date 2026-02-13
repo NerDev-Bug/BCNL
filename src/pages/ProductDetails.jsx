@@ -30,8 +30,8 @@ export default function ProductDetails() {
 
   // Custom cakes form
   const [customForm, setCustomForm] = useState({
-    deliveryDate: "",
-    deliveryTime: "",
+    pickupDate: "",
+    pickupTime: "",
     quantity: 1,
     size: "REGULAR",
     candles: "-",
@@ -120,8 +120,8 @@ export default function ProductDetails() {
     if (!product) return;
 
     if (isCustomCakes) {
-      if (!customForm.deliveryDate) return toast.info("Please select a delivery date 📅");
-      if (!customForm.deliveryTime) return toast.info("Please select a delivery time ⏰");
+      if (!customForm.pickupDate) return toast.info("Please select a pick up date 📅");
+      if (!customForm.pickupTime) return toast.info("Please select a pick up time ⏰");
       if (!customForm.cardMessage.trim()) return toast.info("Please write a card message 💌");
       if (customForm.cardMessage.trim().split(/\s+/).length > 250)
         return toast.info("Card message must be 250 words max ✍️");
@@ -268,9 +268,9 @@ export default function ProductDetails() {
       const current = { id: snap.id, ...snap.data() };
       setProduct(current);
 
-      setCustomForm({
-        deliveryDate: "",
-        deliveryTime: "",
+     setCustomForm({
+        pickupDate: "",
+        pickupTime: "",
         quantity: 1,
         size: "REGULAR",
         candles: "-",
@@ -362,13 +362,13 @@ export default function ProductDetails() {
                 <div className="mt-6 border border-black rounded-sm p-4 text-left text-black">
                   <p className="text-xs font-bold mb-2 text-[#7B2220]">Custom Cakes Details</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Delivery Date */}
+                    {/* Pickup Date */}
                     <div className="sm:col-span-1">
-                      <label className="block text-xs font-semibold mb-1">Select delivery date</label>
+                      <label className="block text-xs font-semibold mb-1">Select pick-up date</label>
                       <input
                         type="date"
-                        value={customForm.deliveryDate}
-                        onChange={(e) => updateCustomForm({ deliveryDate: e.target.value })}
+                        value={customForm.pickupDate}
+                        onChange={(e) => updateCustomForm({ pickupDate: e.target.value })}
                         className="w-full border border-black rounded-sm px-3 py-2 outline-none"
                       />
                     </div>
@@ -392,12 +392,12 @@ export default function ProductDetails() {
                       </div>
                     </div>
 
-                    {/* Delivery Time */}
+                    {/* Pickup Time */}
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold mb-2">Select delivery time</label>
+                      <label className="block text-xs font-semibold mb-2">Select pick-up time</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                         {["11AM - 1PM", "1PM - 3PM", "3PM - 5PM", "5PM - 7PM"].map((t) => (
-                          <button key={t} type="button" onClick={() => updateCustomForm({ deliveryTime: t })} className={`border border-black rounded-sm px-2 py-2 text-xs w-full ${customForm.deliveryTime === t ? "bg-black text-white" : ""}`}>{t}</button>
+                          <button key={t} type="button" onClick={() => updateCustomForm({ pickupTime: t })} className={`border border-black rounded-sm px-2 py-2 text-xs w-full ${customForm.pickupTime === t ? "bg-black text-white" : ""}`}>{t}</button>
                         ))}
                       </div>
                     </div>
