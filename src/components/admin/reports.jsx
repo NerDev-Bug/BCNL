@@ -87,7 +87,7 @@ function ReportsPage() {
     const lowStockProducts = products
       .filter((p) => typeof p.dailyLimit === "number" && p.dailyLimit <= 5 && p.dailyLimit > 0)
       .sort((a, b) => (a.dailyLimit ?? 0) - (b.dailyLimit ?? 0))
-      .slice(0, 5);
+      .slice(0, 999); // limit to 999 items for performance
     
     const lowStockCount = lowStockProducts.length;
 

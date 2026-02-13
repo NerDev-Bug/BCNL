@@ -211,6 +211,7 @@ function ProductsPage() {
         category: newProduct.category,
         available: true,
         dailyLimit: limitNum,
+        pickupLeft: limitNum, // initialize pickupLeft to daily limit
         productDiscount: null,
 
         // ✅ NEW: default show on menu
@@ -222,9 +223,12 @@ function ProductsPage() {
 
       setProducts((prev) => [...prev, { id: docRef.id, ...payload }])
 
+      toast.success(`Product "${newProduct.name}" added successfully`) // show success toast
+
       resetModal()
     } catch (err) {
       console.error(err)
+      toast.error("Failed to add product. Please try again.") // show error toast
       setConfirmationModal({
         isOpen: true,
         title: "Error",
@@ -283,6 +287,7 @@ function ProductsPage() {
         description: newProduct.description,
         category: newProduct.category,
         dailyLimit: limitNum,
+        pickupLeft: limitNum, // reset pickupLeft to new daily limit
         // ✅ keep showOnMenu as-is (don’t overwrite here)
       }
 
@@ -296,9 +301,12 @@ function ProductsPage() {
         prev.map((p) => (p.id === editingId ? { ...p, ...updatedData } : p))
       )
 
+      toast.success(`Product "${newProduct.name}" updated successfully`) // show success toast
+
       resetModal()
     } catch (err) {
       console.error(err)
+      toast.error("Failed to update product. Please try again.") // show error toast
       setConfirmationModal({
         isOpen: true,
         title: "Error",
