@@ -327,9 +327,9 @@ function History() {
   if (error) return <div className="p-6 text-red-500">{error}</div>
 
   return (
-    <div className="pt-4">
+    <div className="pt-4 w-full min-w-0">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Delivered Orders (Today)</h2>
+        <h2 className="text-lg font-semibold text-left">Delivered Orders (Today)</h2>
 
         {/* ✅ Button only (as you requested) */}
         <button
@@ -341,7 +341,9 @@ function History() {
         </button>
       </div>
 
-      <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+      <div className="w-full min-w-0">
+        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+      </div>
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

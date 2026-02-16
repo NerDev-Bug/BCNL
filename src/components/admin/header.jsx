@@ -1,5 +1,5 @@
 // src/components/admin/header.jsx
-import { BellIcon } from "@heroicons/react/24/outline"
+import { BellIcon, Bars3Icon } from "@heroicons/react/24/outline"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { signOut } from "firebase/auth"
@@ -19,7 +19,7 @@ import {
 import { db } from "../../firebase"
 import { createReturnRequestNotification } from "../../utils/notifications"
 
-function AdminHeader({ sidebarOpen }) {
+function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
   const [open, setOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -218,17 +218,25 @@ function AdminHeader({ sidebarOpen }) {
 
   return (
     <header
-      className={`bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-4 flex justify-between items-center
-      fixed top-0 right-0 z-20 transition-all duration-300
-      ${sidebarOpen ? "left-64" : "left-20"}`}
+      className={`bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-3 sm:px-4 md:px-6 py-3 md:py-4 flex justify-between items-center
+      fixed top-0 right-0 z-30 transition-all duration-300 left-0 ${
+        sidebarOpen ? "md:left-64" : "md:left-20"
+      }`}
     >
-      {/* Left - Empty space for future content */}
-      <div className="flex items-center">
-        {/* Reserved for future content */}
+      {/* Left: hamburger on mobile; empty on desktop */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+          onClick={onToggleMobileMenu}
+          aria-label="Open menu"
+        >
+          <Bars3Icon className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Right */}
-      <div className="flex items-center space-x-4 relative" ref={dropdownRef}>
+      <div className="flex items-center gap-2 sm:gap-4 relative" ref={dropdownRef}>
         {/* Notifications */}
         <div className="relative" ref={notificationsRef}>
           <button
@@ -246,7 +254,7 @@ function AdminHeader({ sidebarOpen }) {
 
           {/* Notifications Dropdown */}
           {notificationsOpen && (
-            <div className="absolute right-0 top-12 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+            <div className="absolute right-0 top-12 w-[min(20rem,calc(100vw-2rem))] max-h-[85vh] bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h3 className="text-sm font-semibold text-gray-900">
                   Notifications
@@ -314,7 +322,7 @@ function AdminHeader({ sidebarOpen }) {
 
         {/* Dropdown */}
         {open && (
-          <div className="absolute right-0 top-14 w-48 bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+          <div className="absolute right-0 top-14 w-48 min-w-[10rem] bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg shadow-lg py-2 z-50">
             <button
               onClick={() => {
                 navigate("/profile")

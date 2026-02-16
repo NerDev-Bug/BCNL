@@ -558,25 +558,25 @@ function DiscountsPage() {
   }, [products]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen min-w-0 bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto w-full min-w-0">
         {/* HEADER */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">
+        <div className="mb-4 sm:mb-6 md:mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">
               Discounts / Promotions
             </h1>
-            <p className="text-sm text-gray-500 max-w-xl">
+            <p className="text-xs sm:text-sm text-gray-500 max-w-xl break-words">
               Overview of product-level discounts. Select one or more products,
               set a discount, and apply it in bulk.
             </p>
           </div>
 
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-start sm:items-end flex-shrink-0">
             <span className="text-xs uppercase tracking-wide text-gray-500">
               Avg. Discount Level
             </span>
-            <span className="text-2xl font-bold text-[#502455]">
+            <span className="text-xl sm:text-2xl font-bold text-[#502455]">
               {products.length ? `${avgDiscount.toFixed(1)}%` : "0%"}
             </span>
             <span className="text-xs text-gray-400">
@@ -585,10 +585,10 @@ function DiscountsPage() {
           </div>
         </div>
 
-        {/* SEARCH + DISCOUNT CONTROLS */}
-        <div className="mb-6 bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[220px]">
+        {/* SEARCH + DISCOUNT CONTROLS: stack on mobile */}
+        <div className="mb-4 sm:mb-6 bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 items-stretch sm:items-end">
+            <div className="w-full min-w-0 sm:flex-1 sm:min-w-[180px]">
               <Search
                 value={search}
                 onChange={setSearch}
@@ -596,28 +596,28 @@ function DiscountsPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-2 min-w-[220px]">
+            <div className="flex flex-col gap-2 w-full sm:w-auto sm:min-w-[120px]">
               <label className="text-xs font-semibold text-gray-600">
                 Discount to apply
               </label>
               <input
                 type="number"
-                min='1'
-                max='99'
-                step='0.1'
+                min="1"
+                max="99"
+                step="0.1"
                 value={discountInput}
                 onChange={(e) => setDiscountInput(e.target.value)}
-                className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none"
+                className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none w-full sm:w-auto min-w-0"
                 placeholder="10 or 9"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={confirmApplyDiscount}
                 disabled={updating || !selectedIds.size}
-                className="px-4 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
               >
                 {updating ? "Applying..." : "Apply to Selected"}
               </button>
@@ -625,7 +625,7 @@ function DiscountsPage() {
                 type="button"
                 onClick={confirmClearDiscount}
                 disabled={updating || !selectedIds.size}
-                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
               >
                 Clear Discount
               </button>
@@ -633,13 +633,15 @@ function DiscountsPage() {
           </div>
         </div>
 
-        {/* TABLE */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable
-            columns={columns}
-            data={paginatedProducts}
-            loading={loading}
-          />
+        {/* TABLE – same scroll-inside pattern as src/components/order */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden min-w-0">
+          <div className="w-full min-w-0">
+            <DataTable
+              columns={columns}
+              data={paginatedProducts}
+              loading={loading}
+            />
+          </div>
         </div>
 
         {/* PAGINATION */}

@@ -14,7 +14,7 @@ export function RowActions({
   };
 
   return (
-    <div className="flex flex-col items-end gap-1 min-w-[110px]">
+    <div className="flex flex-col items-end gap-1 min-w-[100px]">
       {onAccept && (
         <button
           type="button"

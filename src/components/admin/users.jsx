@@ -269,6 +269,8 @@ function UsersPage() {
       "phone",
       "mobile",
       "contactNumber",
+      "cartItems",
+      "points",
     ])
 
     const otherFields = Object.entries(u)
@@ -279,21 +281,26 @@ function UsersPage() {
         value: formatValue(value, formatDate),
       }))
 
-    return { accountInfo, addressInfo, otherFields }
+    const points = u.points != null ? Number(u.points) : 0
+
+    return { accountInfo, addressInfo, otherFields, points }
   }, [selectedUser])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen min-w-0 bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto w-full min-w-0">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Users Management</h1>
-          <p className="text-sm text-gray-500">View and manage user accounts and information</p>
+        <div className="mb-4 sm:mb-6 md:mb-8 min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">Users Management</h1>
+          <p className="text-xs sm:text-sm text-gray-500 break-words">View and manage user accounts and information</p>
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable columns={columns} data={users} loading={loading} />
+        {/* TABLE – same scroll-inside pattern as src/components/order */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden min-w-0">
+          <div className="w-full min-w-0">
+            <DataTable columns={columns} data={users} loading={loading} />
+          </div>
         </div>
       </div>
 
@@ -387,25 +394,28 @@ function UsersPage() {
 
                 {/* OTHER TAB */}
                 {activeViewTab === "other" && (
-                  <>
+                  <div className="space-y-6">
+                    {/* Points */}
+                    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 max-w-xs">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Points</p>
+                      <p className="text-2xl font-bold text-gray-900">{viewTabsData?.points ?? 0}</p>
+                    </div>
+                    {/* Rest of other fields */}
                     {viewTabsData?.otherFields?.length ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {viewTabsData.otherFields.map((item) => (
-                          <Detail
-                            key={item.label}
-                            label={item.label}
-                            value={item.value}
-                          />
-                        ))}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Other fields</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {viewTabsData.otherFields.map((item) => (
+                            <Detail
+                              key={item.label}
+                              label={item.label}
+                              value={item.value}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
-                        <div className="text-4xl mb-3">📋</div>
-                        <p className="text-sm font-medium text-gray-600">No other fields</p>
-                        <p className="text-xs text-gray-500 mt-1">No additional information available</p>
-                      </div>
-                    )}
-                  </>
+                    ) : null}
+                  </div>
                 )}
               </div>
 

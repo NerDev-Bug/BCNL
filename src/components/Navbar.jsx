@@ -101,6 +101,13 @@ function Navbar() {
   const [wishlistCount, setWishlistCount] = useState(0)
 
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // ✅ Open login modal when URL has ?login=1 (e.g. after redirect from protected admin)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get("login") === "1") setShowLogin(true)
+  }, [location.search])
 
   // ✅ Cart context
   const { cartItems, isCartOpen, setIsCartOpen, removeItem, updateQuantity } =

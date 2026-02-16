@@ -57,7 +57,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
         <button
           key={item}
           onClick={() => onPageChange(item)}
-          className={`px-3 py-1 rounded-md mx-1 text-sm font-medium ${
+          className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md text-xs sm:text-sm font-medium ${
             item === currentPage
               ? "bg-blue-500 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -71,11 +71,11 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 
 
   return (
-    <div className="flex items-center justify-center mt-4">
+    <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2 mt-4">
       <button
         onClick={handlePrev}
         disabled={currentPage === 1}
-        className="px-3 py-1 rounded-md mx-1 bg-gray-200 text-gray-700 disabled:opacity-50"
+        className="px-2 py-1.5 sm:px-3 sm:py-1 rounded-md text-xs sm:text-sm bg-gray-200 text-gray-700 disabled:opacity-50"
       >
         Prev
       </button>
@@ -85,7 +85,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 rounded-md mx-1 bg-gray-200 text-gray-700 disabled:opacity-50"
+        className="px-2 py-1.5 sm:px-3 sm:py-1 rounded-md text-xs sm:text-sm bg-gray-200 text-gray-700 disabled:opacity-50"
       >
         Next
       </button>

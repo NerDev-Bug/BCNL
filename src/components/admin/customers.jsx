@@ -238,27 +238,27 @@ function CustomersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen min-w-0 bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto w-full min-w-0">
         {/* HEADER */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-6 md:mb-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">
                 Customers
               </h1>
-              <p className="text-sm text-gray-500 max-w-2xl">
+              <p className="text-xs sm:text-sm text-gray-500 max-w-2xl break-words">
                 View your customer base with contact details, status, and
                 loyalty points. Use this for retention, support, and targeted
                 offers.
               </p>
             </div>
 
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-start sm:items-end flex-shrink-0">
               <span className="text-xs uppercase tracking-wide text-gray-500">
                 Total Loyalty Points
               </span>
-              <span className="text-2xl font-bold text-[#502455]">
+              <span className="text-xl sm:text-2xl font-bold text-[#502455]">
                 {totalPoints}
               </span>
               <span className="text-xs text-gray-400">
@@ -267,10 +267,10 @@ function CustomersPage() {
             </div>
           </div>
 
-          {/* SEARCH + FILTERS */}
-          <div className="mt-6 bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="flex-1 min-w-[220px]">
+          {/* SEARCH + FILTERS: stack on small screens */}
+          <div className="mt-4 sm:mt-6 bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-stretch sm:items-end">
+              <div className="w-full min-w-0 sm:flex-1 sm:min-w-[180px]">
                 <Search
                   value={search}
                   onChange={setSearch}
@@ -278,7 +278,7 @@ function CustomersPage() {
                 />
               </div>
 
-              <div className="min-w-[160px]">
+              <div className="w-full sm:w-auto sm:min-w-[140px]">
                 <Filter
                   label="Role"
                   value={roleFilter}
@@ -287,7 +287,7 @@ function CustomersPage() {
                 />
               </div>
 
-              <div className="min-w-[160px]">
+              <div className="w-full sm:w-auto sm:min-w-[140px]">
                 <Filter
                   label="Status"
                   value={statusFilter}
@@ -299,13 +299,15 @@ function CustomersPage() {
           </div>
         </div>
 
-        {/* TABLE */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable
-            columns={columns}
-            data={paginatedCustomers}
-            loading={loading}
-          />
+        {/* TABLE – same scroll-inside pattern as src/components/order */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden min-w-0">
+          <div className="w-full min-w-0">
+            <DataTable
+              columns={columns}
+              data={paginatedCustomers}
+              loading={loading}
+            />
+          </div>
         </div>
 
         {/* PAGINATION */}

@@ -642,33 +642,33 @@ function ProductsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen min-w-0 bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto w-full min-w-0">
         {/* HEADER */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">
                 Products Management
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500 break-words">
                 Manage your product catalog, pricing, availability, and menu display
               </p>
             </div>
 
             <button
               onClick={() => setShowModal(true)}
-              className="px-6 py-3 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
               <span>+</span>
               <span>Add Product</span>
             </button>
           </div>
 
-          {/* ✅ TOP BAR: Search + Filters + Bulk menu controls */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex-1 min-w-[250px]">
+          {/* TOP BAR: stack on mobile */}
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-stretch sm:items-end">
+              <div className="w-full min-w-0 sm:flex-1 sm:min-w-[180px]">
                 <Search
                   value={search}
                   onChange={setSearch}
@@ -676,7 +676,7 @@ function ProductsPage() {
                 />
               </div>
 
-              <div className="min-w-[200px]">
+              <div className="w-full sm:w-auto sm:min-w-[140px]">
                 <Filter
                   label="Filter by Category"
                   value={categoryFilter}
@@ -685,25 +685,20 @@ function ProductsPage() {
                 />
               </div>
 
-              {/* ✅ NEW: Menu display filter */}
-              <div className="min-w-[220px]">
+              <div className="w-full sm:w-auto sm:min-w-[140px]">
                 <Filter
                   label="Menu Display"
                   value={menuFilter}
-                  options={[
-                    "shown",
-                    "hidden",
-                  ]}
+                  options={["shown", "hidden"]}
                   onChange={setMenuFilter}
                 />
               </div>
 
-              {/* ✅ NEW: Bulk actions */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button
                   disabled={uploading || selectedIds.length === 0}
                   onClick={() => bulkSetShowOnMenu(true)}
-                  className="px-4 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none min-w-0 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Show selected products on the menu"
                 >
                   Show Selected
@@ -723,7 +718,7 @@ function ProductsPage() {
                       confirmButtonColor: "bg-gray-700",
                     })
                   }}
-                  className="px-4 py-3 rounded-xl bg-gray-700 text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none min-w-0 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-gray-700 text-white font-semibold text-sm hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Hide selected products from the menu"
                 >
                   Hide Selected
@@ -731,39 +726,40 @@ function ProductsPage() {
               </div>
             </div>
 
-            {/* selected count */}
             <div className="mt-3 text-xs text-gray-500">
               Selected: <span className="font-semibold">{selectedIds.length}</span>
             </div>
           </div>
         </div>
 
-        {/* TABLE */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <DataTable 
-            columns={columns} 
-            data={paginatedProducts} 
-            loading={loading}
-            getRowClassName={(row) => {
-              // Add gradient background color from yellow to red based on dailyLimit
-              if (typeof row.dailyLimit === 'number' && row.dailyLimit <= 5 && row.dailyLimit >= 0) {
-                const limit = row.dailyLimit;
-                // Gradient: 5=yellow, 4=yellow-orange, 3=orange, 2=red-orange, 1/0=red
-                if (limit === 5) {
-                  return 'bg-yellow-50 hover:bg-yellow-100';
-                } else if (limit === 4) {
-                  return 'bg-yellow-100 hover:bg-yellow-200';
-                } else if (limit === 3) {
-                  return 'bg-orange-100 hover:bg-orange-200';
-                } else if (limit === 2) {
-                  return 'bg-orange-200 hover:bg-orange-300';
-                } else if (limit === 1 || limit === 0) {
-                  return 'bg-red-100 hover:bg-red-200';
+        {/* TABLE – same scroll-inside pattern as src/components/order */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden min-w-0">
+          <div className="w-full min-w-0">
+            <DataTable 
+              columns={columns} 
+              data={paginatedProducts} 
+              loading={loading}
+              getRowClassName={(row) => {
+                // Add gradient background color from yellow to red based on dailyLimit
+                if (typeof row.dailyLimit === 'number' && row.dailyLimit <= 5 && row.dailyLimit >= 0) {
+                  const limit = row.dailyLimit;
+                  // Gradient: 5=yellow, 4=yellow-orange, 3=orange, 2=red-orange, 1/0=red
+                  if (limit === 5) {
+                    return 'bg-yellow-50 hover:bg-yellow-100';
+                  } else if (limit === 4) {
+                    return 'bg-yellow-100 hover:bg-yellow-200';
+                  } else if (limit === 3) {
+                    return 'bg-orange-100 hover:bg-orange-200';
+                  } else if (limit === 2) {
+                    return 'bg-orange-200 hover:bg-orange-300';
+                  } else if (limit === 1 || limit === 0) {
+                    return 'bg-red-100 hover:bg-red-200';
+                  }
                 }
-              }
-              return '';
-            }}
-          />
+                return '';
+              }}
+            />
+          </div>
         </div>
 
         {/* PAGINATION */}

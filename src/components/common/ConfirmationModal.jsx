@@ -45,21 +45,21 @@ function ConfirmationModal({
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+      {/* Modal: responsive width so text doesn't truncate on mobile */}
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[calc(100vw-1.5rem)] sm:max-w-md transform transition-all max-h-[90vh] flex flex-col">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-gray-200">
-            <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 flex-shrink-0">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{title}</h3>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-5">
-            <p className="text-gray-600">{message}</p>
+          <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto min-h-0">
+            <p className="text-sm sm:text-base text-gray-600 break-words">{message}</p>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-shrink-0 justify-end gap-3">
             {type === "confirm" && (
               <button
                 onClick={handleCancel}

@@ -7,12 +7,12 @@ import {
   ClipboardDocumentListIcon,
   CubeIcon,
   UserGroupIcon,
-  TruckIcon,
   ChartBarSquareIcon,
   ShieldCheckIcon,
   TagIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -24,10 +24,9 @@ import { db } from "../../firebase";
  * - Uses React Router v6 NavLink for active highlighting
  * - Uses Firestore onSnapshot for real‑time badge counts
  *
- * `isOpen` comes from AdminLayout and represents the
- * expanded vs icons‑only state on desktop / tablet.
+ * `isOpen` = desktop expanded; `mobileMenuOpen` = mobile drawer visible; `onCloseMobile` = close mobile drawer.
  */
-function AdminSidebar({ isOpen }) {
+function AdminSidebar({ isOpen, mobileMenuOpen = false, onCloseMobile }) {
   const location = useLocation();
 
   // Real‑time badge counts from Firestore
@@ -146,6 +145,7 @@ function AdminSidebar({ isOpen }) {
     [
       "group flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-150",
       "text-sm font-semibold",
+      isCollapsed && "md:justify-center",
       isActive
         ? "bg-[#F5EBFF] text-[#502455] shadow-sm"
         : "text-[#502455] hover:bg-gray-100 hover:text-[#7A3DF0]",
@@ -164,45 +164,68 @@ function AdminSidebar({ isOpen }) {
   };
 
   return (
-    <aside
-      className={`fixed top-0 left-0 z-30 flex h-screen flex-col border-r border-gray-200 bg-white/95 backdrop-blur-md shadow-lg transition-all duration-300
-      ${isCollapsed ? "w-20" : "w-64"}`}
-    >
-      {/* Brand + collapse toggle */}
-      <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
-        <NavLink
-          to="/"
-          className={`flex items-center gap-2 font-bold tracking-tight text-[#502455] ${
-            isCollapsed ? "justify-center w-full" : ""
-          }`}
-        >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#7A3DF0] text-xs font-black text-white">
-            BC
-          </span>
-          {!isCollapsed && <span className="text-sm">Bake Corner NL</span>}
-        </NavLink>
+    <>
+      {/* Mobile overlay: close drawer on tap */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={onCloseMobile}
+          onKeyDown={(e) => e.key === "Escape" && onCloseMobile?.()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close menu"
+        />
+      )}
 
-        {/* Collapse / expand button (desktop & tablet) */}
-        <button
-          type="button"
-          className={`ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800
-          ${isCollapsed ? "mx-auto" : ""}`}
-          // Delegate the actual toggle to AdminHeader via a custom event
-          onClick={() => {
-            // Fire a custom event that AdminHeader can listen to if needed.
-            window.dispatchEvent(
-              new CustomEvent("admin-sidebar-toggle")
-            );
-          }}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <ChevronDoubleRightIcon className="h-4 w-4" />
-          ) : (
-            <ChevronDoubleLeftIcon className="h-4 w-4" />
-          )}
-        </button>
-      </div>
+      <aside
+        className={`fixed top-0 left-0 z-50 flex h-screen flex-col border-r border-gray-200 bg-white shadow-xl transition-all duration-300 ease-out
+          w-64
+          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          md:translate-x-0 md:!translate-x-0
+          ${isCollapsed ? "md:w-20" : "md:w-64"}`}
+      >
+        {/* Brand + collapse toggle + mobile close */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3 flex-shrink-0">
+          <NavLink
+            to="/"
+            onClick={() => onCloseMobile?.()}
+            className={`flex items-center gap-2 font-bold tracking-tight text-[#502455] ${
+              isCollapsed ? "md:justify-center md:w-full" : ""
+            }`}
+          >
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#7A3DF0] text-xs font-black text-white flex-shrink-0">
+              BC
+            </span>
+            <span className={`text-sm truncate ${isCollapsed ? "md:hidden" : ""}`}>
+              Bake Corner NL
+            </span>
+          </NavLink>
+
+          <div className="flex items-center gap-1">
+            {/* Mobile: close drawer */}
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+              onClick={onCloseMobile}
+              aria-label="Close menu"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+            {/* Desktop: collapse / expand */}
+            <button
+              type="button"
+              className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              onClick={() => window.dispatchEvent(new CustomEvent("admin-sidebar-toggle"))}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? (
+                <ChevronDoubleRightIcon className="h-4 w-4" />
+              ) : (
+                <ChevronDoubleLeftIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -217,6 +240,7 @@ function AdminSidebar({ isOpen }) {
                 to={item.route}
                 className={linkClass}
                 title={isCollapsed ? item.title : undefined}
+                onClick={onCloseMobile}
               >
                 <span
                   className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg ${
@@ -228,17 +252,13 @@ function AdminSidebar({ isOpen }) {
                   <Icon className="h-4 w-4" />
                 </span>
 
-                {/* Label + description */}
-                {!isCollapsed && (
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-xs font-semibold">
-                      {item.title}
-                    </span>
-                    <span className="truncate text-[0.7rem] font-normal text-gray-500">
-                      {item.description}
-                    </span>
-                  </div>
-                )}
+                {/* Label + description: on desktop hide when collapsed; mobile drawer always shows labels */}
+                <div className={`flex min-w-0 flex-1 flex-col ${isCollapsed ? "md:hidden" : ""}`}>
+                  <span className="truncate text-xs font-semibold">{item.title}</span>
+                  <span className="truncate text-[0.7rem] font-normal text-gray-500 hidden md:block">
+                    {item.description}
+                  </span>
+                </div>
 
                 {/* Badges */}
                 {renderBadge(item.badgeKey)}
@@ -248,6 +268,7 @@ function AdminSidebar({ isOpen }) {
         </div>
       </nav>
     </aside>
+    </>
   );
 }
 

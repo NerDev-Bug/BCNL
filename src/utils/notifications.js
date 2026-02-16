@@ -238,8 +238,9 @@ export async function createReturnApprovedNotification(order) {
 /**
  * Create customer notification when admin rejects return request
  * @param {object} order - Order object with userId
+ * @param {string} [rejectionMessage] - Optional reason/message from admin for rejection
  */
-export async function createReturnRejectedNotification(order) {
+export async function createReturnRejectedNotification(order, rejectionMessage) {
   try {
     if (!order || !order.userId || !order.id) {
       console.error("Invalid order data for return rejected notification:", order);
@@ -247,7 +248,11 @@ export async function createReturnRejectedNotification(order) {
     }
 
     const orderNumber = order.id.slice(0, 4);
-    const message = `Your return request for order #${orderNumber} has been rejected. Please contact support if you have questions.`;
+    let message = `Your return request for order #${orderNumber} has been rejected.`;
+    if (rejectionMessage && rejectionMessage.trim()) {
+      message += ` Reason: ${rejectionMessage.trim()}`;
+    }
+    message += " Please contact support if you have questions.";
 
     await createNotification(order.userId, message, {
       link: "/order",

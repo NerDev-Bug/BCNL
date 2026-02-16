@@ -18,6 +18,12 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import StarRating from "../common/StarRating";
+import {
+  downloadCsv,
+  downloadPdfFromTable,
+  InventoryReportModal,
+  SalesOrdersReportModal,
+} from "./DownloadCSV-PDF";
 
 function ReportsPage() {
   const [orders, setOrders] = useState([]);
@@ -25,6 +31,14 @@ function ReportsPage() {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ordersRange, setOrdersRange] = useState("7d"); // 7d | 30d | 365d
+
+  // Inventory report: editable before download
+  const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [inventoryRows, setInventoryRows] = useState([]);
+
+  // Sales & Orders report: editable before download
+  const [ordersModalOpen, setOrdersModalOpen] = useState(false);
+  const [ordersRows, setOrdersRows] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -235,39 +249,7 @@ function ReportsPage() {
     };
   }, [orders, products, ordersRange, ratings]);
 
-  const downloadCsv = (rows, filename) => {
-    if (!rows || !rows.length) {
-      alert("No data to export.");
-      return;
-    }
-
-    const headers = Object.keys(rows[0]);
-    const escape = (val) => {
-      if (val == null) return "";
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
-    };
-
-    const csv =
-      headers.join(",") +
-      "\n" +
-      rows
-        .map((row) => headers.map((h) => escape(row[h])).join(","))
-        .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const exportOrders = () => {
+  const openOrdersReportModal = () => {
     const rows = orders.map((o) => ({
       id: o.id,
       createdAt: o.createdAt?.seconds
@@ -275,26 +257,66 @@ function ReportsPage() {
         : "",
       customer: o.orderData?.receiverName || "",
       paymentMethod: o.orderData?.paymentMethod || o.paymentMethod || "",
-      itemsCount: o.items?.length || 0,
+      itemsCount: String(o.items?.length || 0),
       total: Number(o.total || 0).toFixed(2),
       paymentStatus: o.paymentStatus || "",
     }));
-
-    downloadCsv(rows, "bcnl-orders-report.csv");
+    setOrdersRows(rows);
+    setOrdersModalOpen(true);
   };
 
-  const exportProducts = () => {
+  const updateOrdersRow = (index, field, value) => {
+    setOrdersRows((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const exportOrdersCsvFromModal = () => {
+    downloadCsv(ordersRows, "bcnl-orders-report.csv");
+    setOrdersModalOpen(false);
+  };
+
+  const exportOrdersPdfFromModal = () => {
+    downloadPdfFromTable(ordersRows, {
+      title: "Sales & Orders Report",
+      filename: "bcnl-orders-report.pdf",
+    });
+    setOrdersModalOpen(false);
+  };
+
+  const openInventoryReportModal = () => {
     const rows = products.map((p) => ({
       id: p.id,
       name: p.name || "",
       category: p.category || "",
-      price: Number(p.price || 0).toFixed(2),
-      stock: p.stock ?? "",
-      dailyLimit: p.dailyLimit ?? "",
+      price: String(Number(p.price || 0).toFixed(2)),
+      dailyLimit: p.dailyLimit != null && p.dailyLimit !== "" ? String(p.dailyLimit) : "",
       hasDiscount: p.productDiscount ? "YES" : "NO",
     }));
+    setInventoryRows(rows);
+    setInventoryModalOpen(true);
+  };
 
-    downloadCsv(rows, "bcnl-inventory-report.csv");
+  const updateInventoryRow = (index, field, value) => {
+    setInventoryRows((prev) => {
+      const next = prev.map((row, i) =>
+        i === index ? { ...row, [field]: value } : row
+      );
+      return next;
+    });
+  };
+
+  const exportInventoryCsvFromModal = () => {
+    downloadCsv(inventoryRows, "bcnl-inventory-report.csv");
+    setInventoryModalOpen(false);
+  };
+
+  const exportInventoryPdfFromModal = () => {
+    downloadPdfFromTable(inventoryRows, {
+      title: "Inventory Report",
+      filename: "bcnl-inventory-report.pdf",
+    });
+    setInventoryModalOpen(false);
   };
 
   const exportReturnedOrdersCsv = () => {
@@ -371,8 +393,8 @@ function ReportsPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto w-full min-w-0 space-y-6 md:space-y-8">
         {/* HEADER */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Reports</h1>
@@ -544,20 +566,42 @@ function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExportCard
             title="Sales & Orders Report"
-            description="Download all POS orders with customer, payment, and total information."
-            primaryLabel="Download Orders CSV"
-            onPrimary={exportOrders}
+            description="Edit the report content below, then download as CSV or PDF."
+            primaryLabel="Edit & Download Orders"
+            onPrimary={openOrdersReportModal}
             disabled={loading || !orders.length}
           />
 
           <ExportCard
             title="Inventory Report"
-            description="Export current product catalog with pricing, stock, and discount flags."
-            primaryLabel="Download Inventory CSV"
-            onPrimary={exportProducts}
+            description="Edit the report content below, then download as CSV."
+            primaryLabel="Edit & Download Inventory"
+            onPrimary={openInventoryReportModal}
             disabled={loading || !products.length}
           />
         </div>
+
+        {/* Sales & Orders Report – Edit before download modal */}
+        {ordersModalOpen && (
+          <SalesOrdersReportModal
+            rows={ordersRows}
+            onUpdateRow={updateOrdersRow}
+            onClose={() => setOrdersModalOpen(false)}
+            onDownloadCsv={exportOrdersCsvFromModal}
+            onDownloadPdf={exportOrdersPdfFromModal}
+          />
+        )}
+
+        {/* Inventory Report – Edit before download modal */}
+        {inventoryModalOpen && (
+          <InventoryReportModal
+            rows={inventoryRows}
+            onUpdateRow={updateInventoryRow}
+            onClose={() => setInventoryModalOpen(false)}
+            onDownloadCsv={exportInventoryCsvFromModal}
+            onDownloadPdf={exportInventoryPdfFromModal}
+          />
+        )}
       </div>
     </div>
   );

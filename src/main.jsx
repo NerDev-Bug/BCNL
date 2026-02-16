@@ -4,8 +4,9 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.jsx";
 
+import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
-import { WishlistProvider } from "./context/WishlistContext"; // ✅ add this
+import { WishlistProvider } from "./context/WishlistContext";
 
 // Register Service Worker for PWA (only in production to avoid dev cache issues)
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
@@ -24,11 +25,13 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <CartProvider>
-        <WishlistProvider> {/* ✅ add this */}
-          <App />
-        </WishlistProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <App />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>
 );

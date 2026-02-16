@@ -119,15 +119,15 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden min-w-0">
+      <div className="overflow-x-auto w-full min-w-0">
+        <table className="w-full border-collapse text-xs sm:text-sm min-w-[600px]">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
             <tr>
               {columns.map(col => (
                 <th
                   key={col.key}
-                  className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider"
+                  className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-center text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap"
                 >
                   {col.header}
                 </th>
@@ -140,8 +140,8 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={`skeleton-${idx}`} className="hover:bg-gray-50 transition-colors">
                   {columns.map(col => (
-                    <td key={`${col.key}-${idx}`} className="px-6 py-4">
-                      <div className="h-5 bg-gray-200 rounded-lg animate-pulse" />
+                    <td key={`${col.key}-${idx}`} className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
+                      <div className="h-4 sm:h-5 bg-gray-200 rounded-lg animate-pulse" />
                     </td>
                   ))}
                 </tr>
@@ -150,12 +150,12 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-6 py-16 text-center"
+                  className="px-3 py-8 sm:px-6 sm:py-16 text-center"
                 >
                   <div className="flex flex-col items-center justify-center">
-                    <div className="text-5xl mb-4">📦</div>
-                    <p className="text-lg font-semibold text-gray-900 mb-1">No data available</p>
-                    <p className="text-sm text-gray-500">There are no items to display at this time</p>
+                    <div className="text-4xl sm:text-5xl mb-4">📦</div>
+                    <p className="text-base sm:text-lg font-semibold text-gray-900 mb-1">No data available</p>
+                    <p className="text-xs sm:text-sm text-gray-500">There are no items to display at this time</p>
                   </div>
                 </td>
               </tr>
@@ -174,7 +174,7 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
                       {columns.map(col => (
                         <td
                           key={col.key}
-                          className="px-6 py-4 text-sm text-gray-900"
+                          className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-xs sm:text-sm text-gray-900"
                         >
                           {col.render
                             ? col.render(row, {
@@ -191,7 +191,7 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
                     {/* EXPANDED ROW */}
                     {isOpen && (
                       <tr className="bg-gray-50/50">
-                        <td colSpan={columns.length} className="px-6 py-4">
+                        <td colSpan={columns.length} className="px-3 py-3 sm:px-6 sm:py-4">
                           <div className="bg-white rounded-lg border border-gray-200 shadow-sm mt-2">
                             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                               <h4 className="text-sm font-semibold text-gray-900">Order Items</h4>

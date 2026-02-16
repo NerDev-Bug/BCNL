@@ -289,15 +289,15 @@ function OrdersToDelivered() {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="pt-4">
-      <h2 className="mb-4 text-lg font-semibold">Preparing Orders</h2>
-
-      <DataTable
-        columns={columns}
-        data={paginatedOrders}
-        loading={loading}
-      />
-
+    <div className="pt-4 w-full min-w-0">
+      <h2 className="mb-4 text-lg font-semibold text-left">To Deliver</h2>
+      <div className="w-full min-w-0">
+        <DataTable
+          columns={columns}
+          data={paginatedOrders}
+          loading={loading}
+        />
+      </div>
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

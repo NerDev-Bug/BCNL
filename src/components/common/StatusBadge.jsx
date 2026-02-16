@@ -5,6 +5,7 @@ export function StatusBadge({ value }) {
   const styles = {
     // Order statuses
     pending: "bg-amber-100 text-amber-700",
+    "pending approval": "bg-orange-100 text-orange-700 text-center",
     preparing: "bg-green-100 text-green-700",
     to_delivered: "bg-green-100 text-green-700",
     delivered: "bg-green-100 text-green-700",

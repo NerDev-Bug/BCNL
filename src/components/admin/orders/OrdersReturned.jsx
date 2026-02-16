@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -19,8 +19,9 @@ function OrdersReturned() {
     
     // Confirmation modal states
     const [approveModal, setApproveModal] = useState({ isOpen: false, order: null });
-    const [rejectModal, setRejectModal] = useState({ isOpen: false, order: null });
+    const [rejectModal, setRejectModal] = useState({ isOpen: false, order: null, message: "" });
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
+    const rejectMessageRef = useRef(null);
 
     useEffect(() => {
         const fetchReturnOrders = async () => {
@@ -142,16 +143,32 @@ function OrdersReturned() {
         }
     };
 
-    // Open reject confirmation modal
+    // Open reject confirmation modal (with message textarea)
     const openRejectModal = (order) => {
-        setRejectModal({ isOpen: true, order });
+        setRejectModal({ isOpen: true, order, message: "" });
     };
 
-    // Confirm rejecting a return request (revert to delivered)
+    // Auto-resize textarea to fit content
+    const adjustRejectTextareaHeight = () => {
+        const el = rejectMessageRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, 280)}px`;
+    };
+
+    useEffect(() => {
+        if (rejectModal.isOpen && rejectModal.order) {
+            // Reset and fit textarea when modal opens
+            setTimeout(adjustRejectTextareaHeight, 0);
+        }
+    }, [rejectModal.isOpen, rejectModal.order]);
+
+    // Confirm rejecting a return request (revert to delivered) with message
     const confirmRejectReturn = async () => {
         const order = rejectModal.order;
+        const rejectionMessage = (rejectModal.message || "").trim();
         if (!order) {
-            setRejectModal({ isOpen: false, order: null });
+            setRejectModal({ isOpen: false, order: null, message: "" });
             return;
         }
 
@@ -162,7 +179,7 @@ function OrdersReturned() {
             
             if (!orderSnap.exists()) {
                 toast.error("Order not found");
-                setRejectModal({ isOpen: false, order: null });
+                setRejectModal({ isOpen: false, order: null, message: "" });
                 return;
             }
 
@@ -171,11 +188,12 @@ function OrdersReturned() {
             await updateDoc(orderRef, {
                 paymentStatus: "delivered",
                 returnRejectedAt: new Date(),
+                ...(rejectionMessage ? { returnRejectionReason: rejectionMessage } : {}),
             });
             
-            // Send notification to customer
+            // Send notification to customer (with optional rejection message)
             try {
-                await createReturnRejectedNotification(orderData);
+                await createReturnRejectedNotification(orderData, rejectionMessage || undefined);
             } catch (notifError) {
                 console.error("Error creating return rejected notification:", notifError);
             }
@@ -186,8 +204,12 @@ function OrdersReturned() {
             console.error("Error rejecting return:", err);
             toast.error("Failed to reject return request");
         } finally {
-            setRejectModal({ isOpen: false, order: null });
+            setRejectModal({ isOpen: false, order: null, message: "" });
         }
+    };
+
+    const closeRejectModal = () => {
+        setRejectModal({ isOpen: false, order: null, message: "" });
     };
 
     // Open delete confirmation modal
@@ -318,12 +340,11 @@ function OrdersReturned() {
     if (error) return <div className="p-6 text-red-500">{error}</div>;
 
     return (
-        <div className="pt-4">
-            <h2 className="mb-4 text-lg font-semibold">
-                Returned Orders & Return Requests
-            </h2>
-
-            <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+        <div className="pt-4 w-full min-w-0">
+            <h2 className="mb-4 text-lg font-semibold text-left">Returned Orders & Return Requests</h2>
+            <div className="w-full min-w-0">
+                <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+            </div>
             <Pagination 
             currentPage={currentPage} 
             totalPages={totalPages} 
@@ -342,17 +363,55 @@ function OrdersReturned() {
                 confirmButtonColor="bg-green-600"
             />
 
-            {/* Reject Confirmation Modal */}
-            <ConfirmationModal
-                isOpen={rejectModal.isOpen}
-                onClose={() => setRejectModal({ isOpen: false, order: null })}
-                onConfirm={confirmRejectReturn}
-                title="Reject Return Request"
-                message={`Are you sure you want to reject the return request for order #${rejectModal.order?.id.slice(0, 6)}? The order will be reverted to 'delivered' status and the customer will be notified.`}
-                confirmText="Reject"
-                cancelText="Cancel"
-                confirmButtonColor="bg-orange-600"
-            />
+            {/* Reject Modal with message textarea (auto-resize) */}
+            {rejectModal.isOpen && (
+                <>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={closeRejectModal} />
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+                            <div className="px-6 py-5 border-b border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-900">Reject Return Request</h3>
+                            </div>
+                            <div className="px-6 py-5 space-y-3">
+                                <p className="text-gray-600 text-sm">
+                                    Rejecting the return for order <strong>#{rejectModal.order?.id?.slice(0, 6)}</strong>. The order will be reverted to &quot;delivered&quot; and the customer will be notified.
+                                </p>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Reason for rejection <span className="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <textarea
+                                    ref={rejectMessageRef}
+                                    value={rejectModal.message}
+                                    onChange={(e) => {
+                                        setRejectModal(prev => ({ ...prev, message: e.target.value }));
+                                        setTimeout(adjustRejectTextareaHeight, 0);
+                                    }}
+                                    onInput={adjustRejectTextareaHeight}
+                                    placeholder="Enter the reason for rejecting this return request..."
+                                    rows={3}
+                                    className="w-full min-h-[80px] max-h-[280px] px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none overflow-y-auto"
+                                />
+                            </div>
+                            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeRejectModal}
+                                    className="px-6 py-2.5 rounded-xl border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-all duration-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmRejectReturn}
+                                    className="px-6 py-2.5 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                                >
+                                    Reject
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Delete Confirmation Modal */}
             <ConfirmationModal

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { loginUser } from "../services/authService"
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
 import { toast } from "react-toastify"
@@ -18,6 +18,7 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
   const [forgotMode, setForgotMode] = useState(false)
 
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -121,8 +122,16 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
       toast.success("Logged in successfully!")
       onClose()
 
-      if (role === "admin") navigate("/admin/dashboard")
-      else navigate("/")
+      // Redirect: respect ?redirect= (e.g. after protected admin route sent user to login)
+      const params = new URLSearchParams(location.search)
+      const redirect = params.get("redirect")
+      if (redirect && typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")) {
+        navigate(redirect)
+      } else if (role === "admin") {
+        navigate("/admin/dashboard")
+      } else {
+        navigate("/")
+      }
     } catch (error) {
       console.error(error)
       toast.error("Login failed. Please check your credentials.")

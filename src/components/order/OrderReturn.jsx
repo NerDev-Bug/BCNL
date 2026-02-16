@@ -31,29 +31,25 @@ function OrderReturn() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch both return_requested and returned orders
         const q = query(
           collection(db, "orders"),
           where("userId", "==", user.uid),
           where("paymentStatus", "in", ["return_requested", "returned"])
         );
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .sort((a, b) => {
-          // Sort by returnRequestedAt or createdAt: newest first
-          const getTime = (timestamp) => {
-            if (!timestamp) return 0;
-            if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
-            if (timestamp instanceof Date) return timestamp.getTime();
-            return new Date(timestamp).getTime() || 0;
-          };
-          const aTime = getTime(a.returnRequestedAt || a.createdAt);
-          const bTime = getTime(b.returnRequestedAt || b.createdAt);
-          return bTime - aTime; // Newest first
-        });
+        const data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const getTime = (timestamp) => {
+              if (!timestamp) return 0;
+              if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
+              if (timestamp instanceof Date) return timestamp.getTime();
+              return new Date(timestamp).getTime() || 0;
+            };
+            const aTime = getTime(a.returnRequestedAt || a.createdAt);
+            const bTime = getTime(b.returnRequestedAt || b.createdAt);
+            return bTime - aTime;
+          });
         setOrders(data);
         setCurrentPage(1);
       } catch (err) {
@@ -125,23 +121,18 @@ function OrderReturn() {
               Approved: {formatDateTime(row.returnApprovedAt)}
             </p>
           )}
-          {row.returnRejectedAt && (
-            <p className="text-xs text-red-600 mt-1">
-              Rejected: {formatDateTime(row.returnRejectedAt)}
-            </p>
-          )}
         </div>
       ),
     },
     { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
-    { 
-      key: "status", 
-      header: "Status", 
+    {
+      key: "status",
+      header: "Status",
       render: (row) => (
-        <StatusBadge 
-          value={row.paymentStatus === "return_requested" ? "Pending Approval" : row.paymentStatus} 
+        <StatusBadge
+          value={row.paymentStatus === "return_requested" ? "Pending Approval" : row.paymentStatus}
         />
-      ) 
+      ),
     },
   ];
 
@@ -171,9 +162,11 @@ function OrderReturn() {
   }
 
   return (
-    <div className="pt-4">
-      <h2 className="mb-4 text-lg font-semibold">Returned Orders</h2>
-      <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+    <div className="pt-4 w-full min-w-0">
+      <h2 className="mb-4 text-lg font-semibold text-left">Returned Orders</h2>
+      <div className="w-full min-w-0">
+        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+      </div>
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
     </div>
   );

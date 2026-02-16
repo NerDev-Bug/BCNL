@@ -147,22 +147,29 @@ function OrderDelivered() {
         const isDisabled = diffInDays > 7 || hasRejectedReturn;
 
         return (
-          <button
-            onClick={() => handleReturnClick(row)}
-            disabled={isDisabled}
-            className={`px-3 py-1 text-white rounded text-sm ${
-              isDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
-            }`}
-          >
-            {hasRejectedReturn
-              ? "Return Rejected"
-              : diffInDays > 7
-              ? "Return Expired"
-              : "Return"}
-          </button>
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            <button
+              onClick={() => handleReturnClick(row)}
+              disabled={isDisabled}
+              className={`px-3 py-1 text-white rounded text-sm w-fit ${
+                isDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
+              }`}
+            >
+              {hasRejectedReturn
+                ? "Return Rejected"
+                : diffInDays > 7
+                ? "Return Expired"
+                : "Return"}
+            </button>
+            {hasRejectedReturn && row.returnRejectionReason && (
+              <div className="text-xs text-left px-2 py-1.5 bg-red-50 border border-red-100 rounded" title={row.returnRejectionReason}>
+                <span className="font-medium text-red-700">Reason: </span>
+                <span className="text-gray-700">{row.returnRejectionReason}</span>
+              </div>
+            )}
+          </div>
         );
       },
-
     },
   ];
 
@@ -192,9 +199,11 @@ function OrderDelivered() {
   }
 
   return (
-    <div className="pt-4">
-      <h2 className="mb-4 text-lg font-semibold">Delivered Orders</h2>
-      <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+    <div className="pt-4 w-full min-w-0">
+      <h2 className="mb-4 text-lg font-semibold text-left">Delivered Orders</h2>
+      <div className="w-full min-w-0">
+        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+      </div>
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
       {showModal && selectedOrder && (

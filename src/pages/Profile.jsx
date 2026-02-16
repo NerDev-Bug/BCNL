@@ -3,6 +3,7 @@ import { auth } from "../firebase"
 import { signOut } from "firebase/auth"
 import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "react-toastify"
+import { useAuth } from "../context/AuthContext"
 import "react-toastify/dist/ReactToastify.css"
 
 import UserInfo from "../components/profile/user-info"
@@ -25,10 +26,7 @@ function Profile() {
 
   const navigate = useNavigate()
   const location = useLocation()
-
-  // ✅ put your admin UID(s) here
-  const ADMIN_UIDS = ["righ6b8NVlhuhQ7uRXe83m92hqA2"]
-  const isAdmin = user && ADMIN_UIDS.includes(user.uid)
+  const { isAdmin: isAdminFromContext } = useAuth()
 
   useEffect(() => {
     if (!auth.currentUser) {
@@ -37,6 +35,8 @@ function Profile() {
       setUser(auth.currentUser)
     }
   }, [navigate])
+
+  const isAdmin = user && isAdminFromContext
 
   // ✅ NEW: read ?tab=rewards and set active tab
   useEffect(() => {
