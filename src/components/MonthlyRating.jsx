@@ -9,13 +9,48 @@ function MonthlyRatingModal() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   };
 
-  // Initialize show state based on localStorage check
-  const monthKey = getMonthKey();
-  const alreadyRated = typeof window !== "undefined" 
-    ? localStorage.getItem(`rating-${monthKey}`)
-    : null;
+  // Check if enough time has passed since "Maybe Later" was clicked
+  const shouldShowModal = () => {
+    if (typeof window === "undefined") return false;
+    
+    const monthKey = getMonthKey();
+    const alreadyRated = localStorage.getItem(`rating-${monthKey}`);
+    
+    // If already rated this month, don't show
+    if (alreadyRated) return false;
+    
+    // Check if "Maybe Later" was clicked and if enough time has passed
+    const maybeLaterData = localStorage.getItem(`rating-maybe-later-${monthKey}`);
+    
+    if (!maybeLaterData) {
+      // No "Maybe Later" clicked, show the modal
+      return true;
+    }
+    
+    // Parse the stored data (could be old format timestamp or new format object)
+    let lastDismissed, hoursToWait;
+    try {
+      const parsed = JSON.parse(maybeLaterData);
+      // New format: { timestamp, hoursToWait }
+      lastDismissed = parsed.timestamp;
+      hoursToWait = parsed.hoursToWait || 4; // Default to 4 if not found
+    } catch {
+      // Old format: just timestamp string
+      lastDismissed = parseInt(maybeLaterData, 10);
+      hoursToWait = 4; // Default to 4 hours for old format
+    }
+    
+    // Calculate time difference
+    const millisecondsToWait = hoursToWait * 60 * 60 * 1000;
+    const timeSinceDismissed = typeof window !== "undefined" ? Date.now() - lastDismissed : 0;
+    
+    // Show modal if enough time has passed
+    return timeSinceDismissed >= millisecondsToWait;
+  };
 
-  const [show, setShow] = useState(!alreadyRated);
+  // Initialize show state based on localStorage check
+  // Use a function to avoid calling Date.now() during render
+  const [show, setShow] = useState(() => shouldShowModal());
   const [visible, setVisible] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -60,11 +95,29 @@ function MonthlyRatingModal() {
     }
   };
 
-  const handleClose = () => {
+  const handleMaybeLater = () => {
+    // Save current timestamp to localStorage with random delay (3-5 hours)
+    const monthKey = getMonthKey();
+    const timestamp = Date.now();
+    
+    // Randomize between 3-5 hours (in milliseconds)
+    const minHours = 3;
+    const maxHours = 5;
+    const randomHours = minHours + Math.random() * (maxHours - minHours);
+    const delayData = {
+      timestamp: timestamp,
+      hoursToWait: randomHours
+    };
+    
+    localStorage.setItem(`rating-maybe-later-${monthKey}`, JSON.stringify(delayData));
+    
+    // Close the modal
     setVisible(false);
     setTimeout(() => {
       setShow(false);
     }, 300);
+    
+    toast.info("We'll ask again later. Thank you! 😊");
   };
 
   if (!show) return null;
@@ -82,7 +135,6 @@ function MonthlyRatingModal() {
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
         visible ? "opacity-100" : "opacity-0"
       } bg-black/60 backdrop-blur-sm`}
-      onClick={handleClose}
     >
       <div
         className={`bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 ${
@@ -179,7 +231,7 @@ function MonthlyRatingModal() {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={handleMaybeLater}
               disabled={submitting}
               className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >

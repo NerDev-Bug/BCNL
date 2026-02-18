@@ -3,14 +3,16 @@ import { getFirestore } from "firebase/firestore"
 import { getAuth } from "firebase/auth"
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions"
 
-// 🔥 Your Firebase config
+// 🔥 Your Firebase config - using environment variables for better security
+// Note: Firebase client-side API keys are safe to expose, but using env vars is a best practice
+// All values should be set in .env file
 const firebaseConfig = {
-  apiKey: "AIzaSyAVfnAb51e_fV2q_Ar7th2tPk1lUHFKh8k",
-  authDomain: "bcnl-8c365.firebaseapp.com",
-  projectId: "bcnl-8c365",
-  storageBucket: "bcnl-8c365.firebasestorage.app",
-  messagingSenderId: "1049132543384",
-  appId: "1:1049132543384:web:37164a37d94fb0bfaa4fed"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
