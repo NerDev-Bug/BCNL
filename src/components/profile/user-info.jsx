@@ -10,22 +10,21 @@ import { toast } from "react-toastify"
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
+// ✅ 🔥 MASTER SWITCH — change to true when delivery is ready
+const DELIVERY_ENABLED = false
+
 function UserInfo({ user }) {
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
 
-  // ✅ loading states for actions
   const [updatingEmail, setUpdatingEmail] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
 
-  // ✅ edit confirmation modal
   const [showEditConfirm, setShowEditConfirm] = useState(false)
 
-  // AUTH
   const [newEmail, setNewEmail] = useState(user.email)
   const [currentPassword, setCurrentPassword] = useState("")
 
-  // PROFILE (Firestore)
   const [profile, setProfile] = useState({
     username: "",
     phone: "",
@@ -61,7 +60,7 @@ function UserInfo({ user }) {
     loadProfile()
   }, [user.uid])
 
-  /** Update email (Auth) */
+  /** Update email */
   const handleUpdateEmail = async () => {
     if (updatingEmail || savingProfile) return
 
@@ -102,7 +101,7 @@ function UserInfo({ user }) {
     }
   }
 
-  /** Update profile (Firestore) */
+  /** Update profile */
   const handleUpdateProfile = async () => {
     if (savingProfile || updatingEmail) return
 
@@ -144,7 +143,7 @@ function UserInfo({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* ✅ EDIT CONFIRM MODAL */}
+      {/* EDIT CONFIRM MODAL */}
       {showEditConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
@@ -163,7 +162,7 @@ function UserInfo({ user }) {
                 type="button"
                 disabled={busy}
                 onClick={() => setShowEditConfirm(false)}
-                className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded border text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -174,7 +173,7 @@ function UserInfo({ user }) {
                   setIsEditing(true)
                   setShowEditConfirm(false)
                 }}
-                className="px-4 py-2 rounded bg-[#7B2220] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded bg-[#7B2220] text-white hover:opacity-90 disabled:opacity-60"
               >
                 Continue
               </button>
@@ -190,7 +189,7 @@ function UserInfo({ user }) {
         {!isEditing && (
           <button
             onClick={() => setShowEditConfirm(true)}
-            className="text-sm text-[#7B2220] underline disabled:opacity-60 disabled:cursor-not-allowed"
+            className="text-sm text-[#7B2220] underline disabled:opacity-60"
             disabled={busy}
           >
             Edit
@@ -220,59 +219,76 @@ function UserInfo({ user }) {
         />
       </div>
 
-      {/* ADDRESS */}
+      {/* 🚚 DELIVERY ADDRESS */}
       <div>
         <h2 className="font-bold text-lg mb-2">Delivery Address</h2>
 
-        <input
-          disabled={!isEditing || busy}
-          placeholder="Street Name"
-          value={profile.streetName}
-          onChange={(e) =>
-            setProfile({ ...profile, streetName: e.target.value })
-          }
-          className={`${inputClass} mb-2`}
-        />
+        {!DELIVERY_ENABLED ? (
+          <div className="text-center py-6 bg-gray-50 rounded-lg border">
+            <p className="text-lg font-semibold text-gray-700">
+              🚚 Delivery Coming Soon
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              We're preparing delivery service in your area.
+            </p>
+          </div>
+        ) : (
+          <>
+            <input
+              disabled={!isEditing || busy}
+              placeholder="Street Name"
+              value={profile.streetName}
+              onChange={(e) =>
+                setProfile({ ...profile, streetName: e.target.value })
+              }
+              className={`${inputClass} mb-2`}
+            />
 
-        <input
-          disabled={!isEditing || busy}
-          placeholder="House Number"
-          value={profile.houseNumber}
-          onChange={(e) =>
-            setProfile({ ...profile, houseNumber: e.target.value })
-          }
-          className={`${inputClass} mb-2`}
-        />
+            <input
+              disabled={!isEditing || busy}
+              placeholder="House Number"
+              value={profile.houseNumber}
+              onChange={(e) =>
+                setProfile({ ...profile, houseNumber: e.target.value })
+              }
+              className={`${inputClass} mb-2`}
+            />
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <input
-            disabled={!isEditing || busy}
-            placeholder="Postal Code (1234 AB)"
-            value={profile.postalCode}
-            onChange={(e) =>
-              setProfile({
-                ...profile,
-                postalCode: e.target.value.toUpperCase(),
-              })
-            }
-            className={inputClass}
-          />
-          <input
-            disabled={!isEditing || busy}
-            placeholder="City"
-            value={profile.city}
-            onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-            className={inputClass}
-          />
-        </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <input
+                disabled={!isEditing || busy}
+                placeholder="Postal Code (1234 AB)"
+                value={profile.postalCode}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    postalCode: e.target.value.toUpperCase(),
+                  })
+                }
+                className={inputClass}
+              />
+              <input
+                disabled={!isEditing || busy}
+                placeholder="City"
+                value={profile.city}
+                onChange={(e) =>
+                  setProfile({ ...profile, city: e.target.value })
+                }
+                className={inputClass}
+              />
+            </div>
 
-        <input
-          disabled={!isEditing || busy}
-          placeholder="Country"
-          value={profile.country}
-          onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-          className={inputClass}
-        />
+            <input
+              disabled={!isEditing || busy}
+              placeholder="Country"
+              value={profile.country}
+              onChange={(e) =>
+                setProfile({ ...profile, country: e.target.value })
+              }
+              className={inputClass}
+            />
+          </>
+        )}
       </div>
 
       {/* EMAIL */}
@@ -299,7 +315,7 @@ function UserInfo({ user }) {
           <button
             onClick={handleUpdateEmail}
             disabled={busy}
-            className="mt-2 text-sm text-[#7B2220] underline disabled:opacity-60 disabled:cursor-not-allowed"
+            className="mt-2 text-sm text-[#7B2220] underline disabled:opacity-60"
           >
             {updatingEmail ? "Updating..." : "Update Email"}
           </button>
@@ -311,7 +327,7 @@ function UserInfo({ user }) {
         <button
           onClick={handleUpdateProfile}
           disabled={busy}
-          className="bg-[#7B2220] text-white px-6 py-2 rounded hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="bg-[#7B2220] text-white px-6 py-2 rounded hover:opacity-90 disabled:opacity-60"
         >
           {savingProfile ? (
             <span className="inline-flex items-center gap-2">

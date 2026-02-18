@@ -11,15 +11,11 @@ function CheckOutModal({
 }) {
   const [form, setForm] = useState({
     receiverName: "",
-    streetName: "",
-    houseNumber: "",
-    postalCode: "",
-    city: "",
-    country: "Netherlands",
     contactNumber: "",
     email: "",
   })
 
+  const [deliveryMethod, setDeliveryMethod] = useState("pickup") // pickup | delivery
   const [loadingUser, setLoadingUser] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -40,13 +36,8 @@ function CheckOutModal({
         setForm((prev) => ({
           ...prev,
           receiverName: data.username || "",
-          streetName: data.address?.streetName || "",
-          houseNumber: data.address?.houseNumber || "",
-          postalCode: data.address?.postalCode || "",
-          city: data.address?.city || "",
-          country: data.address?.country || "Netherlands",
           contactNumber: data.phone || "",
-          email: user.email || ""
+          email: user.email || "",
         }))
       } catch (err) {
         console.error(err)
@@ -78,8 +69,8 @@ function CheckOutModal({
   }
 
   const handleSaveChanges = async () => {
-    if (!form.receiverName || !form.streetName || !form.houseNumber || !form.postalCode || !form.city || !form.contactNumber) {
-      alert("Please complete all address fields.")
+    if (!form.receiverName || !form.contactNumber) {
+      alert("Please complete required fields.")
       return
     }
 
@@ -87,17 +78,10 @@ function CheckOutModal({
     try {
       const user = auth.currentUser
       if (!user) return
-      
+
       await updateDoc(doc(db, "users", user.uid), {
         username: form.receiverName,
         phone: form.contactNumber,
-        address: {
-          streetName: form.streetName,
-          houseNumber: form.houseNumber,
-          postalCode: form.postalCode.toUpperCase(),
-          city: form.city,
-          country: form.country
-        }
       })
 
       setIsEditing(false)
@@ -111,8 +95,13 @@ function CheckOutModal({
   }
 
   const handleSubmit = () => {
-    if (!form.receiverName || !form.streetName || !form.houseNumber || !form.postalCode || !form.city || !form.contactNumber) {
-      alert("Please complete all address fields.")
+    if (!form.receiverName || !form.contactNumber) {
+      alert("Please complete required fields.")
+      return
+    }
+
+    if (deliveryMethod === "delivery") {
+      alert("Delivery is coming soon. Please select pickup.")
       return
     }
 
@@ -120,13 +109,9 @@ function CheckOutModal({
       items: cartItems,
       totalPrice,
       receiverName: form.receiverName,
-      streetName: form.streetName,
-      houseNumber: form.houseNumber,
-      postalCode: form.postalCode,
-      city: form.city,
-      country: form.country,
       contactNumber: form.contactNumber,
       email: form.email,
+      method: deliveryMethod,
     })
 
     onClose()
@@ -157,6 +142,39 @@ function CheckOutModal({
             </button>
           </div>
 
+          {/* Delivery Method */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <h3 className="font-semibold text-sm">Delivery Method</h3>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="method"
+                  checked={deliveryMethod === "pickup"}
+                  onChange={() => setDeliveryMethod("pickup")}
+                />
+                Pickup
+              </label>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer opacity-60">
+                <input
+                  type="radio"
+                  name="method"
+                  checked={deliveryMethod === "delivery"}
+                  onChange={() => setDeliveryMethod("delivery")}
+                />
+                Delivery (Coming Soon)
+              </label>
+            </div>
+
+            {deliveryMethod === "delivery" && (
+              <p className="text-xs text-orange-600">
+                🚧 Delivery is coming soon. Please select pickup for now.
+              </p>
+            )}
+          </div>
+
           {/* Customer Info */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
@@ -176,47 +194,36 @@ function CheckOutModal({
               </button>
             </div>
 
-            {/* fields */}
             <div>
               <label className="text-xs font-medium">Receiver Name</label>
-              <input name="receiverName" value={form.receiverName} onChange={handleChange} disabled={!isEditing} className={inputClass} />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium">Street Name</label>
-              <input name="streetName" value={form.streetName} onChange={handleChange} disabled={!isEditing} className={inputClass} />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium">House Number</label>
-              <input name="houseNumber" value={form.houseNumber} onChange={handleChange} disabled={!isEditing} className={inputClass} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium">Postal Code</label>
-                <input name="postalCode" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value.toUpperCase() })} disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className="text-xs font-medium">City</label>
-                <input name="city" value={form.city} onChange={handleChange} disabled={!isEditing} className={inputClass} />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium">Country</label>
-              <input name="country" value={form.country} onChange={handleChange} disabled={!isEditing} className={inputClass} />
+              <input
+                name="receiverName"
+                value={form.receiverName}
+                onChange={handleChange}
+                disabled={!isEditing}
+                className={inputClass}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium">Contact Number</label>
-                <input name="contactNumber" value={form.contactNumber} onChange={handleChange} disabled={!isEditing} className={inputClass} />
+                <input
+                  name="contactNumber"
+                  value={form.contactNumber}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  className={inputClass}
+                />
               </div>
 
               <div>
                 <label className="text-xs font-medium">Email</label>
-                <input value={form.email} disabled className={`${inputClass} bg-gray-100`} />
+                <input
+                  value={form.email}
+                  disabled
+                  className={`${inputClass} bg-gray-100`}
+                />
               </div>
             </div>
           </div>
@@ -241,7 +248,10 @@ function CheckOutModal({
             <button onClick={onClose} className="w-1/3 border rounded-lg py-3 text-sm">
               Cancel
             </button>
-            <button onClick={handleSubmit} className="w-2/3 bg-[#7B2220] text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90">
+            <button
+              onClick={handleSubmit}
+              className="w-2/3 bg-[#7B2220] text-white rounded-lg py-3 text-sm font-semibold hover:opacity-90"
+            >
               Continue
             </button>
           </div>
