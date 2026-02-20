@@ -152,11 +152,11 @@ function Home() {
         <PickUp />
       </section>
 
-      {/* Events Section */}
+      {/* Events Section 
       <section>
         <Events />
       </section>
-
+*/}
       {/* Favorites Section */}
       <section>
         <Favorites />

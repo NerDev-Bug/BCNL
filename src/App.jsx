@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Order from "./pages/Order";
 import Menu from "./pages/Menu";
-import Events from "./pages/Events"
 import Wishlist from "./components/Wishlist";
 import AdminDashboard from "./components/admin/dashboard";
 import UsersPage from "./components/admin/users";
@@ -15,7 +14,8 @@ import DiscountsPage from "./components/admin/discounts";
 import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetails";
 import Pages from "./components/admin/pages";
-import PaymentSuccess from "./pages/PaymentSuccess"; // ✅ ADD THIS
+import PaymentSuccess from "./pages/PaymentSuccess";
+import Events from "./pages/Events"
 
 // React Toastify
 import { ToastContainer } from "react-toastify";
@@ -34,9 +34,9 @@ function App() {
         <Route element={<UserLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/order" element={<Order />} />
+          <Route path="/events" element={<Events />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/events" element={<Events />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/product/:id" element={<ProductDetail />} />
 
