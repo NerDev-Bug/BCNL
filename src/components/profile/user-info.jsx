@@ -11,7 +11,7 @@ import { toast } from "react-toastify"
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 // ✅ 🔥 MASTER SWITCH — change to true when delivery is ready
-const DELIVERY_ENABLED = false
+const DELIVERY_ENABLED = true
 
 function UserInfo({ user }) {
   const [loading, setLoading] = useState(true)
