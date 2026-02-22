@@ -102,7 +102,19 @@ export const loginUser = async (email, password) => {
       throw { code: "user-not-found", message: "User record not found" }
     }
 
-    return { user, role: userDoc.data().role }
+    const userData = userDoc.data()
+    const accountStatus = String(userData.status || "ACTIVE").toUpperCase()
+
+    if (accountStatus === "BANNED") {
+      await auth.signOut()
+      throw { code: "account-banned", message: "Your account has been permanently banned. Please contact support." }
+    }
+    if (accountStatus === "SUSPENDED") {
+      await auth.signOut()
+      throw { code: "account-suspended", message: "Your account is temporarily suspended. Please contact support." }
+    }
+
+    return { user, role: userData.role }
   } catch (err) {
     let friendlyMessage = err?.message || "Login failed"
 
@@ -111,6 +123,8 @@ export const loginUser = async (email, password) => {
     else if (err?.code === "auth/invalid-email") friendlyMessage = "Invalid email format"
     else if (err?.code === "auth/user-disabled") friendlyMessage = "User account is disabled"
     else if (err?.code === "user-not-found") friendlyMessage = "User record not found"
+    else if (err?.code === "account-banned") friendlyMessage = err.message
+    else if (err?.code === "account-suspended") friendlyMessage = err.message
 
     throw { code: err?.code || "login-error", message: friendlyMessage }
   }

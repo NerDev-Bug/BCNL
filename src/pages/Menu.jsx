@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
+import { applyDiscount, formatDiscount } from "../utils/price"
 import { Search } from "lucide-react"
 import { db, auth } from "../firebase"
 import {
@@ -18,10 +19,11 @@ import { toggleWishlist } from "../utils/wishlist"
 import StarRating from "../components/common/StarRating"
 
 export default function Menu() {
+  const [searchParams] = useSearchParams()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
-  const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("All Categories")
+  const [search, setSearch] = useState(() => searchParams.get("search") || "")
+  const [category, setCategory] = useState(() => searchParams.get("category") || "All Categories")
   const { addToCart } = useCart()
   const [loading, setLoading] = useState(true)
   const [wishlistIds, setWishlistIds] = useState([])
@@ -38,30 +40,24 @@ export default function Menu() {
     setShowAd(false)
   }
 
-  // Fetch product ratings from reviews (subcollection)
+  // Fetch product ratings in parallel with Promise.all
   const fetchProductRatings = async (productIds) => {
-    const ratingsMap = {}
-
-    for (const productId of productIds) {
-      try {
-        const reviewsRef = collection(db, "products", productId, "reviews")
-        const reviewsSnap = await getDocs(reviewsRef)
-        const reviews = reviewsSnap.docs.map((d) => d.data())
-
-        if (reviews.length > 0) {
-          const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0)
-          const average = sum / reviews.length
-          ratingsMap[productId] = { average, count: reviews.length }
-        } else {
-          ratingsMap[productId] = { average: 0, count: 0 }
+    const entries = await Promise.all(
+      productIds.map(async (productId) => {
+        try {
+          const reviewsSnap = await getDocs(collection(db, "products", productId, "reviews"))
+          const reviews = reviewsSnap.docs.map((d) => d.data())
+          if (reviews.length > 0) {
+            const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0)
+            return [productId, { average: sum / reviews.length, count: reviews.length }]
+          }
+          return [productId, { average: 0, count: 0 }]
+        } catch {
+          return [productId, { average: 0, count: 0 }]
         }
-      } catch (error) {
-        console.error(`Error fetching reviews for product ${productId}:`, error)
-        ratingsMap[productId] = { average: 0, count: 0 }
-      }
-    }
-
-    setProductRatings(ratingsMap)
+      })
+    )
+    setProductRatings(Object.fromEntries(entries))
   }
 
   useEffect(() => {
@@ -171,15 +167,36 @@ export default function Menu() {
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
             {loading ? (
               <ProductSkeleton count={3} />
-            ) : (
-              products
-                .filter((p) =>
-                  p.name.toLowerCase().includes(search.toLowerCase())
-                )
-                .filter((p) =>
-                  category === "All Categories" ? true : p.category === category
-                )
-                .map((product) => {
+            ) : (() => {
+              const filtered = products
+                .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+                .filter((p) => category === "All Categories" ? true : p.category === category);
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center">
+                    <div className="text-6xl mb-4">🍰</div>
+                    <h3 className="text-xl font-bold text-[#502455] mb-2">
+                      {search || category !== "All Categories" ? "No products found" : "No products available today"}
+                    </h3>
+                    <p className="text-sm text-gray-500 max-w-xs">
+                      {search || category !== "All Categories"
+                        ? "Try a different search or category."
+                        : "Check back soon — the baker is working on something delicious!"}
+                    </p>
+                    {(search || category !== "All Categories") && (
+                      <button
+                        onClick={() => { setSearch(""); setCategory("All Categories"); }}
+                        className="mt-4 px-4 py-2 rounded-lg border border-[#7B2220] text-[#7B2220] text-sm hover:bg-[#7B2220] hover:text-white transition"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+
+              return filtered.map((product) => {
                   const isWishlisted = wishlistIds.includes(product.id)
 
                   return (
@@ -235,9 +252,28 @@ export default function Menu() {
                           )}
                         </div>
 
-                        <p className="text-center mt-2 font-semibold text-[#7B2220]">
-                          €{product.price}
-                        </p>
+                        {(() => {
+                          const finalPrice = applyDiscount(product.price, product.productDiscount);
+                          const discountLabel = formatDiscount(product.productDiscount);
+                          const hasDiscount = discountLabel && finalPrice < Number(product.price || 0);
+                          return (
+                            <div className="text-center mt-2">
+                              {hasDiscount && (
+                                <span className="inline-block bg-red-100 text-red-700 text-[0.65rem] font-bold px-2 py-0.5 rounded-full mb-1">
+                                  {discountLabel}
+                                </span>
+                              )}
+                              <p className="font-semibold text-[#7B2220]">
+                                €{finalPrice.toFixed(2)}
+                                {hasDiscount && (
+                                  <span className="ml-2 text-xs text-gray-400 line-through font-normal">
+                                    €{Number(product.price).toFixed(2)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          );
+                        })()}
 
                         <div className="mt-4 flex gap-4">
                           <button
@@ -277,7 +313,8 @@ export default function Menu() {
                                 const img = e.currentTarget
                                   .closest(".group")
                                   .querySelector("img")
-                                const success = addToCart(product)
+                                const discountedPrice = applyDiscount(product.price, product.productDiscount);
+                                const success = addToCart({ ...product, price: discountedPrice })
                                 if (!success) return window.openLoginModal?.()
                                 flyToCart(img)
                               }}
@@ -296,8 +333,8 @@ export default function Menu() {
                       </div>
                     </div>
                   )
-                })
-            )}
+                });
+            })()}
           </div>
         </div>
       </div>

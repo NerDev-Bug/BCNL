@@ -271,7 +271,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
 
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-[#7B2220]">
-                      €{item.price * item.quantity}
+                      €{(Number(item.price || 0) * item.quantity).toFixed(2)}
                     </p>
                     <button
                       onClick={() => handleRemove(item.id)}
@@ -285,7 +285,7 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
             </div>
 
             <div className="fixed bottom-0 right-0 w-[380px] bg-white border-t p-5 flex items-center justify-between shadow-lg z-50">
-              <p className="font-semibold text-lg text-[#502455]">Total: €{totalPrice}</p>
+              <p className="font-semibold text-lg text-[#502455]">Total: €{Number(totalPrice || 0).toFixed(2)}</p>
 
               <button
                 onClick={handleCheckoutClick}

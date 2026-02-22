@@ -15,7 +15,7 @@ import Filter from "../common/Filter"
 import Pagination from "../common/Pagination"
 import { StatusBadge } from "../common/StatusBadge"
 import ConfirmationModal from "../common/ConfirmationModal"
-import { Edit2, Trash2, Eye, EyeOff, Power } from "lucide-react"
+import { Edit2, Trash2, Eye, EyeOff, Power, RefreshCw } from "lucide-react"
 import { toast } from "react-toastify"
 
 function ProductsPage() {
@@ -377,6 +377,25 @@ function ProductsPage() {
     )
   }
 
+  // Restock: reset pickupLeft to dailyLimit for a single product
+  const handleRestock = async (product) => {
+    if (product.dailyLimit == null) return;
+    try {
+      await updateDoc(doc(db, "products", product.id), {
+        pickupLeft: product.dailyLimit,
+      });
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, pickupLeft: product.dailyLimit } : p
+        )
+      );
+      toast.success(`${product.name} restocked to ${product.dailyLimit}`);
+    } catch (err) {
+      console.error("Restock failed:", err);
+      toast.error("Failed to restock product");
+    }
+  };
+
   // ✅ NEW: Toggle showOnMenu (per product)
   const toggleShowOnMenu = async (product) => {
     const next = !product.showOnMenu
@@ -580,11 +599,41 @@ function ProductsPage() {
       header: "Daily Limit",
       render: (row) => row.dailyLimit ?? "—",
     },
+    {
+      key: "pickupLeft",
+      header: "Left Today",
+      render: (row) => {
+        if (row.dailyLimit == null) return <span className="text-gray-400 text-xs">—</span>;
+        const left = row.pickupLeft ?? row.dailyLimit;
+        const color = left === 0
+          ? "bg-red-100 text-red-700"
+          : left <= 3
+          ? "bg-amber-100 text-amber-700"
+          : "bg-green-100 text-green-700";
+        return (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+            {left} / {row.dailyLimit}
+          </span>
+        );
+      },
+    },
 {
   key: "actions",
   header: "Actions",
   render: (row) => (
     <div className="flex items-center justify-center gap-2 min-w-[150px]">
+      {/* RESTOCK */}
+      {row.dailyLimit != null && (
+        <button
+          onClick={() => handleRestock(row)}
+          title={`Restock to ${row.dailyLimit}`}
+          className="p-2 rounded-lg bg-teal-50 text-teal-600
+            hover:bg-teal-100 border border-teal-200 transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      )}
+
       {/* EDIT */}
       <button
         onClick={() => handleEdit(row)}

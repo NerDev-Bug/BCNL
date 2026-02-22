@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
+import { ChevronDown } from "lucide-react";
 
 import DataTable from "../common/DataTable";
 import { StatusBadge } from "../common/StatusBadge";
@@ -27,40 +28,41 @@ function OrderReturn() {
       return;
     }
 
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const q = query(
-          collection(db, "orders"),
-          where("userId", "==", user.uid),
-          where("paymentStatus", "in", ["return_requested", "returned"])
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .sort((a, b) => {
-            const getTime = (timestamp) => {
-              if (!timestamp) return 0;
-              if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
-              if (timestamp instanceof Date) return timestamp.getTime();
-              return new Date(timestamp).getTime() || 0;
-            };
-            const aTime = getTime(a.returnRequestedAt || a.createdAt);
-            const bTime = getTime(b.returnRequestedAt || b.createdAt);
-            return bTime - aTime;
-          });
-        setOrders(data);
-        setCurrentPage(1);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load orders.");
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    setError(null);
+
+    const q = query(
+      collection(db, "orders"),
+      where("userId", "==", user.uid),
+      where("paymentStatus", "in", ["return_requested", "returned"])
+    );
+
+    const getTime = (timestamp) => {
+      if (!timestamp) return 0;
+      if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
+      if (timestamp instanceof Date) return timestamp.getTime();
+      return new Date(timestamp).getTime() || 0;
     };
 
-    fetchOrders();
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => getTime(b.returnRequestedAt || b.createdAt) - getTime(a.returnRequestedAt || a.createdAt));
+        setOrders(data);
+        setCurrentPage(1);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error(err);
+        setError("Failed to load orders.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsub();
   }, [user]);
 
   const formatDate = (timestamp) => {
@@ -98,7 +100,15 @@ function OrderReturn() {
   );
 
   const columns = [
-    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
+    {
+      key: "expand-items",
+      render: (row, { isOpen, toggle }) => (
+        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+      ),
+    },
+    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 6)}` },
     { key: "createdAt", header: "Order Date", render: (row) => formatDate(row.createdAt) },
     { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
     { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.orderData?.paymentMethod || row.paymentMethod} /> },

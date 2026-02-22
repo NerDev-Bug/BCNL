@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { auth } from "../firebase"
-import { signOut } from "firebase/auth"
+import { signOut, onAuthStateChanged } from "firebase/auth"
 import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "react-toastify"
 import { useAuth } from "../context/AuthContext"
@@ -29,11 +29,14 @@ function Profile() {
   const { isAdmin: isAdminFromContext } = useAuth()
 
   useEffect(() => {
-    if (!auth.currentUser) {
-      navigate("/")
-    } else {
-      setUser(auth.currentUser)
-    }
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        navigate("/")
+      } else {
+        setUser(firebaseUser)
+      }
+    })
+    return () => unsub()
   }, [navigate])
 
   const isAdmin = user && isAdminFromContext

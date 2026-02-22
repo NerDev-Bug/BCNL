@@ -8,9 +8,11 @@ import {
   orderBy,
 } from "firebase/firestore"
 import { db } from "../../firebase"
+import { registerUser } from "../../services/authService"
 import DataTable from "../common/DataTable"
 import { StatusBadge } from "../common/StatusBadge"
 import ConfirmationModal from "../common/ConfirmationModal"
+import { toast } from "react-toastify"
 
 function UsersPage() {
   const [users, setUsers] = useState([])
@@ -36,8 +38,56 @@ function UsersPage() {
   // ✅ delete loading per row
   const [deletingId, setDeletingId] = useState(null)
 
+  // ✅ Create Admin modal
+  const [createAdminOpen, setCreateAdminOpen] = useState(false)
+  const [createAdminForm, setCreateAdminForm] = useState({ email: "", username: "", password: "", confirmPassword: "" })
+  const [createAdminLoading, setCreateAdminLoading] = useState(false)
+  const [createAdminError, setCreateAdminError] = useState("")
+
   const closeConfirmationModal = () => {
     setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+  }
+
+  const openCreateAdmin = () => {
+    setCreateAdminForm({ email: "", username: "", password: "", confirmPassword: "" })
+    setCreateAdminError("")
+    setCreateAdminOpen(true)
+  }
+
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault()
+    const { email, username, password, confirmPassword } = createAdminForm
+    if (!email || !username || !password) {
+      setCreateAdminError("All fields are required.")
+      return
+    }
+    if (password !== confirmPassword) {
+      setCreateAdminError("Passwords do not match.")
+      return
+    }
+    if (password.length < 6) {
+      setCreateAdminError("Password must be at least 6 characters.")
+      return
+    }
+    setCreateAdminError("")
+    setCreateAdminLoading(true)
+    try {
+      // Register user via authService (creates Firebase Auth + Firestore user doc with role=customer)
+      const newUser = await registerUser(email, password, username)
+      // Elevate to admin in Firestore
+      const { doc: firestoreDoc, updateDoc: firestoreUpdateDoc } = await import("firebase/firestore")
+      await firestoreUpdateDoc(firestoreDoc(db, "users", newUser.uid), { role: "admin" })
+      toast.success(`Admin account created for ${username}`)
+      setCreateAdminOpen(false)
+      // Refresh list
+      const snap = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")))
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((u) => String(u.role || "").toLowerCase() === "admin")
+      setUsers(list)
+    } catch (err) {
+      setCreateAdminError(err?.message || "Failed to create admin account.")
+    } finally {
+      setCreateAdminLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -290,9 +340,18 @@ function UsersPage() {
     <div className="min-h-screen min-w-0 bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto w-full min-w-0">
         {/* Header */}
-        <div className="mb-4 sm:mb-6 md:mb-8 min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">Users Management</h1>
-          <p className="text-xs sm:text-sm text-gray-500 break-words">View and manage user accounts and information</p>
+        <div className="mb-4 sm:mb-6 md:mb-8 min-w-0 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1">Users Management</h1>
+            <p className="text-xs sm:text-sm text-gray-500 break-words">View and manage admin accounts and information</p>
+          </div>
+          <button
+            type="button"
+            onClick={openCreateAdmin}
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] transition-all shadow-md hover:shadow-lg"
+          >
+            + Create Admin
+          </button>
         </div>
 
         {/* Table */}
@@ -427,6 +486,97 @@ function UsersPage() {
                   Done
                 </button>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ✅ CREATE ADMIN MODAL */}
+      {createAdminOpen && (
+        <>
+          <div onClick={() => setCreateAdminOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Create Admin Account</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">New user will be registered with admin role</p>
+                </div>
+                <button onClick={() => setCreateAdminOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100">×</button>
+              </div>
+
+              <form onSubmit={handleCreateAdmin} className="px-6 py-5 space-y-4">
+                {createAdminError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">
+                    {createAdminError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={createAdminForm.email}
+                    onChange={(e) => setCreateAdminForm((f) => ({ ...f, email: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                    placeholder="admin@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={createAdminForm.username}
+                    onChange={(e) => setCreateAdminForm((f) => ({ ...f, username: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                    placeholder="admin_username"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={createAdminForm.password}
+                    onChange={(e) => setCreateAdminForm((f) => ({ ...f, password: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                    placeholder="Min. 6 characters"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={createAdminForm.confirmPassword}
+                    onChange={(e) => setCreateAdminForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220]"
+                    placeholder="Repeat password"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateAdminOpen(false)}
+                    className="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createAdminLoading}
+                    className="flex-1 px-4 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {createAdminLoading ? "Creating..." : "Create Admin"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </>

@@ -16,6 +16,7 @@ import ProductDetail from "./pages/ProductDetails";
 import Pages from "./components/admin/pages";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Events from "./pages/Events"
+import Notifications from "./pages/Notifications"
 
 // React Toastify
 import { ToastContainer } from "react-toastify";
@@ -42,6 +43,8 @@ function App() {
 
           {/* ✅ PAYMENT SUCCESS PAGE */}
           <Route path="/payment-success" element={<PaymentSuccess />} />
+          {/* ✅ NOTIFICATIONS PAGE */}
+          <Route path="/notifications" element={<Notifications />} />
         </Route>
 
         {/* ADMIN PAGES */}

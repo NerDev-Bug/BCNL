@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
+import { ChevronDown } from "lucide-react";
 
 import DataTable from "../common/DataTable";
 import { StatusBadge } from "../common/StatusBadge";
@@ -27,31 +28,32 @@ function OrderHistory() {
       return;
     }
 
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const q = query(
-          collection(db, "orders"),
-          where("userId", "==", user.uid),
-          where("paymentStatus", "in", ["delivered", "returned"])
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+    setLoading(true);
+    setError(null);
+
+    const q = query(
+      collection(db, "orders"),
+      where("userId", "==", user.uid),
+      where("paymentStatus", "in", ["delivered", "returned"])
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setOrders(data);
         setCurrentPage(1);
-      } catch (err) {
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
         console.error(err);
         setError("Failed to load orders.");
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchOrders();
+    return () => unsub();
   }, [user]);
 
   const formatDate = (timestamp) => {
@@ -74,20 +76,18 @@ function OrderHistory() {
   );
 
   const columns = [
-    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
+    {
+      key: "expand-items",
+      render: (row, { isOpen, toggle }) => (
+        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+      ),
+    },
+    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 6)}` },
     { key: "createdAt", header: "Date", render: (row) => formatDate(row.createdAt) },
-    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
     { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.orderData?.paymentMethod || row.paymentMethod} /> },
     { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
-    {
-      key: "delivery",
-      header: "Delivery",
-      render: (row) => {
-        const c = row.orderData;
-        if (!c) return "N/A";
-        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
-      },
-    },
     { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
     { key: "status", header: "Fulfillment", render: (row) => <StatusBadge value={row.paymentStatus} /> },
   ];

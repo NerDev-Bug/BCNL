@@ -1,5 +1,5 @@
 // src/components/admin/DownloadCSV-PDF.jsx
-import React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -29,7 +29,8 @@ export function downloadCsv(rows, filename) {
       .map((row) => headers.map((h) => escape(row[h])).join(","))
       .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  // Prepend UTF-8 BOM so Excel correctly reads special characters like €
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
@@ -76,7 +77,6 @@ export function downloadPdfFromTable(rows, options = {}) {
 }
 
 const INVENTORY_COLUMNS = [
-  { key: "id", label: "ID", readOnly: true },
   { key: "name", label: "Name", readOnly: false },
   { key: "category", label: "Category", readOnly: false },
   { key: "price", label: "Price", readOnly: false },
@@ -140,7 +140,7 @@ export function InventoryReportModal({
               <tbody>
                 {rows.map((row, index) => (
                   <tr
-                    key={row.id || index}
+                    key={index}
                     className="border-b border-gray-100 hover:bg-gray-50/50"
                   >
                     {INVENTORY_COLUMNS.map((col) => (
@@ -200,8 +200,7 @@ export function InventoryReportModal({
 }
 
 const ORDERS_COLUMNS = [
-  { key: "id", label: "Order ID", readOnly: true },
-  { key: "createdAt", label: "Created At", readOnly: false },
+  { key: "date", label: "Date", readOnly: true },
   { key: "customer", label: "Customer", readOnly: false },
   { key: "paymentMethod", label: "Payment Method", readOnly: false },
   { key: "itemsCount", label: "Items Count", readOnly: false },
@@ -211,14 +210,95 @@ const ORDERS_COLUMNS = [
 
 /**
  * Modal to edit sales & orders report rows and download as CSV or PDF.
+ * Includes built-in date range picker and order filtering.
  */
 export function SalesOrdersReportModal({
-  rows,
-  onUpdateRow,
+  orders,
+  formatDateTime,
   onClose,
   onDownloadCsv,
   onDownloadPdf,
 }) {
+  const today = new Date().toISOString().split("T")[0];
+  const thirtyDaysAgo = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split("T")[0];
+  })();
+
+  const [startDate, setStartDate] = useState(thirtyDaysAgo);
+  const [endDate, setEndDate] = useState(today);
+
+  const filteredRows = useMemo(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    return (orders || [])
+      .filter((o) => {
+        const ts = o.createdAt;
+        if (!ts) return false;
+        const date =
+          typeof ts === "object" && ts.seconds
+            ? new Date(ts.seconds * 1000)
+            : new Date(ts);
+        return date >= start && date <= end;
+      })
+      .map((o) => ({
+        date: formatDateTime ? formatDateTime(o.createdAt) : String(o.createdAt),
+        customer: o.orderData?.receiverName || "",
+        paymentMethod: o.orderData?.paymentMethod || o.paymentMethod || "",
+        itemsCount: String(o.items?.length || 0),
+        total: Number(o.total || 0).toFixed(2),
+        paymentStatus: o.paymentStatus || "",
+      }));
+  }, [orders, startDate, endDate, formatDateTime]);
+
+  const [overrides, setOverrides] = useState({});
+
+  // Clear overrides when date range changes (useEffect, not during render)
+  useEffect(() => {
+    setOverrides({});
+  }, [startDate, endDate]);
+
+  const rows = filteredRows.map((row, i) =>
+    overrides[i] ? { ...row, ...overrides[i] } : row
+  );
+
+  const updateRow = (index, field, value) => {
+    setOverrides((prev) => ({
+      ...prev,
+      [index]: { ...(prev[index] || {}), [field]: value },
+    }));
+  };
+
+  const totalValue = filteredRows.reduce((sum, r) => sum + Number(r.total || 0), 0);
+
+  const handleDownloadCsv = () => {
+    const rowsWithHeaders = rows.map((row) => ({
+      Date: row.date,
+      Customer: row.customer,
+      "Payment Method": row.paymentMethod,
+      "Items Count": row.itemsCount,
+      Total: row.total,
+      "Payment Status": row.paymentStatus,
+    }));
+    onDownloadCsv(rowsWithHeaders);
+  };
+
+  const handleDownloadPdf = () => {
+    const rowsWithHeaders = rows.map((row) => ({
+      Date: row.date,
+      Customer: row.customer,
+      "Payment Method": row.paymentMethod,
+      "Items Count": row.itemsCount,
+      Total: row.total,
+      "Payment Status": row.paymentStatus,
+    }));
+    onDownloadPdf(rowsWithHeaders);
+  };
+
   const modalContent = (
     <>
       <div
@@ -236,7 +316,7 @@ export function SalesOrdersReportModal({
             <div>
               <h2 className="text-xl font-bold text-gray-900">Sales & Orders Report</h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                Edit the table below, then download as CSV or PDF.
+                Select date range, edit the table below, then download as CSV or PDF.
               </p>
             </div>
             <button
@@ -248,48 +328,92 @@ export function SalesOrdersReportModal({
               ×
             </button>
           </div>
+
+          {/* Date Range Picker inside modal */}
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/60">
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  max={endDate}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220] focus:border-transparent bg-white"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  max={today}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220] focus:border-transparent bg-white"
+                />
+              </div>
+              <div className="flex-1 sm:flex-none">
+                <p className="text-sm text-gray-600 py-2">
+                  <span className="font-semibold">{filteredRows.length}</span> orders found
+                  {filteredRows.length > 0 && (
+                    <span className="ml-1 text-gray-500">(€{totalValue.toFixed(2)})</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex-1 overflow-auto px-6 py-4">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b-2 border-gray-200">
-                  {ORDERS_COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className="text-left py-2 px-2 font-semibold text-gray-700 whitespace-nowrap"
-                    >
-                      {col.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr
-                    key={row.id || index}
-                    className="border-b border-gray-100 hover:bg-gray-50/50"
-                  >
+            {rows.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-sm text-gray-400">
+                No orders found for the selected date range.
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-200">
                     {ORDERS_COLUMNS.map((col) => (
-                      <td key={col.key} className="py-1 px-2">
-                        {col.readOnly ? (
-                          <span className="text-gray-600 font-mono text-xs">
-                            {row[col.key]}
-                          </span>
-                        ) : (
-                          <input
-                            type="text"
-                            value={row[col.key] ?? ""}
-                            onChange={(e) =>
-                              onUpdateRow(index, col.key, e.target.value)
-                            }
-                            className="w-full min-w-0 px-2 py-1.5 border border-gray-200 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B2220]/40 focus:border-[#7B2220]/50"
-                          />
-                        )}
-                      </td>
+                      <th
+                        key={col.key}
+                        className="text-left py-2 px-2 font-semibold text-gray-700 whitespace-nowrap"
+                      >
+                        {col.label}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-100 hover:bg-gray-50/50"
+                    >
+                      {ORDERS_COLUMNS.map((col) => (
+                        <td key={col.key} className="py-1 px-2">
+                          {col.readOnly ? (
+                            <span className="text-gray-600 font-mono text-xs">
+                              {row[col.key]}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={row[col.key] ?? ""}
+                              onChange={(e) => updateRow(index, col.key, e.target.value)}
+                              className="w-full min-w-0 px-2 py-1.5 border border-gray-200 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B2220]/40 focus:border-[#7B2220]/50"
+                            />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
             <button
@@ -301,15 +425,17 @@ export function SalesOrdersReportModal({
             </button>
             <button
               type="button"
-              onClick={onDownloadCsv}
-              className="px-5 py-2.5 rounded-xl border-2 border-[#7B2220] text-[#7B2220] font-semibold hover:bg-[#7B2220]/5"
+              onClick={handleDownloadCsv}
+              disabled={rows.length === 0}
+              className="px-5 py-2.5 rounded-xl border-2 border-[#7B2220] text-[#7B2220] font-semibold hover:bg-[#7B2220]/5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Download CSV
             </button>
             <button
               type="button"
-              onClick={onDownloadPdf}
-              className="px-5 py-2.5 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] shadow-md"
+              onClick={handleDownloadPdf}
+              disabled={rows.length === 0}
+              className="px-5 py-2.5 rounded-xl bg-[#7B2220] text-white font-semibold hover:bg-[#8B3230] shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Download PDF
             </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "../firebase";
 import { toast } from "react-toastify";
 
 function MonthlyRatingModal() {
@@ -48,14 +49,33 @@ function MonthlyRatingModal() {
     return timeSinceDismissed >= millisecondsToWait;
   };
 
-  // Initialize show state based on localStorage check
-  // Use a function to avoid calling Date.now() during render
   const [show, setShow] = useState(() => shouldShowModal());
   const [visible, setVisible] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [userId, setUserId] = useState(null);
+
+  // Listen to auth to get userId for Firestore dedup
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUserId(u?.uid || null));
+    return () => unsub();
+  }, []);
+
+  // If logged in, also check Firestore for already-rated-this-month
+  useEffect(() => {
+    if (!userId || !show) return;
+    const monthKey = getMonthKey();
+    getDoc(doc(db, "ratings_by_user", `${userId}_${monthKey}`)).then((snap) => {
+      if (snap.exists()) {
+        // Already rated this month in Firestore — hide modal and update localStorage
+        localStorage.setItem(`rating-${monthKey}`, "true");
+        setVisible(false);
+        setShow(false);
+      }
+    }).catch(() => {});
+  }, [userId, show]);
 
   useEffect(() => {
     if (show) {
@@ -74,10 +94,27 @@ function MonthlyRatingModal() {
     setSubmitting(true);
     try {
       const monthKey = getMonthKey();
+
+      // If logged in, check Firestore dedup before submitting
+      if (userId) {
+        const dedupRef = doc(db, "ratings_by_user", `${userId}_${monthKey}`);
+        const existing = await getDoc(dedupRef);
+        if (existing.exists()) {
+          localStorage.setItem(`rating-${monthKey}`, "true");
+          toast.info("You have already rated this month. Thank you! 😊");
+          setVisible(false);
+          setTimeout(() => setShow(false), 300);
+          return;
+        }
+        // Write dedup record atomically with the rating
+        await setDoc(dedupRef, { userId, monthKey, submittedAt: serverTimestamp() });
+      }
+
       await addDoc(collection(db, "ratings"), {
         rating,
         comment: comment.trim() || null,
         monthKey,
+        userId: userId || null,
         createdAt: serverTimestamp(),
       });
       localStorage.setItem(`rating-${monthKey}`, "true");

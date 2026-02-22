@@ -2,7 +2,7 @@
 // Single source of truth for auth state and admin role (from Firestore).
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { clearAdminSession } from "../utils/sessionSecurity";
@@ -38,8 +38,25 @@ export function AuthProvider({ children }) {
       }
       try {
         const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
-        const r = userSnap.exists() ? userSnap.data().role : null;
-        setRole(r || null);
+        if (!userSnap.exists()) {
+          setRole(null);
+          setAuthLoading(false);
+          return;
+        }
+        const data = userSnap.data();
+        const accountStatus = String(data.status || "ACTIVE").toUpperCase();
+
+        // Force sign-out for banned/suspended accounts
+        if (accountStatus === "BANNED" || accountStatus === "SUSPENDED") {
+          await signOut(auth);
+          setUser(null);
+          setRole(null);
+          clearAdminSession();
+          setAuthLoading(false);
+          return;
+        }
+
+        setRole(data.role || null);
       } catch (err) {
         console.error("AuthContext: error reading user role", err);
         setRole(null);

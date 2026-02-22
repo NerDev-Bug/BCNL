@@ -16,7 +16,8 @@ import {
 } from "firebase/firestore";
 import { Search } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
+import { applyDiscount, formatDiscount } from "../utils/price";
 import "react-toastify/dist/ReactToastify.css";
 import StarRating from "../components/common/StarRating";
 
@@ -127,9 +128,11 @@ export default function ProductDetails() {
         return toast.info("Card message must be 250 words max ✍️");
     }
 
+    // Pass the discounted price into the cart item so Cart & Checkout always use the correct price
+    const discountedPrice = applyDiscount(product.price, product.productDiscount);
     const cartItem = isCustomCakes
-      ? { ...product, customization: { ...customForm } }
-      : product;
+      ? { ...product, price: discountedPrice, customization: { ...customForm } }
+      : { ...product, price: discountedPrice };
 
     const success = addToCart(cartItem);
     if (!success) {
@@ -231,28 +234,34 @@ export default function ProductDetails() {
       window.openLoginModal?.();
       return;
     }
-    
+
     if (userRating < 1) {
       toast.info("Please select a rating ⭐");
       return;
     }
 
     try {
-      const reviewRef = doc(collection(db, "products", id, "reviews"));
+      // Use user UID as document ID to enforce one review per user per product
+      const reviewRef = doc(db, "products", id, "reviews", user.uid);
+      const existing = await getDoc(reviewRef);
+      if (existing.exists()) {
+        toast.info("You have already reviewed this product. Your previous review has been updated.");
+      }
+
       await setDoc(reviewRef, {
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
         userEmail: user.email || null,
         rating: userRating,
-        comment: userComment.trim() || null, // Optional comment
-        createdAt: serverTimestamp(),
+        comment: userComment.trim() || null,
+        createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       setUserRating(0);
       setUserComment("");
       toast.success("Review submitted successfully! ⭐");
-      
-      // Refresh reviews from Firestore
+
       await fetchReviews(id);
     } catch (error) {
       console.error("Error submitting review:", error);
@@ -304,7 +313,6 @@ export default function ProductDetails() {
       className="min-h-screen bg-cover bg-center bg-fixed"
       style={{ backgroundImage: `url('/images/gingham_pattern_purple_bg.jpg')` }}
     >
-      <ToastContainer position="top-right" autoClose={1500} hideProgressBar closeOnClick pauseOnHover={false} draggable={false} theme="light" />
 
       <div className="max-w-6xl mx-auto px-3 pt-28 md:pt-32 w-full">
         {/* TOP BAR */}
@@ -356,7 +364,28 @@ export default function ProductDetails() {
               </div>
 
               <p className="text-sm mt-4 leading-relaxed max-w-md md:mx-0 mx-auto">{product.description || "No description available."}</p>
-              <p className="text-sm font-bold text-right mt-2 max-w-md md:ml-0 mx-auto">₱{product.price}</p>
+              {(() => {
+                const finalPrice = applyDiscount(product.price, product.productDiscount);
+                const discountLabel = formatDiscount(product.productDiscount);
+                const hasDiscount = discountLabel && finalPrice < Number(product.price || 0);
+                return (
+                  <div className="text-right mt-2 max-w-md md:ml-0 mx-auto">
+                    {hasDiscount && (
+                      <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full mr-2">
+                        {discountLabel}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold text-[#7B2220]">
+                      €{finalPrice.toFixed(2)}
+                    </span>
+                    {hasDiscount && (
+                      <span className="ml-2 text-xs text-gray-400 line-through">
+                        €{Number(product.price).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {isCustomCakes && (
                 <div className="mt-6 border border-black rounded-sm p-4 text-left text-black">

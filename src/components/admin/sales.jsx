@@ -8,6 +8,7 @@ import {
   query,
   updateDoc,
   doc,
+  Timestamp,
 } from "firebase/firestore";
 
 import DataTable from "../common/DataTable";
@@ -27,6 +28,8 @@ function SalesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
@@ -36,6 +39,7 @@ function SalesPage() {
     isOpen: false,
     order: null,
   });
+  const [refundReason, setRefundReason] = useState("");
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -113,32 +117,43 @@ function SalesPage() {
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();
 
+    const start = startDate ? (() => { const d = new Date(startDate); d.setHours(0,0,0,0); return d; })() : null;
+    const end   = endDate   ? (() => { const d = new Date(endDate);   d.setHours(23,59,59,999); return d; })() : null;
+
     return (orders || []).filter((o) => {
-      const paymentMethod =
-        o.orderData?.paymentMethod || o.paymentMethod || "Unknown";
+      const paymentMethod = o.orderData?.paymentMethod || o.paymentMethod || "Unknown";
       const status = o.paymentStatus || "Unknown";
 
-      // Search: order id, receiver name, contact, payment method
       const matchesSearch =
         !term ||
         o.id.toLowerCase().includes(term) ||
         (o.orderData?.receiverName || "").toLowerCase().includes(term) ||
-        String(o.orderData?.contactNumber || "")
-          .toLowerCase()
-          .includes(term) ||
+        String(o.orderData?.contactNumber || "").toLowerCase().includes(term) ||
         paymentMethod.toLowerCase().includes(term);
 
-      const matchesStatus = !statusFilter || status === statusFilter;
-      const matchesPayment =
-        !paymentFilter || paymentMethod === paymentFilter;
+      const matchesStatus  = !statusFilter  || status === statusFilter;
+      const matchesPayment = !paymentFilter || paymentMethod === paymentFilter;
 
-      return matchesSearch && matchesStatus && matchesPayment;
+      // Date range filter
+      let matchesDate = true;
+      if (start || end) {
+        const ts = o.createdAt;
+        if (!ts) {
+          matchesDate = false;
+        } else {
+          const d = typeof ts === "object" && ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
+          if (start && d < start) matchesDate = false;
+          if (end   && d > end)   matchesDate = false;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
     });
-  }, [orders, search, statusFilter, paymentFilter]);
+  }, [orders, search, statusFilter, paymentFilter, startDate, endDate]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, paymentFilter]);
+  }, [search, statusFilter, paymentFilter, startDate, endDate]);
 
   const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
 
@@ -149,6 +164,7 @@ function SalesPage() {
 
   const handleMarkRefunded = async (order) => {
     if (order.paymentStatus === "returned") return;
+    setRefundReason("");
     setConfirmModal({ isOpen: true, order });
   };
 
@@ -162,13 +178,19 @@ function SalesPage() {
     try {
       setUpdatingId(order.id);
 
-      await updateDoc(doc(db, "orders", order.id), {
+      const updatePayload = {
         paymentStatus: "returned",
-      });
+        returnApprovedAt: Timestamp.now(),
+      };
+      if (refundReason.trim()) {
+        updatePayload.returnReason = refundReason.trim();
+      }
+
+      await updateDoc(doc(db, "orders", order.id), updatePayload);
 
       setOrders((prev) =>
         prev.map((o) =>
-          o.id === order.id ? { ...o, paymentStatus: "returned" } : o
+          o.id === order.id ? { ...o, ...updatePayload } : o
         )
       );
 
@@ -319,6 +341,39 @@ function SalesPage() {
                   onChange={setPaymentFilter}
                 />
               </div>
+
+              {/* Date range */}
+              <div className="flex items-end gap-2 flex-wrap">
+                <div className="flex flex-col">
+                  <label className="text-[0.65rem] text-gray-400 mb-0.5">From</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={endDate || undefined}
+                    className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2220]/30"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[0.65rem] text-gray-400 mb-0.5">To</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || undefined}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2220]/30"
+                  />
+                </div>
+                {(startDate || endDate) && (
+                  <button
+                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                    className="px-2 py-2 text-xs rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -346,9 +401,23 @@ function SalesPage() {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onConfirm={confirmMarkRefunded}
-        onClose={() => setConfirmModal({ isOpen: false, order: null })}
+        onClose={() => { setConfirmModal({ isOpen: false, order: null }); setRefundReason(""); }}
         title="Mark as Refunded"
-        message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as refunded/returned? The customer will be notified.`}
+        message={
+          <div>
+            <p className="mb-3 text-sm text-gray-700">
+              Mark order <strong>#{confirmModal.order?.id.slice(0, 6)}</strong> as refunded/returned? The customer will be notified.
+            </p>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Reason for refund <span className="font-normal text-gray-400">(optional)</span></label>
+            <textarea
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Customer requested refund, item damaged..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220] resize-none"
+            />
+          </div>
+        }
         confirmText="Mark as Refunded"
         cancelText="Cancel"
         confirmVariant="danger"

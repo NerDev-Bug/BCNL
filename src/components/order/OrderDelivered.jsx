@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../../firebase";
+import { ChevronDown } from "lucide-react";
 
 import DataTable from "../common/DataTable";
 import { StatusBadge } from "../common/StatusBadge";
@@ -33,31 +34,32 @@ function OrderDelivered() {
       return;
     }
 
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const q = query(
-          collection(db, "orders"),
-          where("userId", "==", user.uid),
-          where("paymentStatus", "==", "delivered")
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+    setLoading(true);
+    setError(null);
+
+    const q = query(
+      collection(db, "orders"),
+      where("userId", "==", user.uid),
+      where("paymentStatus", "==", "delivered")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setOrders(data);
         setCurrentPage(1);
-      } catch (err) {
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
         console.error(err);
         setError("Failed to load orders.");
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchOrders();
+    return () => unsub();
   }, [user]);
 
   const formatDate = (timestamp) => {
@@ -87,63 +89,44 @@ function OrderDelivered() {
   const handleModalClose = () => {
     setShowModal(false);
     setSelectedOrder(null);
-    // Refresh orders after return request is submitted
-    if (user) {
-      const fetchOrders = async () => {
-        try {
-          const q = query(
-            collection(db, "orders"),
-            where("userId", "==", user.uid),
-            where("paymentStatus", "==", "delivered")
-          );
-          const snapshot = await getDocs(q);
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setOrders(data);
-        } catch (err) {
-          console.error(err);
-        }
-      };
-      fetchOrders();
-    }
+    // No manual re-fetch needed — onSnapshot handles real-time updates automatically
   };
 
   const columns = [
-    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 4)}` },
+    {
+      key: "expand-items",
+      render: (row, { isOpen, toggle }) => (
+        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+      ),
+    },
+    { key: "id", header: "Order", render: (row) => `#${row.id.slice(0, 6)}` },
     { key: "createdAt", header: "Date", render: (row) => formatDate(row.createdAt) },
-    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
     { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.orderData?.paymentMethod || row.paymentMethod} /> },
     { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
-    {
-      key: "delivery",
-      header: "Delivery",
-      render: (row) => {
-        const c = row.orderData;
-        if (!c) return "N/A";
-        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
-      },
-    },
     { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
     { key: "status", header: "Fulfillment", render: (row) => <StatusBadge value={row.paymentStatus} /> },
     {
       key: "action",
       header: "Action",
       render: (row) => {
-        const deliveryDate = row.deliveredAt || row.createdAt;
+        // Only count 7-day window from actual delivery date, NOT order creation date
+        const deliveryDate = row.deliveredAt;
         const deliveryTimestamp = deliveryDate?.seconds
           ? new Date(deliveryDate.seconds * 1000)
-          : new Date(deliveryDate);
+          : deliveryDate
+          ? new Date(deliveryDate)
+          : null;
 
         const now = new Date();
-        const diffInDays = Math.floor(
-          (now - deliveryTimestamp) / (1000 * 60 * 60 * 24)
-        );
+        const diffInDays = deliveryTimestamp
+          ? Math.floor((now - deliveryTimestamp) / (1000 * 60 * 60 * 24))
+          : 999;
 
         const hasRejectedReturn = !!row.returnRejectedAt;
 
-        // Disable if older than 7 days or rejected
+        // Disable if older than 7 days from delivery, or rejected, or no delivery date recorded
         const isDisabled = diffInDays > 7 || hasRejectedReturn;
 
         return (

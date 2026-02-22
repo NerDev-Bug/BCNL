@@ -10,17 +10,27 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid"
 function UserPasswordUpdate({ user }) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
-
-  // ✅ loading state
+  const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleUpdatePassword = async () => {
     if (loading) return
 
-    if (!currentPassword || !newPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error("Please fill in all fields")
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters")
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match")
       return
     }
 
@@ -33,6 +43,7 @@ function UserPasswordUpdate({ user }) {
       toast.success("Password updated successfully!")
       setCurrentPassword("")
       setNewPassword("")
+      setConfirmPassword("")
     } catch (err) {
       if (
         err.code === "auth/wrong-password" ||
@@ -72,7 +83,7 @@ function UserPasswordUpdate({ user }) {
         </button>
       </div>
 
-      <label className="block font-semibold mt-4 mb-1">New Password:</label>
+      <label className="block font-semibold mt-4 mb-1">New Password: <span className="text-xs text-gray-400 font-normal">(min. 6 characters)</span></label>
       <div className="relative">
         <input
           type={showNew ? "text" : "password"}
@@ -87,13 +98,33 @@ function UserPasswordUpdate({ user }) {
           className="absolute right-2 top-2"
           disabled={loading}
         >
-          {showNew ? (
-            <EyeSlashIcon className="w-5 h-5" />
-          ) : (
-            <EyeIcon className="w-5 h-5" />
-          )}
+          {showNew ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
         </button>
       </div>
+
+      <label className="block font-semibold mt-4 mb-1">Confirm New Password:</label>
+      <div className="relative">
+        <input
+          type={showConfirm ? "text" : "password"}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className={`w-full border rounded px-3 py-2 ${
+            confirmPassword && confirmPassword !== newPassword ? "border-red-400" : ""
+          }`}
+          disabled={loading}
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirm(!showConfirm)}
+          className="absolute right-2 top-2"
+          disabled={loading}
+        >
+          {showConfirm ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+        </button>
+      </div>
+      {confirmPassword && confirmPassword !== newPassword && (
+        <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+      )}
 
       <button
         onClick={handleUpdatePassword}

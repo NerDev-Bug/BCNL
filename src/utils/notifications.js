@@ -373,3 +373,24 @@ export async function createRefundNotification(order) {
     console.error("Error creating refund notification:", error);
   }
 }
+
+/**
+ * Create customer notification when admin cancels/deletes a pending order
+ * @param {object} order - Order object with userId
+ */
+export async function createOrderCancelledNotification(order) {
+  try {
+    if (!order || !order.userId || !order.id) return;
+
+    const orderNumber = order.id.slice(0, 4);
+    const message = `Your order #${orderNumber} has been cancelled by the store. Please contact us for assistance.`;
+
+    await createNotification(order.userId, message, {
+      link: "/order",
+      type: "order_cancelled",
+      data: { orderId: order.id },
+    });
+  } catch (error) {
+    console.error("Error creating order cancelled notification:", error);
+  }
+}

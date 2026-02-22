@@ -95,8 +95,8 @@ export function CartProvider({ children }) {
     // include fields that make it unique
     const keyParts = [
       product.id,
-      c.deliveryDate || "",
-      c.deliveryTime || "",
+      c.pickupDate || c.deliveryDate || "",
+      c.pickupTime || c.deliveryTime || "",
       c.size || "",
       c.candles || "",
       // cardMessage can be long; don’t use it in ID

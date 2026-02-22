@@ -36,9 +36,8 @@ function ReportsPage() {
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [inventoryRows, setInventoryRows] = useState([]);
 
-  // Sales & Orders report: editable before download
+  // Sales & Orders report modal
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
-  const [ordersRows, setOrdersRows] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -231,6 +230,13 @@ function ReportsPage() {
       }
     );
 
+    // Payment method breakdown (all-time)
+    const paymentBreakdown = orders.reduce((acc, o) => {
+      const m = o.orderData?.paymentMethod || o.paymentMethod || "Unknown";
+      acc[m] = (acc[m] || 0) + 1;
+      return acc;
+    }, {});
+
     return {
       totalOrders,
       totalRevenue,
@@ -240,6 +246,7 @@ function ReportsPage() {
       ordersOverTime,
       returnedOrdersStats,
       returnedOrdersOverTime,
+      paymentBreakdown,
       ratingStats: {
         average: averageRating,
         total: ratingStats.total,
@@ -249,44 +256,41 @@ function ReportsPage() {
     };
   }, [orders, products, ordersRange, ratings]);
 
-  const openOrdersReportModal = () => {
-    const rows = orders.map((o) => ({
-      id: o.id,
-      createdAt: o.createdAt?.seconds
-        ? new Date(o.createdAt.seconds * 1000).toISOString()
-        : "",
-      customer: o.orderData?.receiverName || "",
-      paymentMethod: o.orderData?.paymentMethod || o.paymentMethod || "",
-      itemsCount: String(o.items?.length || 0),
-      total: Number(o.total || 0).toFixed(2),
-      paymentStatus: o.paymentStatus || "",
-    }));
-    setOrdersRows(rows);
-    setOrdersModalOpen(true);
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return "";
+    
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp);
+    
+    if (Number.isNaN(date.getTime())) return "";
+    
+    // Format: "February 12, 2026 at 6:34AM"
+    const month = date.toLocaleString("en-US", { month: "long" });
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    // Convert to 12-hour format
+    const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const minutesStr = minutes.toString().padStart(2, "0");
+    
+    return `${month} ${day}, ${year} at ${hour12}:${minutesStr}${ampm}`;
   };
 
-  const updateOrdersRow = (index, field, value) => {
-    setOrdersRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
-    );
-  };
-
-  const exportOrdersCsvFromModal = () => {
-    downloadCsv(ordersRows, "bcnl-orders-report.csv");
-    setOrdersModalOpen(false);
-  };
-
-  const exportOrdersPdfFromModal = () => {
-    downloadPdfFromTable(ordersRows, {
-      title: "Sales & Orders Report",
-      filename: "bcnl-orders-report.pdf",
-    });
-    setOrdersModalOpen(false);
+  const getCurrentDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const openInventoryReportModal = () => {
     const rows = products.map((p) => ({
-      id: p.id,
       name: p.name || "",
       category: p.category || "",
       price: String(Number(p.price || 0).toFixed(2)),
@@ -307,14 +311,32 @@ function ReportsPage() {
   };
 
   const exportInventoryCsvFromModal = () => {
-    downloadCsv(inventoryRows, "bcnl-inventory-report.csv");
+    // Map keys to proper header names
+    const rowsWithHeaders = inventoryRows.map((row) => ({
+      Name: row.name,
+      Category: row.category,
+      Price: row.price,
+      "Daily Limit": row.dailyLimit,
+      "Has Discount": row.hasDiscount,
+    }));
+    const dateStr = getCurrentDateString();
+    downloadCsv(rowsWithHeaders, `bcnl-inventory-report-${dateStr}.csv`);
     setInventoryModalOpen(false);
   };
 
   const exportInventoryPdfFromModal = () => {
-    downloadPdfFromTable(inventoryRows, {
+    // Map keys to proper header names
+    const rowsWithHeaders = inventoryRows.map((row) => ({
+      Name: row.name,
+      Category: row.category,
+      Price: row.price,
+      "Daily Limit": row.dailyLimit,
+      "Has Discount": row.hasDiscount,
+    }));
+    const dateStr = getCurrentDateString();
+    downloadPdfFromTable(rowsWithHeaders, {
       title: "Inventory Report",
-      filename: "bcnl-inventory-report.pdf",
+      filename: `bcnl-inventory-report-${dateStr}.pdf`,
     });
     setInventoryModalOpen(false);
   };
@@ -360,7 +382,8 @@ function ReportsPage() {
       label: d.label,
       orders: d.value,
     }));
-    downloadCsv(rows, `bcnl-orders-trend-${ordersRange}.csv`);
+    const dateStr = getCurrentDateString();
+    downloadCsv(rows, `bcnl-orders-trend-${ordersRange}-${dateStr}.csv`);
   };
 
   const exportOrdersOverTimePdf = () => {
@@ -388,7 +411,8 @@ function ReportsPage() {
       body: summary.ordersOverTime.map((d) => [d.key, d.label, d.value]),
     });
 
-    doc.save(`bcnl-orders-trend-${ordersRange}.pdf`);
+    const dateStr = getCurrentDateString();
+    doc.save(`bcnl-orders-trend-${ordersRange}-${dateStr}.pdf`);
   };
 
 
@@ -433,65 +457,71 @@ function ReportsPage() {
           />
         </div>
 
-        {/* CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Orders – Time Range
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Count of orders created per day.
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <select
-                  value={ordersRange}
-                  onChange={(e) => setOrdersRange(e.target.value)}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#7B2220]/30"
+        {/* ORDERS – TIME RANGE (full width) */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Orders – Time Range
+              </h2>
+              <p className="text-xs text-gray-500">
+                Count of orders created per day.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <select
+                value={ordersRange}
+                onChange={(e) => setOrdersRange(e.target.value)}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#7B2220]/30"
+              >
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="365d">Last 365 days</option>
+              </select>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={exportOrdersOverTimeCsv}
+                  className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
                 >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="365d">Last 365 days</option>
-                </select>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={exportOrdersOverTimeCsv}
-                    className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
-                  >
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportOrdersOverTimePdf}
-                    className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
-                  >
-                    PDF
-                  </button>
-                </div>
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={exportOrdersOverTimePdf}
+                  className="px-2 py-1 rounded-md border border-gray-200 text-[0.65rem] text-gray-700 hover:bg-gray-50"
+                >
+                  PDF
+                </button>
               </div>
             </div>
-            <WeeklyOrdersChart
-              data={summary.ordersOverTime}
+          </div>
+          <WeeklyOrdersChart
+            data={summary.ordersOverTime}
+            loading={loading}
+          />
+        </div>
+
+        {/* WEBSITE RATING + LOW STOCK ALERTS (side by side) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">
+                Website Rating
+              </h2>
+              <p className="text-xs text-gray-500">
+                Average rating and distribution of customer ratings.
+              </p>
+            </div>
+            <RatingChart
+              ratingStats={summary.ratingStats}
               loading={loading}
             />
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                  Website Rating
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Average rating and distribution of customer ratings.
-                </p>
-              </div>
-            </div>
-            <RatingChart
-              ratingStats={summary.ratingStats}
+            <LowStockPanel
+              products={summary.lowStockProducts}
               loading={loading}
             />
           </div>
@@ -554,21 +584,13 @@ function ReportsPage() {
           />
         </div>
 
-        {/* LOW STOCK ALERTS */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <LowStockPanel
-            products={summary.lowStockProducts}
-            loading={loading}
-          />
-        </div>
-
         {/* EXPORT CARDS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExportCard
             title="Sales & Orders Report"
-            description="Edit the report content below, then download as CSV or PDF."
+            description="Select date range, edit the report content, then download as CSV or PDF."
             primaryLabel="Edit & Download Orders"
-            onPrimary={openOrdersReportModal}
+            onPrimary={() => setOrdersModalOpen(true)}
             disabled={loading || !orders.length}
           />
 
@@ -584,11 +606,22 @@ function ReportsPage() {
         {/* Sales & Orders Report – Edit before download modal */}
         {ordersModalOpen && (
           <SalesOrdersReportModal
-            rows={ordersRows}
-            onUpdateRow={updateOrdersRow}
+            orders={orders}
+            formatDateTime={formatDateTime}
             onClose={() => setOrdersModalOpen(false)}
-            onDownloadCsv={exportOrdersCsvFromModal}
-            onDownloadPdf={exportOrdersPdfFromModal}
+            onDownloadCsv={(rowsWithHeaders) => {
+              const dateStr = getCurrentDateString();
+              downloadCsv(rowsWithHeaders, `bcnl-orders-report-${dateStr}.csv`);
+              setOrdersModalOpen(false);
+            }}
+            onDownloadPdf={(rowsWithHeaders) => {
+              const dateStr = getCurrentDateString();
+              downloadPdfFromTable(rowsWithHeaders, {
+                title: "Sales & Orders Report",
+                filename: `bcnl-orders-report-${dateStr}.pdf`,
+              });
+              setOrdersModalOpen(false);
+            }}
           />
         )}
 

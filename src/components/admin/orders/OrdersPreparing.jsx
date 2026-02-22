@@ -1,6 +1,9 @@
 // OrdersPreparing.jsx
-import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  collection, query, where, onSnapshot,
+  updateDoc, deleteDoc, doc, getDoc,
+} from "firebase/firestore";
 import { createOrderToDeliveredNotification } from "../../../utils/notifications";
 import { db } from "../../../firebase";
 
@@ -18,84 +21,87 @@ function OrdersPreparing() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+  const [copiedId, setCopiedId] = useState(null);
 
-  // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
-    type: null, // 'accept' or 'delete'
+    type: null,
     order: null,
   });
 
+  // Real-time listener
   useEffect(() => {
-    const fetchPreparingOrders = async () => {
-      try {
-        const q = query(collection(db, "orders"), where("paymentStatus", "==", "preparing"));
-        const snapshot = await getDocs(q);
+    const q = query(collection(db, "orders"), where("paymentStatus", "==", "preparing"));
 
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .sort((a, b) => {
-          // Sort by createdAt: oldest first (ascending)
-          const getTime = (timestamp) => {
-            if (!timestamp) return 0
-            if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
-            if (timestamp instanceof Date) return timestamp.getTime()
-            return new Date(timestamp).getTime() || 0
-          }
-          return getTime(a.createdAt) - getTime(b.createdAt)
-        });
-        // console.log("Preparing Orders data:", data);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => {
+            const t = (ts) => {
+              if (!ts) return 0;
+              if (ts?.seconds) return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1e6;
+              if (ts instanceof Date) return ts.getTime();
+              return new Date(ts).getTime() || 0;
+            };
+            return t(a.createdAt) - t(b.createdAt);
+          });
         setOrders(data);
-      } catch (err) {
-        console.error(err);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error("OrdersPreparing listener error:", err);
         setError("Failed to load orders.");
         toast.error("Failed to load preparing orders. Please try again.");
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchPreparingOrders();
+    return () => unsubscribe();
   }, []);
 
-  const formatDate = timestamp => {
+  const formatDate = (timestamp) => {
     if (!timestamp) return "—";
     const date =
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "—";
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp);
+    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
     });
   };
 
-  // Handle opening confirmation modal for accept
   const handleAcceptOrder = (order) => {
     setConfirmModal({ isOpen: true, type: "accept", order });
   };
 
-  // Handle opening confirmation modal for delete
   const handleDeleteOrder = (order) => {
     setConfirmModal({ isOpen: true, type: "delete", order });
   };
 
-  // Confirm accepting an order (preparing -> to_delivered)
   const confirmAcceptOrder = async () => {
     const order = confirmModal.order;
-    if (!order) {
-      setConfirmModal({ isOpen: false, type: null, order: null });
-      return;
-    }
+    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
 
     try {
-      // Get full order data first
       const orderRef = doc(db, "orders", order.id);
       const orderSnap = await getDoc(orderRef);
-      
       if (!orderSnap.exists()) {
         toast.error("Order not found");
         setConfirmModal({ isOpen: false, type: null, order: null });
@@ -103,21 +109,15 @@ function OrdersPreparing() {
       }
 
       const orderData = { id: orderSnap.id, ...orderSnap.data() };
+      await updateDoc(orderRef, { paymentStatus: "to_delivered" });
 
-      await updateDoc(orderRef, {
-        paymentStatus: "to_delivered",
-      });
-
-      // Send notification to customer
       try {
         await createOrderToDeliveredNotification(orderData);
-      } catch (notifError) {
-        console.error("Error creating order to delivered notification:", notifError);
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
       }
 
-      // Remove the order from the list immediately
-      setOrders(orders.filter(o => o.id !== order.id));
-      toast.success("Order marked as delivered and customer notified!");
+      toast.success("Order marked as To Delivered and customer notified!");
     } catch (err) {
       console.error("Error updating order:", err);
       toast.error("Failed to update order status.");
@@ -126,19 +126,12 @@ function OrdersPreparing() {
     }
   };
 
-  // Confirm deleting an order
   const confirmDeleteOrder = async () => {
     const order = confirmModal.order;
-    if (!order) {
-      setConfirmModal({ isOpen: false, type: null, order: null });
-      return;
-    }
+    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
 
     try {
-      const orderDeleteRef = doc(db, "orders", order.id);
-      await deleteDoc(orderDeleteRef);
-      setOrders(orders.filter(o => o.id !== order.id));
-      console.log("Delete order:", order.id);
+      await deleteDoc(doc(db, "orders", order.id));
       toast.success("Preparing order deleted successfully");
     } catch (err) {
       console.error("Error deleting order:", err);
@@ -148,7 +141,6 @@ function OrdersPreparing() {
     }
   };
 
-  // Compute paginated orders
   const totalPages = Math.ceil(orders.length / pageSize);
   const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -156,72 +148,54 @@ function OrdersPreparing() {
     {
       key: "expand-items",
       render: (row, { isOpen, toggle }) => (
-        <button
-          onClick={toggle}
-          className="flex items-center justify-center w-full"
-          aria-expanded={isOpen}
-        >
-          <ChevronDown
-            className={`w-4 h-4 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : "rotate-0"
-            }`}
-          />
+        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
         </button>
       ),
     },
     {
       key: "id",
       header: "Order",
-      render: row => `#${row.id.slice(0, 4)}`
+      render: (row) => (
+        <button
+          onClick={() => handleCopyId(row.id)}
+          title={`Copy full ID: ${row.id}`}
+          className="font-mono text-xs hover:text-[#7B2220] transition-colors"
+        >
+          {copiedId === row.id ? "✓ Copied" : `#${row.id.slice(0, 6)}`}
+        </button>
+      ),
     },
     {
       key: "createdAt",
-      header: "Date",
-      render: row => formatDate(row.createdAt)
+      header: "Date / Time",
+      render: (row) => (
+        <div>
+          <p className="text-xs">{formatDate(row.createdAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">{formatTime(row.createdAt)}</p>
+        </div>
+      ),
     },
-    {
-      key: "receiverName",
-      header: "Customer",
-      render: row => row.orderData?.receiverName || "—"
-    },
-    {
-      key: "contactnumber",
-      header: "Contact",
-      render: row => row.orderData?.contactNumber || "—",
-    },
-    {
-      key: "paymentMethod",
-      header: "Payment",
-      render: row => <StatusBadge value={row.paymentMethod} />
-    },
-    {
-      key: "totalPrice",
-      header: "Total",
-      render: row => `€${Number(row.total || 0).toFixed(2)}`
-    },
+    { key: "receiverName", header: "Customer", render: (row) => row.orderData?.receiverName || "—" },
+    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
+    { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.paymentMethod} /> },
+    { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
+    { key: "method", header: "Delivery", render: (row) => row.orderData?.method ?? "N/A" },
     {
       key: "delivery",
-      header: "Delivery",
-      render: row => {
+      header: "Address",
+      render: (row) => {
         const c = row.orderData;
         if (!c) return "N/A";
         return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
       },
     },
-    {
-      key: "items",
-      header: "Items",
-      render: row => `${row.items?.length || 0} items`
-    },
-    {
-      key: "status",
-      header: "Fulfillment",
-      render: row => <StatusBadge value={row.paymentStatus} />
-    },
+    { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
+    { key: "status", header: "Status", render: (row) => <StatusBadge value={row.paymentStatus} /> },
     {
       key: "actions",
       header: "Action",
-      render: row => (
+      render: (row) => (
         <RowActions
           onAccept={() => handleAcceptOrder(row)}
           onDelete={() => handleDeleteOrder(row)}
@@ -241,7 +215,6 @@ function OrdersPreparing() {
       </div>
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
-      {/* CONFIRMATION MODAL FOR ACCEPT */}
       {confirmModal.type === "accept" && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
@@ -255,7 +228,6 @@ function OrdersPreparing() {
         />
       )}
 
-      {/* CONFIRMATION MODAL FOR DELETE */}
       {confirmModal.type === "delete" && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}

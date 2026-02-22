@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { auth, db } from "../../firebase"
+import { toast } from "react-toastify"
 
 function CheckOutModal({
   isOpen,
@@ -13,6 +14,7 @@ function CheckOutModal({
     receiverName: "",
     contactNumber: "",
     email: "",
+    notes: "",
   })
 
   const [deliveryMethod, setDeliveryMethod] = useState("pickup") // pickup | delivery
@@ -70,7 +72,7 @@ function CheckOutModal({
 
   const handleSaveChanges = async () => {
     if (!form.receiverName || !form.contactNumber) {
-      alert("Please complete required fields.")
+      toast.error("Please complete required fields.")
       return
     }
 
@@ -79,16 +81,16 @@ function CheckOutModal({
       const user = auth.currentUser
       if (!user) return
 
+      // Only update phone number — don't overwrite the Firestore username with receiverName
       await updateDoc(doc(db, "users", user.uid), {
-        username: form.receiverName,
         phone: form.contactNumber,
       })
 
       setIsEditing(false)
-      alert("Information updated successfully!")
+      toast.success("Information updated successfully!")
     } catch (err) {
       console.error("Error saving changes:", err)
-      alert("Failed to save changes. Please try again.")
+      toast.error("Failed to save changes. Please try again.")
     } finally {
       setIsSaving(false)
     }
@@ -96,12 +98,12 @@ function CheckOutModal({
 
   const handleSubmit = () => {
     if (!form.receiverName || !form.contactNumber) {
-      alert("Please complete required fields.")
+      toast.error("Please complete required fields.")
       return
     }
 
     if (deliveryMethod === "delivery") {
-      alert("Delivery is coming soon. Please select pickup.")
+      toast.info("Delivery is coming soon. Please select pickup.")
       return
     }
 
@@ -111,6 +113,7 @@ function CheckOutModal({
       receiverName: form.receiverName,
       contactNumber: form.contactNumber,
       email: form.email,
+      notes: form.notes.trim() || null,
       method: deliveryMethod,
     })
 
@@ -226,6 +229,18 @@ function CheckOutModal({
                 />
               </div>
             </div>
+
+            <div>
+              <label className="text-xs font-medium">Notes / Special Instructions <span className="text-gray-400 font-normal">(optional)</span></label>
+              <textarea
+                name="notes"
+                value={form.notes}
+                onChange={handleChange}
+                rows={2}
+                placeholder="e.g. Allergies, preferred pickup time, special requests..."
+                className={`${inputClass} resize-none`}
+              />
+            </div>
           </div>
 
           {/* Order Summary */}
@@ -234,12 +249,12 @@ function CheckOutModal({
             {cartItems.map((item) => (
               <div key={item.id} className="flex justify-between text-sm text-gray-600">
                 <span>{item.name} × {item.quantity}</span>
-                <span>€{item.price * item.quantity}</span>
+                <span>€{(Number(item.price || 0) * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             <div className="flex justify-between font-semibold border-t pt-2">
               <span>Total</span>
-              <span>€{totalPrice}</span>
+              <span>€{Number(totalPrice || 0).toFixed(2)}</span>
             </div>
           </div>
 

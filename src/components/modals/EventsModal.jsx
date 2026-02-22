@@ -11,22 +11,25 @@ export default function EventsModal({ event, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* MEDIA */}
-        <div className="h-64 bg-gray-100">
-          {event.media.type === "video" ? (
-            <video
-              src={event.media.src}
-              className="w-full h-full object-cover"
-              controls
-              autoPlay
-            />
-          ) : (
-            <img
-              src={event.media.src}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-          )}
-        </div>
+        {event.media?.src && (
+          <div className="h-64 bg-gray-100">
+            {event.media.type === "video" ? (
+              <video
+                src={event.media.src}
+                className="w-full h-full object-cover"
+                controls
+                autoPlay
+                muted
+              />
+            ) : (
+              <img
+                src={event.media.src}
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+        )}
 
         {/* CONTENT */}
         <div className="p-6">

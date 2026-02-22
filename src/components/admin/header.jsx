@@ -1,9 +1,10 @@
 // src/components/admin/header.jsx
 import { BellIcon, Bars3Icon } from "@heroicons/react/24/outline"
+import { createReturnRequestNotification } from "../../utils/notifications"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { signOut } from "firebase/auth"
-import { auth } from "../../firebase"
+import { auth, db } from "../../firebase"
 import { toast } from "react-toastify"
 import {
   collection,
@@ -13,11 +14,9 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  writeBatch,
   where,
-  getDocs,
 } from "firebase/firestore"
-import { db } from "../../firebase"
-import { createReturnRequestNotification } from "../../utils/notifications"
 
 function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
   const [open, setOpen] = useState(false)
@@ -27,13 +26,25 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [adminName, setAdminName] = useState("")
+  const [markingAll, setMarkingAll] = useState(false)
 
-  // ✅ Listen for admin notifications
+  // Listen for admin display name from Firebase Auth
   useEffect(() => {
-    console.log("Setting up admin notifications listener...")
-    const notificationsCollection = collection(db, "adminNotifications")
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setAdminName(user.displayName || user.email?.split("@")[0] || "Admin")
+      } else {
+        setAdminName("")
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // Real-time admin notifications listener
+  useEffect(() => {
     const q = query(
-      notificationsCollection,
+      collection(db, "adminNotifications"),
       orderBy("createdAt", "desc"),
       limit(20)
     )
@@ -41,11 +52,8 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        console.log("Admin notifications snapshot received:", snapshot.size, "notifications")
         const items = snapshot.docs.map((d) => {
           const data = d.data()
-          
-          // Handle different timestamp formats
           let createdAtDate = null
           if (data.createdAt) {
             if (typeof data.createdAt.toDate === "function") {
@@ -62,9 +70,7 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
           return {
             id: d.id,
             message: data.message || "Notification",
-            time: createdAtDate
-              ? createdAtDate.toLocaleString()
-              : "Just now",
+            time: createdAtDate ? createdAtDate.toLocaleString() : "Just now",
             read: !!data.read,
             seen: !!data.seen,
             link: data.link || null,
@@ -74,134 +80,88 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
           }
         })
 
-        console.log("Processed notifications:", items.length)
-        console.log("Unread count:", items.filter((n) => !n.seen).length)
         setNotifications(items)
         setUnreadCount(items.filter((n) => !n.seen).length)
       },
       (err) => {
         console.error("Admin notifications listener error:", err)
-        console.error("Error details:", {
-          code: err.code,
-          message: err.message,
-        })
         setNotifications([])
       }
     )
 
-    return () => {
-      console.log("Cleaning up admin notifications listener")
-      unsubscribe()
-    }
+    return () => unsubscribe()
   }, [])
 
-  // ✅ Backup: Listen for new return_requested orders and create notifications if missing
+  // Backup: efficient listener for return_requested orders — uses a Set to avoid duplicate notifications
   useEffect(() => {
-    console.log("Setting up return_requested orders listener (backup)...")
-    const ordersCollection = collection(db, "orders")
+    const seenOrderIds = new Set()
+
     const q = query(
-      ordersCollection,
+      collection(db, "orders"),
       where("paymentStatus", "==", "return_requested")
     )
 
-    const unsubscribe = onSnapshot(
-      q,
-      async (snapshot) => {
-        console.log("Return requested orders snapshot:", snapshot.size, "orders")
-        
-        // Check each return_requested order to see if notification exists
-        for (const docSnapshot of snapshot.docs) {
-          const order = { id: docSnapshot.id, ...docSnapshot.data() }
-          
-          // Only create notification if returnRequestedAt is recent (within last 5 minutes)
-          if (order.returnRequestedAt) {
-            const requestedTime = order.returnRequestedAt?.seconds
-              ? new Date(order.returnRequestedAt.seconds * 1000)
-              : order.returnRequestedAt instanceof Date
-              ? order.returnRequestedAt
-              : null
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      // Only process added docs that we haven't seen yet
+      const newDocs = snapshot.docChanges().filter(
+        (change) => change.type === "added" && !seenOrderIds.has(change.doc.id)
+      )
 
-            if (requestedTime) {
-              // Check if notification already exists for this order
-              try {
-                const notificationsCollection = collection(db, "adminNotifications")
-                const notifQuery = query(
-                  notificationsCollection,
-                  where("data.orderId", "==", order.id),
-                  where("type", "==", "return_request")
-                )
-                
-                const notifSnapshot = await getDocs(notifQuery)
-                
-                if (notifSnapshot.empty) {
-                  console.log("Creating notification for return request order:", order.id)
-                  try {
-                    await createReturnRequestNotification(order)
-                    console.log("✅ Notification created successfully for order:", order.id)
-                  } catch (err) {
-                    console.error("❌ Failed to create notification:", err)
-                    console.error("Error details:", {
-                      code: err.code,
-                      message: err.message,
-                    })
-                  }
-                } else {
-                  console.log("Notification already exists for order:", order.id)
-                }
-              } catch (checkError) {
-                console.error("Error checking for existing notification:", checkError)
-              }
-            }
-          }
-        }
-      },
-      (err) => {
-        console.error("Return requested orders listener error:", err)
+      for (const change of newDocs) {
+        const order = { id: change.doc.id, ...change.doc.data() }
+        seenOrderIds.add(order.id)
+
+        if (!order.returnRequestedAt) continue
+
+        // Fire-and-forget — notification function itself checks for duplicates
+        createReturnRequestNotification(order).catch((err) =>
+          console.error("Failed to create return request notification:", err)
+        )
       }
-    )
+    })
 
-    return () => {
-      console.log("Cleaning up return_requested orders listener")
-      unsubscribe()
-    }
+    return () => unsubscribe()
   }, [])
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false)
-      }
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(e.target)
-      ) {
-        setNotificationsOpen(false)
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false)
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) setNotificationsOpen(false)
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // ✅ Handle notification click
   const handleNotificationClick = async (notification) => {
     if (!notification.id) return
-
     try {
-      // Mark notification as seen
       if (!notification.seen) {
-        const notifRef = doc(db, "adminNotifications", notification.id)
-        await updateDoc(notifRef, { seen: true })
+        await updateDoc(doc(db, "adminNotifications", notification.id), { seen: true })
       }
-
-      // Navigate to link if exists
-      if (notification.link) {
-        navigate(notification.link)
-      }
+      if (notification.link) navigate(notification.link)
       setNotificationsOpen(false)
     } catch (error) {
       console.error("Error marking notification as seen:", error)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    const unread = notifications.filter((n) => !n.seen)
+    if (!unread.length) return
+
+    setMarkingAll(true)
+    try {
+      const batch = writeBatch(db)
+      unread.forEach((n) => {
+        batch.update(doc(db, "adminNotifications", n.id), { seen: true })
+      })
+      await batch.commit()
+    } catch (err) {
+      console.error("Failed to mark all as read:", err)
+      toast.error("Failed to mark all notifications as read.")
+    } finally {
+      setMarkingAll(false)
     }
   }
 
@@ -223,7 +183,7 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
         sidebarOpen ? "md:left-64" : "md:left-20"
       }`}
     >
-      {/* Left: hamburger on mobile; empty on desktop */}
+      {/* Left: hamburger on mobile */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -252,17 +212,25 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
             )}
           </button>
 
-          {/* Notifications Dropdown */}
           {notificationsOpen && (
-            <div className="absolute right-0 top-12 w-[min(20rem,calc(100vw-2rem))] max-h-[85vh] bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Notifications
-                </h3>
+            <div className="absolute right-0 top-12 w-[min(22rem,calc(100vw-2rem))] max-h-[85vh] bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {unreadCount} unread
+                    </p>
+                  )}
+                </div>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
-                  </p>
+                  <button
+                    onClick={handleMarkAllRead}
+                    disabled={markingAll}
+                    className="text-xs text-[#7A3DF0] hover:underline disabled:opacity-50 font-medium"
+                  >
+                    {markingAll ? "Marking…" : "Mark all read"}
+                  </button>
                 )}
               </div>
 
@@ -282,18 +250,10 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm ${
-                              !notification.seen
-                                ? "font-semibold text-gray-900"
-                                : "text-gray-700"
-                            }`}
-                          >
+                          <p className={`text-sm ${!notification.seen ? "font-semibold text-gray-900" : "text-gray-700"}`}>
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {notification.time}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
                         </div>
                         {!notification.seen && (
                           <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
@@ -307,12 +267,17 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
           )}
         </div>
 
-        {/* Profile Avatar */}
+        {/* Admin name + avatar */}
         <button
           onClick={() => setOpen((prev) => !prev)}
-          className="focus:outline-none focus:ring-2 focus:ring-[#7A3DF0]/30 rounded-full transition-all"
+          className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#7A3DF0]/30 rounded-full transition-all"
           aria-label="User menu"
         >
+          {adminName && (
+            <span className="hidden sm:block text-xs font-medium text-gray-700 max-w-[100px] truncate">
+              {adminName}
+            </span>
+          )}
           <img
             src="/images/free-user-icon.png"
             alt="Admin Avatar"
@@ -320,26 +285,23 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
           />
         </button>
 
-        {/* Dropdown */}
         {open && (
           <div className="absolute right-0 top-14 w-48 min-w-[10rem] bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+            {adminName && (
+              <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                <p className="text-xs text-gray-500">Signed in as</p>
+                <p className="text-sm font-semibold text-gray-800 truncate">{adminName}</p>
+              </div>
+            )}
             <button
-              onClick={() => {
-                navigate("/profile")
-                setOpen(false)
-              }}
+              onClick={() => { navigate("/profile"); setOpen(false) }}
               className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5EBFF] hover:text-[#502455] transition-colors"
             >
               Profile
             </button>
-
             <div className="border-t border-gray-200 my-1" />
-
             <button
-              onClick={() => {
-                handleLogout()
-                setOpen(false)
-              }}
+              onClick={() => { handleLogout(); setOpen(false) }}
               className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
             >
               Logout

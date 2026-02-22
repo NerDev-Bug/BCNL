@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { ChevronDown } from "lucide-react";
+import { collection, query, where, onSnapshot, updateDoc, deleteDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
@@ -16,6 +17,7 @@ function OrdersReturned() {
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(10);
+    const [copiedId, setCopiedId] = useState(null);
     
     // Confirmation modal states
     const [approveModal, setApproveModal] = useState({ isOpen: false, order: null });
@@ -23,45 +25,48 @@ function OrdersReturned() {
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
     const rejectMessageRef = useRef(null);
 
+    // Real-time listener
     useEffect(() => {
-        const fetchReturnOrders = async () => {
-        try {
-            // Fetch both return_requested (pending) and returned (approved) orders
-            const q = query(
+        const q = query(
             collection(db, "orders"),
             where("paymentStatus", "in", ["return_requested", "returned"])
-            );
+        );
 
-            const snapshot = await getDocs(q);
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                const data = snapshot.docs
+                    .map((d) => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => {
+                        const getTime = (ts) => {
+                            if (!ts) return 0;
+                            if (ts?.seconds) return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1e6;
+                            if (ts instanceof Date) return ts.getTime();
+                            return new Date(ts).getTime() || 0;
+                        };
+                        return getTime(b.returnRequestedAt || b.createdAt) - getTime(a.returnRequestedAt || a.createdAt);
+                    });
+                setOrders(data);
+                setLoading(false);
+                setError(null);
+            },
+            (err) => {
+                console.error("OrdersReturned listener error:", err);
+                setError("Failed to load orders.");
+                toast.error("Failed to load returned orders. Please try again.");
+                setLoading(false);
+            }
+        );
 
-            const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            }))
-            .sort((a, b) => {
-              // Sort by returnRequestedAt or createdAt: newest first
-              const getTime = (timestamp) => {
-                if (!timestamp) return 0
-                if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
-                if (timestamp instanceof Date) return timestamp.getTime()
-                return new Date(timestamp).getTime() || 0
-              }
-              const aTime = getTime(a.returnRequestedAt || a.createdAt)
-              const bTime = getTime(b.returnRequestedAt || b.createdAt)
-              return bTime - aTime // Newest first
-            });
-            setOrders(data);
-        } catch (err) {
-            console.error(err);
-            setError("Failed to load orders.");
-            toast.error("Failed to load returned orders. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-        };
-
-        fetchReturnOrders();
+        return () => unsubscribe();
     }, []);
+
+    const handleCopyId = (id) => {
+        navigator.clipboard.writeText(id).then(() => {
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 1500);
+        });
+    };
 
     const formatDate = timestamp => {
         if (!timestamp) return "—";
@@ -119,7 +124,7 @@ function OrdersReturned() {
 
             await updateDoc(orderRef, {
                 paymentStatus: "returned",
-                returnApprovedAt: new Date(),
+                returnApprovedAt: Timestamp.now(),
             });
             
             // Send notification to customer
@@ -187,7 +192,7 @@ function OrdersReturned() {
 
             await updateDoc(orderRef, {
                 paymentStatus: "delivered",
-                returnRejectedAt: new Date(),
+                returnRejectedAt: Timestamp.now(),
                 ...(rejectionMessage ? { returnRejectionReason: rejectionMessage } : {}),
             });
             
@@ -247,9 +252,33 @@ function OrdersReturned() {
 
     const columns = [
         {
+          key: "expand-items",
+          render: (row, { isOpen, toggle }) => (
+            <button
+              onClick={toggle}
+              className="flex items-center justify-center w-full"
+              aria-expanded={isOpen}
+            >
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  isOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </button>
+          ),
+        },
+        {
         key: "id",
         header: "Order",
-        render: row => `#${row.id.slice(0, 4)}`,
+        render: (row) => (
+            <button
+                onClick={() => handleCopyId(row.id)}
+                title={`Copy full ID: ${row.id}`}
+                className="font-mono text-xs hover:text-[#7B2220] transition-colors"
+            >
+                {copiedId === row.id ? "✓ Copied" : `#${row.id.slice(0, 6)}`}
+            </button>
+        ),
         },
         {
         key: "createdAt",

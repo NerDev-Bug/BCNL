@@ -103,11 +103,19 @@ function DiscountsPage() {
 
     const v = value.trim().replace(",", ".");
 
-    // Only allow numbers (percentage)
-    if (/^\d+(\.\d+)?$/.test(v)) {
-      const percent = Number(v);
-      if (percent <= 0 || percent >= 100) return null;
+    // Fixed amount: €5, 5€, 5eur, 5EUR
+    const fixedMatch = v.match(/^[€]?(\d+(\.\d+)?)[€]?(?:eur)?$/i);
+    if (fixedMatch && (v.startsWith("€") || v.toLowerCase().endsWith("€") || v.toLowerCase().endsWith("eur"))) {
+      const amount = Number(fixedMatch[1]);
+      if (amount <= 0) return null;
+      return { type: "fixed", value: amount };
+    }
 
+    // Percentage: 10%, 10
+    const percentMatch = v.match(/^(\d+(\.\d+)?)%?$/);
+    if (percentMatch) {
+      const percent = Number(percentMatch[1]);
+      if (percent <= 0 || percent >= 100) return null;
       return { type: "percent", value: percent };
     }
 
@@ -154,7 +162,7 @@ function DiscountsPage() {
       setConfirmationModal({
         isOpen: true,
         title: "Validation Error",
-        message: "Invalid discount. Use e.g. 10% or 5€",
+        message: "Invalid discount. Use e.g. 10 or 10% for percentage, or €5 / 5€ / 5eur for a fixed amount off.",
         onConfirm: closeConfirmationModal,
         type: "alert",
         confirmButtonColor: "bg-[#7B2220]",
@@ -580,7 +588,7 @@ function DiscountsPage() {
               {products.length ? `${avgDiscount.toFixed(1)}%` : "0%"}
             </span>
             <span className="text-xs text-gray-400">
-              {products.length} discounted products
+              {products.filter(p => p.productDiscount).length} discounted products
             </span>
           </div>
         </div>
@@ -608,7 +616,7 @@ function DiscountsPage() {
                 value={discountInput}
                 onChange={(e) => setDiscountInput(e.target.value)}
                 className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#7B2220] focus:ring-2 focus:ring-[#7B2220]/20 outline-none w-full sm:w-auto min-w-0"
-                placeholder="10 or 9"
+                placeholder="10% or €5"
               />
             </div>
 

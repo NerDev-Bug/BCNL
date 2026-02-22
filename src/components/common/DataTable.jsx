@@ -76,12 +76,29 @@ function ExpandedItemRow({ item }) {
                 Time: {c.deliveryTime}
               </div>
             )}
+            {c.pickupDate && (
+              <div className="inline-block px-2 py-1 bg-teal-50 text-teal-700 rounded-lg mr-2">
+                Pick-up Date: {c.pickupDate}
+              </div>
+            )}
+            {c.pickupTime && (
+              <div className="inline-block px-2 py-1 bg-yellow-50 text-yellow-700 rounded-lg mr-2">
+                Pick-up Time: {c.pickupTime}
+              </div>
+            )}
             {c.cardMessage && (
-              <div className="mt-2 p-2 bg-gray-50 rounded-lg border-l-2 border-[#7B2220]">
-                <span className="font-medium text-gray-700">Card Message:</span>{" "}
-                <span className="italic text-gray-600">
-                  "{c.cardMessage}"
-                </span>
+              <div className="mt-3 rounded-xl border border-[#7B2220]/20 bg-gradient-to-br from-[#7B2220]/5 to-rose-50 overflow-hidden">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-[#7B2220]/10 bg-[#7B2220]/5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-[#7B2220]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7B2220]">
+                    Card Message
+                  </span>
+                </div>
+                <p className="px-3 py-2.5 text-xs italic text-gray-700 leading-relaxed font-semibold">
+                  &ldquo;{c.cardMessage}&rdquo;
+                </p>
               </div>
             )}
           </div>

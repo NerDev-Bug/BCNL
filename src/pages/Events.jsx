@@ -58,7 +58,8 @@ export default function Events() {
     if (isTomorrow) return "Tomorrow"
     if (day === 6 || day === 0) return "This weekend"
 
-    return "Today"
+    // Future weekday events — show under "Tomorrow" tab as "upcoming"
+    return "Tomorrow"
   }
 
   const processedEvents = useMemo(() => {
@@ -205,7 +206,7 @@ const calcLeft = (startAt) => {
           ) : (
             <div className="flex gap-6 overflow-x-auto snap-x snap-mandatory justify-center pb-2">
               {filteredEvents.map((e, i) => (
-                <Card key={i} e={e} />
+                <Card key={e.id || e.title || i} e={e} />
               ))}
             </div>
           )}

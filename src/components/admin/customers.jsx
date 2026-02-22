@@ -1,6 +1,6 @@
 // src/components/admin/customers.jsx
 import { useEffect, useMemo, useState } from "react";
-import { collection, deleteDoc, doc, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 
 import DataTable from "../common/DataTable";
@@ -33,6 +33,12 @@ function CustomersPage() {
 
   // ✅ delete loading per row
   const [deletingId, setDeletingId] = useState(null);
+
+  // ✅ Edit modal state (loyalty points + status)
+  const [editModal, setEditModal] = useState({ isOpen: false, customer: null });
+  const [editPoints, setEditPoints] = useState("");
+  const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const closeConfirmationModal = () => {
     setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
@@ -171,6 +177,38 @@ function CustomersPage() {
     });
   };
 
+  const openEdit = (customer) => {
+    setEditPoints(String(customer.points ?? 0));
+    setEditStatus(customer.status || "ACTIVE");
+    setEditModal({ isOpen: true, customer });
+  };
+
+  const saveEdit = async () => {
+    const customer = editModal.customer;
+    if (!customer) return;
+    const pts = Number(editPoints);
+    if (isNaN(pts) || pts < 0) {
+      alert("Loyalty points must be a non-negative number.");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await updateDoc(doc(db, "users", customer.id), {
+        points: pts,
+        status: editStatus,
+      });
+      setCustomers((prev) =>
+        prev.map((c) => c.id === customer.id ? { ...c, points: pts, status: editStatus } : c)
+      );
+      setEditModal({ isOpen: false, customer: null });
+    } catch (err) {
+      console.error("Failed to update customer:", err);
+      alert("Failed to save changes. Please try again.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const totalPages = Math.ceil(filteredCustomers.length / pageSize) || 1;
   const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * pageSize,
@@ -220,12 +258,20 @@ function CustomersPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => openEdit(row)}
+            className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 border border-blue-200 text-xs font-medium"
+            title="Edit loyalty points / status"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
             onClick={() => openDelete(row)}
             disabled={deletingId === row.id}
-            className="px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200 border border-red-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete customer"
           >
-            {deletingId === row.id ? "⏳ Deleting..." : "Delete"}
+            {deletingId === row.id ? "⏳" : "Delete"}
           </button>
         </div>
       ),
@@ -338,6 +384,95 @@ function CustomersPage() {
           cancelText="Cancel"
           loading={deletingId !== null}
         />
+
+        {/* Edit Customer Modal */}
+        {editModal.isOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              onClick={() => setEditModal({ isOpen: false, customer: null })}
+            />
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                <div className="px-6 py-5 border-b border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-900">Edit Customer</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {editModal.customer?.email || editModal.customer?.username}
+                  </p>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                  {/* Loyalty Points */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Loyalty Points
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editPoints}
+                      onChange={(e) => setEditPoints(e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220]/30"
+                      placeholder="e.g. 150"
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Account Status
+                    </label>
+                    <div className="flex gap-2">
+                      {["ACTIVE", "SUSPENDED", "BANNED"].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setEditStatus(s)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                            editStatus === s
+                              ? s === "ACTIVE"
+                                ? "bg-emerald-500 text-white border-emerald-500"
+                                : s === "SUSPENDED"
+                                ? "bg-amber-500 text-white border-amber-500"
+                                : "bg-red-600 text-white border-red-600"
+                              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    {editStatus !== "ACTIVE" && (
+                      <p className="text-[0.65rem] text-amber-600 mt-1">
+                        {editStatus === "SUSPENDED"
+                          ? "Suspended accounts cannot log in temporarily."
+                          : "Banned accounts are permanently blocked."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditModal({ isOpen: false, customer: null })}
+                    className="px-5 py-2 rounded-xl border-2 border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    disabled={savingEdit}
+                    className="px-5 py-2 rounded-xl bg-[#7B2220] text-white text-sm font-semibold hover:bg-[#8B3230] transition-all disabled:opacity-60"
+                  >
+                    {savingEdit ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

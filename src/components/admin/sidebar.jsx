@@ -33,11 +33,11 @@ function AdminSidebar({ isOpen, mobileMenuOpen = false, onCloseMobile }) {
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
 
-  // ✅ Real‑time pending orders count
+  // ✅ Real‑time pending orders count (paymentStatus === "paid" = needs admin action)
   useEffect(() => {
     try {
       const ordersRef = collection(db, "orders");
-      const q = query(ordersRef, where("status", "==", "pending"));
+      const q = query(ordersRef, where("paymentStatus", "==", "paid"));
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setPendingOrdersCount(snapshot.size);
