@@ -11,6 +11,7 @@ import SalesPage from "./components/admin/sales";
 import CustomersPage from "./components/admin/customers";
 import ReportsPage from "./components/admin/reports";
 import DiscountsPage from "./components/admin/discounts";
+import BundlesPage from "./components/admin/bundles";
 import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetails";
 import Pages from "./components/admin/pages";
@@ -59,6 +60,7 @@ function App() {
           <Route path="/admin/customers" element={<CustomersPage />} />
           <Route path="/admin/reports" element={<ReportsPage />} />
           <Route path="/admin/discounts" element={<DiscountsPage />} />
+          <Route path="/admin/bundles" element={<BundlesPage />} />
           <Route path="/admin/pages" element={<Pages />} />
         </Route>
 

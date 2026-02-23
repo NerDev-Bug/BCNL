@@ -87,6 +87,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    match /bundles/{bundleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     
     match /ratings/{doc} {
       allow create: if request.auth != null;

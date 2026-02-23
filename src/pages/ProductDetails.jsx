@@ -130,9 +130,10 @@ export default function ProductDetails() {
 
     // Pass the discounted price into the cart item so Cart & Checkout always use the correct price
     const discountedPrice = applyDiscount(product.price, product.productDiscount);
+    const origPrice = product.productDiscount ? Number(product.price) : null;
     const cartItem = isCustomCakes
-      ? { ...product, price: discountedPrice, customization: { ...customForm } }
-      : { ...product, price: discountedPrice };
+      ? { ...product, price: discountedPrice, originalPrice: origPrice, customization: { ...customForm } }
+      : { ...product, price: discountedPrice, originalPrice: origPrice };
 
     const success = addToCart(cartItem);
     if (!success) {
@@ -367,22 +368,23 @@ export default function ProductDetails() {
               {(() => {
                 const finalPrice = applyDiscount(product.price, product.productDiscount);
                 const discountLabel = formatDiscount(product.productDiscount);
-                const hasDiscount = discountLabel && finalPrice < Number(product.price || 0);
+                const hasAnyPromo = !!discountLabel;
+                const showStrikethrough = hasAnyPromo && finalPrice < Number(product.price || 0);
                 return (
-                  <div className="text-right mt-2 max-w-md md:ml-0 mx-auto">
-                    {hasDiscount && (
-                      <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full mr-2">
+                  <div className="flex items-center gap-2 mt-2 max-w-md md:ml-0 mx-auto flex-wrap">
+                    {hasAnyPromo && (
+                      <span className="inline-block bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
                         {discountLabel}
                       </span>
                     )}
                     <span className="text-sm font-bold text-[#7B2220]">
                       €{finalPrice.toFixed(2)}
+                      {showStrikethrough && (
+                        <span className="ml-1.5 text-xs text-gray-400 line-through font-normal">
+                          €{Number(product.price).toFixed(2)}
+                        </span>
+                      )}
                     </span>
-                    {hasDiscount && (
-                      <span className="ml-2 text-xs text-gray-400 line-through">
-                        €{Number(product.price).toFixed(2)}
-                      </span>
-                    )}
                   </div>
                 );
               })()}

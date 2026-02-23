@@ -9,6 +9,7 @@ import OrderConfirmation from "./modals/Payment"
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { createNewOrderAdminNotification } from "../utils/notifications"
+import { formatDiscount, applyDiscount } from "../utils/price"
 
 // Callable cloud function for Mollie payment
 const createPayment = httpsCallable(functions, "createPayment")
@@ -86,6 +87,9 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
           price: item.price,
           quantity: item.quantity,
           customization: item.customization || null,
+          productDiscount: item.productDiscount || null,
+          isBundle: item.isBundle || false,
+          bundleItems: item.bundleItems || null,
         })),
 
         total: Number(totalPrice.toFixed(2)),
@@ -112,6 +116,9 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
             price: item.price,
             quantity: item.quantity,
             customization: item.customization || null,
+            productDiscount: item.productDiscount || null,
+            isBundle: item.isBundle || false,
+            bundleItems: item.bundleItems || null,
           })),
         };
         await createNewOrderAdminNotification(orderData);
@@ -247,39 +254,103 @@ function Cart({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem 
           <>
             <div className="overflow-y-auto h-[calc(100%-80px)] p-5 space-y-4">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-[#502455]">{item.name}</p>
+                <div key={item.id} className="flex flex-col gap-1 border-b border-gray-100 pb-3 last:border-0">
+                  {(() => {
+                    const d = item.productDiscount
+                    const discountLabel = !item.isBundle ? formatDiscount(d) : null
+                    const basePrice = Number(item.price || 0)
+                    // For display: get original base price (before discount) for strikethrough
+                    // item.price is already the discounted unit price stored in cart
+                    // We need the original price — stored as item.originalPrice if available, else we can't show strikethrough for percent/fixed
+                    const originalPrice = item.originalPrice != null ? Number(item.originalPrice) : null
+                    const showStrikethrough =
+                      originalPrice != null &&
+                      originalPrice > basePrice &&
+                      (d?.type === "percent" || d?.type === "fixed")
+                    const isFreeItemDeal = d?.type === "buy1take1" && item.quantity >= 2
+                    const freeCount = isFreeItemDeal ? Math.floor(item.quantity / 2) : 0
 
-                    {item.available === false && (
-                      <p className="text-xs font-semibold text-red-600">Not available today</p>
-                    )}
+                    return (
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-semibold text-[#502455]">{item.name}</p>
+                            {/* Bundle badge */}
+                            {item.isBundle && (
+                              <span className="inline-block bg-purple-100 text-purple-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full">
+                                Bundle
+                              </span>
+                            )}
+                            {/* Discount / Promo badge */}
+                            {discountLabel && (
+                              <span className="inline-block bg-red-100 text-red-600 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full">
+                                {d?.type === "buy1take1" ? "B1T1" : discountLabel}
+                              </span>
+                            )}
+                          </div>
 
-                    <p className="text-gray-600">
-                      €{item.price} x{" "}
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleQuantityChange(item.id, parseInt(e.target.value))
-                        }
-                        className="w-14 text-center border rounded-md px-1 py-0.5"
-                      />
-                    </p>
-                  </div>
+                          {item.available === false && (
+                            <p className="text-xs font-semibold text-red-600">Not available today</p>
+                          )}
 
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-[#7B2220]">
-                      €{(Number(item.price || 0) * item.quantity).toFixed(2)}
-                    </p>
-                    <button
-                      onClick={() => handleRemove(item.id)}
-                      className="text-red-600 hover:text-red-800 font-semibold px-2 py-1 border border-red-300 rounded-md"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                          {/* Bundle item breakdown */}
+                          {item.isBundle && item.bundleItems?.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {item.bundleItems.map((bi) => (
+                                <p key={bi.productId} className="text-[0.7rem] text-gray-400 pl-1">
+                                  • {bi.productName}{bi.qty > 1 ? ` ×${bi.qty}` : ""}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* B1T1: show free item note */}
+                          {isFreeItemDeal && (
+                            <p className="text-[0.7rem] text-green-600 font-medium pl-1">
+                              🎁 {freeCount} free item{freeCount > 1 ? "s" : ""}
+                            </p>
+                          )}
+
+                          <p className="text-gray-600 text-sm mt-0.5 flex items-center gap-1 flex-wrap">
+                            <span>
+                              €{basePrice.toFixed(2)}
+                              {showStrikethrough && (
+                                <span className="ml-1 text-xs text-gray-400 line-through font-normal">
+                                  €{originalPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </span>
+                            <span>×</span>
+                            {item.isBundle ? (
+                              <span className="font-medium">{item.quantity}</span>
+                            ) : (
+                              <input
+                                type="number"
+                                min={1}
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleQuantityChange(item.id, parseInt(e.target.value))
+                                }
+                                className="w-14 text-center border rounded-md px-1 py-0.5"
+                              />
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <p className="font-semibold text-[#7B2220]">
+                            €{(basePrice * item.quantity).toFixed(2)}
+                          </p>
+                          <button
+                            onClick={() => handleRemove(item.id)}
+                            className="text-red-600 hover:text-red-800 text-xs font-semibold px-2 py-1 border border-red-300 rounded-md"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               ))}
             </div>

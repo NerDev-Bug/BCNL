@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useSearchParams } from "react-router-dom"
+import { toast } from "react-toastify"
 import { applyDiscount, formatDiscount } from "../utils/price"
 import { Search } from "lucide-react"
 import { db, auth } from "../firebase"
@@ -28,7 +29,9 @@ export default function Menu() {
   const [loading, setLoading] = useState(true)
   const [wishlistIds, setWishlistIds] = useState([])
   const [showAd, setShowAd] = useState(false)
-  const [productRatings, setProductRatings] = useState({}) // { productId: { average: number, count: number } }
+  const [productRatings, setProductRatings] = useState({})
+  const [bundles, setBundles] = useState([])
+  const [bundlesLoading, setBundlesLoading] = useState(true)
 
   useEffect(() => {
     const hasSeenMenuAd = localStorage.getItem("menuAdSeen")
@@ -63,7 +66,7 @@ export default function Menu() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        // ✅ ONLY show products admin marked for menu
+        // ONLY show products admin marked for menu
         const q = query(
           collection(db, "products"),
           where("showOnMenu", "==", true)
@@ -79,7 +82,7 @@ export default function Menu() {
 
         setCategories(uniqueCats)
 
-        // ✅ Fetch ratings only for shown products
+        // Fetch ratings only for shown products
         const productIds = data.map((p) => p.id)
         await fetchProductRatings(productIds)
       } catch (err) {
@@ -89,7 +92,19 @@ export default function Menu() {
       }
     }
 
+    const fetchBundles = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "bundles"), where("active", "==", true)))
+        setBundles(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      } catch (err) {
+        console.error("Failed to fetch bundles:", err)
+      } finally {
+        setBundlesLoading(false)
+      }
+    }
+
     fetchProducts()
+    fetchBundles()
   }, [])
 
   useEffect(() => {
@@ -253,24 +268,28 @@ export default function Menu() {
                         </div>
 
                         {(() => {
-                          const finalPrice = applyDiscount(product.price, product.productDiscount);
-                          const discountLabel = formatDiscount(product.productDiscount);
-                          const hasDiscount = discountLabel && finalPrice < Number(product.price || 0);
+                          const d = product.productDiscount;
+                          const finalPrice = applyDiscount(product.price, d);
+                          const discountLabel = formatDiscount(d);
+                          const hasAnyPromo = !!discountLabel;
+                          // Show strikethrough only when price actually drops (percent/fixed/xForY)
+                          const showStrikethrough = hasAnyPromo
+                            && finalPrice < Number(product.price || 0);
                           return (
-                            <div className="text-center mt-2">
-                              {hasDiscount && (
-                                <span className="inline-block bg-red-100 text-red-700 text-[0.65rem] font-bold px-2 py-0.5 rounded-full mb-1">
+                            <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                              {hasAnyPromo && (
+                                <span className="inline-block bg-red-100 text-red-700 text-[0.65rem] font-bold px-2 py-0.5 rounded-full">
                                   {discountLabel}
                                 </span>
                               )}
-                              <p className="font-semibold text-[#7B2220]">
+                              <span className="font-semibold text-[#7B2220]">
                                 €{finalPrice.toFixed(2)}
-                                {hasDiscount && (
-                                  <span className="ml-2 text-xs text-gray-400 line-through font-normal">
+                                {showStrikethrough && (
+                                  <span className="ml-1.5 text-xs text-gray-400 line-through font-normal">
                                     €{Number(product.price).toFixed(2)}
                                   </span>
                                 )}
-                              </p>
+                              </span>
                             </div>
                           );
                         })()}
@@ -314,7 +333,12 @@ export default function Menu() {
                                   .closest(".group")
                                   .querySelector("img")
                                 const discountedPrice = applyDiscount(product.price, product.productDiscount);
-                                const success = addToCart({ ...product, price: discountedPrice })
+                                const success = addToCart({
+                                  ...product,
+                                  price: discountedPrice,
+                                  originalPrice: product.productDiscount ? Number(product.price) : null,
+                                  productDiscount: product.productDiscount || null,
+                                })
                                 if (!success) return window.openLoginModal?.()
                                 flyToCart(img)
                               }}
@@ -336,6 +360,94 @@ export default function Menu() {
                 });
             })()}
           </div>
+
+          {/* ── BUNDLES SECTION ── */}
+          {!bundlesLoading && bundles.length > 0 && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-[#502455] font-cooper mb-4 flex items-center gap-2">
+                <span>🎁</span> Bundle Deals
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {bundles.map((bundle) => {
+                  const origTotal = (bundle.items || []).reduce(
+                    (s, i) => s + i.productPrice * i.qty, 0
+                  )
+                  const saving = Math.max(0, origTotal - (bundle.bundlePrice || 0))
+
+                  return (
+                    <div
+                      key={bundle.id}
+                      className="bg-white border-2 border-[#502455] rounded-xl shadow-md overflow-hidden"
+                    >
+                      {/* Header */}
+                      <div className="bg-[#502455] px-4 py-3 flex items-center justify-between">
+                        <h3 className="text-white font-bold text-sm truncate">{bundle.name}</h3>
+                        {saving > 0 && (
+                          <span className="flex-shrink-0 ml-2 bg-yellow-400 text-[#502455] text-[0.65rem] font-black px-2 py-0.5 rounded-full">
+                            Save €{saving.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Items */}
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        {bundle.description && (
+                          <p className="text-xs text-gray-500 mb-2 italic">{bundle.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {(bundle.items || []).map((item) => (
+                            <div key={item.productId} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                              {item.productImage && (
+                                <img src={item.productImage} alt={item.productName} className="w-6 h-6 rounded object-cover" />
+                              )}
+                              <span className="text-xs text-gray-700">
+                                {item.productName}
+                                {item.qty > 1 && <span className="text-gray-400"> ×{item.qty}</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Price + CTA */}
+                      <div className="px-4 py-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-xl font-bold text-[#7B2220]">
+                            €{Number(bundle.bundlePrice || 0).toFixed(2)}
+                          </span>
+                          {origTotal > 0 && (
+                            <span className="ml-2 text-xs text-gray-400 line-through">
+                              €{origTotal.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const success = addToCart({
+                              id: `bundle_${bundle.id}`,
+                              productId: `bundle_${bundle.id}`,
+                              name: bundle.name,
+                              price: bundle.bundlePrice,
+                              image: bundle.items?.[0]?.productImage || null,
+                              category: "Bundle",
+                              isBundle: true,
+                              bundleId: bundle.id,
+                              bundleItems: bundle.items,
+                            })
+                            if (!success) return window.openLoginModal?.()
+                            toast.success(`${bundle.name} added to cart!`)
+                          }}
+                          className="px-4 py-2 rounded-lg bg-[#7B2220] text-white text-sm font-bold hover:bg-[#502455] transition-colors"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -102,7 +102,8 @@ function Favorites() {
               const isWishlisted = wishlistIds.includes(p.id)
               const finalPrice = applyDiscount(p.price, p.productDiscount)
               const discountLabel = formatDiscount(p.productDiscount)
-              const hasDiscount = discountLabel && finalPrice < Number(p.price || 0)
+              const hasAnyPromo = !!discountLabel
+              const showStrikethrough = hasAnyPromo && finalPrice < Number(p.price || 0)
               const rating = productRatings[p.id]
 
               return (
@@ -143,29 +144,21 @@ function Favorites() {
                         )}
                       </div>
 
-                      {/* Discount badge below stars */}
-                      {hasDiscount && (
-                        <div className="flex justify-center mt-1.5">
+                      {/* Badge + Price in one row */}
+                      <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
+                        {hasAnyPromo && (
                           <span className="inline-block bg-red-100 text-red-600 text-[0.65rem] font-bold px-2.5 py-0.5 rounded-full border border-red-200">
                             {discountLabel}
                           </span>
-                        </div>
-                      )}
-
-                      {/* Price */}
-                      <div className="text-center mt-1.5">
-                        <p className="text-sm font-semibold text-[#7B2220]">
-                          {hasDiscount ? (
-                            <>
-                              €{finalPrice.toFixed(2)}
-                              <span className="ml-2 text-xs text-gray-400 line-through font-normal">
-                                €{Number(p.price).toFixed(2)}
-                              </span>
-                            </>
-                          ) : (
-                            <>€{Number(p.price || 0).toFixed(2)}</>
+                        )}
+                        <span className="text-sm font-semibold text-[#7B2220]">
+                          €{finalPrice.toFixed(2)}
+                          {showStrikethrough && (
+                            <span className="ml-1.5 text-xs text-gray-400 line-through font-normal">
+                              €{Number(p.price).toFixed(2)}
+                            </span>
                           )}
-                        </p>
+                        </span>
                       </div>
                     </div>
 
@@ -186,7 +179,7 @@ function Favorites() {
                       <button
                         onClick={(e) => {
                           const img = e.currentTarget.closest(".group").querySelector("img")
-                          const success = addToCart({ ...p, price: finalPrice })
+                          const success = addToCart({ ...p, price: finalPrice, originalPrice: p.productDiscount ? Number(p.price) : null, productDiscount: p.productDiscount || null })
                           if (!success) return window.openLoginModal?.()
                           flyToCart(img)
                         }}

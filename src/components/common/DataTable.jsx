@@ -4,20 +4,111 @@ import { getProduct } from "../../hooks/useProductCache";
 /* =========================
    Expanded Item Row
    ========================= */
+function BundleItemRow({ item }) {
+  const c = item.customization;
+  const firstImage = item.bundleItems?.find((bi) => bi.productImage)?.productImage || null;
+
+  return (
+    <div className="flex gap-4 py-4 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors duration-150">
+      {/* Bundle icon / first product image */}
+      <div className="w-16 h-16 rounded-xl border-2 border-purple-200 shadow-sm bg-purple-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+        {firstImage ? (
+          <img src={firstImage} alt={item.name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-2xl">📦</span>
+        )}
+      </div>
+
+      {/* Bundle name + items breakdown */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-gray-900">{item.name}</span>
+          <span className="inline-block bg-purple-100 text-purple-700 text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full">
+            Bundle
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {(item.bundleItems || []).map((bi) => (
+            <div
+              key={bi.productId}
+              className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-0.5"
+            >
+              {bi.productImage && (
+                <img src={bi.productImage} alt={bi.productName} className="w-4 h-4 rounded object-cover" />
+              )}
+              <span className="text-xs text-gray-700">
+                {bi.productName}
+                {bi.qty > 1 && <span className="text-gray-400"> ×{bi.qty}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Customization (if any) */}
+        {c && (
+          <div className="mt-2 space-y-1 text-xs">
+            {c.pickupDate && (
+              <div className="inline-block px-2 py-1 bg-teal-50 text-teal-700 rounded-lg mr-2">
+                Pick-up Date: {c.pickupDate}
+              </div>
+            )}
+            {c.pickupTime && (
+              <div className="inline-block px-2 py-1 bg-yellow-50 text-yellow-700 rounded-lg mr-2">
+                Pick-up Time: {c.pickupTime}
+              </div>
+            )}
+            {c.cardMessage && (
+              <div className="mt-2 rounded-xl border border-[#7B2220]/20 bg-gradient-to-br from-[#7B2220]/5 to-rose-50 overflow-hidden">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-[#7B2220]/10 bg-[#7B2220]/5">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7B2220]">Card Message</span>
+                </div>
+                <p className="px-3 py-2.5 text-xs italic text-gray-700 leading-relaxed font-semibold">
+                  &ldquo;{c.cardMessage}&rdquo;
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Quantity */}
+      <div className="flex items-center flex-shrink-0">
+        <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+          Qty: {item.quantity}
+        </div>
+      </div>
+
+      {/* Price */}
+      <div className="flex items-center flex-shrink-0">
+        <div className="text-right">
+          <div className="text-base font-bold text-[#7B2220]">
+            €{Number(item.price).toFixed(2)}
+          </div>
+          <div className="text-[0.65rem] text-gray-400">bundle price</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExpandedItemRow({ item }) {
   const [product, setProduct] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
+    // Skip Firestore fetch for bundle items
+    if (item.isBundle) return;
 
+    let mounted = true;
     getProduct(item.productId).then(data => {
       if (mounted) setProduct(data);
     });
+    return () => { mounted = false; };
+  }, [item.productId, item.isBundle]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [item.productId]);
+  // Bundle items: render without Firestore product lookup
+  if (item.isBundle) {
+    return <BundleItemRow item={item} />;
+  }
 
   if (!product) {
     return (
@@ -105,17 +196,64 @@ function ExpandedItemRow({ item }) {
         )}
       </div>
 
+      {/* Promo / Bundle badges */}
+      <div className="flex flex-col gap-1.5 justify-center min-w-[120px]">
+        {/* B1T1 badge */}
+        {item.productDiscount?.type === "buy1take1" && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-200 rounded-lg">
+            <span className="text-xs font-bold text-red-600">🎁 Buy 1 Take 1</span>
+            {item.productDiscount.promoPrice > 0 && (
+              <span className="text-[0.65rem] text-red-400">
+                · €{Number(item.productDiscount.promoPrice).toFixed(2)}
+              </span>
+            )}
+          </div>
+        )}
+        {/* X-for-Y badge */}
+        {item.productDiscount?.type === "xForY" && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 border border-orange-200 rounded-lg">
+            <span className="text-xs font-bold text-orange-600">
+              🏷️ {item.productDiscount.buyQty} for €{Number(item.productDiscount.forPrice).toFixed(2)}
+            </span>
+          </div>
+        )}
+        {/* Percent/fixed discount badge */}
+        {item.productDiscount?.type === "percent" && (
+          <div className="inline-flex items-center px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
+            <span className="text-xs font-bold text-green-600">
+              {item.productDiscount.value}% OFF
+            </span>
+          </div>
+        )}
+        {item.productDiscount?.type === "fixed" && (
+          <div className="inline-flex items-center px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
+            <span className="text-xs font-bold text-green-600">
+              €{Number(item.productDiscount.value).toFixed(2)} OFF
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Quantity */}
       <div className="flex items-center">
         <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
           Qty: {item.quantity}
+          {/* B1T1 free items note */}
+          {item.productDiscount?.type === "buy1take1" && item.quantity >= 2 && (
+            <span className="block text-[0.65rem] text-green-600 font-semibold mt-0.5">
+              ({Math.floor(item.quantity / 2)} free)
+            </span>
+          )}
         </div>
       </div>
 
       {/* Price */}
       <div className="flex items-center">
-        <div className="text-base font-bold text-[#7B2220]">
-          €{Number(item.price).toFixed(2)}
+        <div className="text-right">
+          <div className="text-base font-bold text-[#7B2220]">
+            €{Number(item.price).toFixed(2)}
+          </div>
+          <div className="text-[0.65rem] text-gray-400">unit price</div>
         </div>
       </div>
     </div>

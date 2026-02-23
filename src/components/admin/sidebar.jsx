@@ -125,6 +125,12 @@ function AdminSidebar({ isOpen, mobileMenuOpen = false, onCloseMobile }) {
         description: "Promo codes, discounts, and loyalty programs.",
       },
       {
+        title: "Bundles",
+        route: "/admin/bundles",
+        icon: CubeIcon,
+        description: "Package products into bundles with special prices.",
+      },
+      {
         title: "Pages",
         route: "/admin/pages",
         icon: CubeIcon,

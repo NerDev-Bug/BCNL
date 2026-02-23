@@ -112,13 +112,17 @@ export function CartProvider({ children }) {
     await setDoc(
       itemDocRef(uid, item.id),
       {
-        productId: item.productId || null, // ✅ FIX: Save productId to Firestore
+        productId: item.productId || null,
         name: item.name,
         price: item.price,
+        originalPrice: item.originalPrice ?? null,
         image: item.image || null,
         category: item.category || null,
         quantity: item.quantity,
         customization: item.customization || null,
+        productDiscount: item.productDiscount || null,
+        isBundle: item.isBundle || false,
+        bundleItems: item.bundleItems || null,
         updatedAt: Date.now(),
       },
       { merge: true }
@@ -147,14 +151,18 @@ export function CartProvider({ children }) {
         : [
             ...prev,
             {
-              id: cartItemId, // unique per customization (or product id for normal)
-              productId: String(product.id), // optional but useful
+              id: cartItemId,
+              productId: String(product.id),
               name: product.name,
               price: product.price,
+              originalPrice: product.originalPrice ?? null,
               image: product.image || null,
               category: product.category || null,
-              quantity: product.customization?.quantity || 1, // use form quantity if provided
-              customization: product.customization || null, // NEW
+              quantity: product.customization?.quantity || 1,
+              customization: product.customization || null,
+              productDiscount: product.productDiscount || null,
+              isBundle: product.isBundle || false,
+              bundleItems: product.bundleItems || null,
             },
           ]
 
