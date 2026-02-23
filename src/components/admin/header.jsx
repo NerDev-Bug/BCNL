@@ -287,10 +287,58 @@ function AdminHeader({ sidebarOpen, mobileMenuOpen, onToggleMobileMenu }) {
           )}
         </div>
 
-        {/* Profile + Logout (unchanged) */}
-        <button onClick={() => setOpen((prev) => !prev)} className="flex items-center gap-2 rounded-full">
-          <img src="/images/free-user-icon.png" alt="Admin Avatar" className="w-9 h-9 rounded-full border-2 border-gray-200" />
-        </button>
+       {/* Profile + Dropdown */}
+<div className="relative">
+
+  <button
+    onClick={() => setOpen((prev) => !prev)}
+    className="flex items-center gap-2 rounded-full focus:outline-none"
+  >
+    <img
+      src="/images/free-user-icon.png"
+      alt="Admin Avatar"
+      className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#7A3DF0]/50 transition-colors"
+    />
+  </button>
+
+  {/* Dropdown Menu */}
+  {open && (
+    <div
+      className="absolute right-0 top-12 w-48 bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg shadow-lg py-2 z-50"
+    >
+      {adminName && (
+        <div className="px-4 py-2 border-b border-gray-100">
+          <p className="text-xs text-gray-500">Signed in as</p>
+          <p className="text-sm font-semibold text-gray-800 truncate">
+            {adminName}
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={() => {
+          navigate("/profile")
+          setOpen(false)
+        }}
+        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5EBFF] hover:text-[#502455]"
+      >
+        Profile
+      </button>
+
+      <div className="border-t border-gray-200 my-1" />
+
+      <button
+        onClick={() => {
+          handleLogout()
+          setOpen(false)
+        }}
+        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+      >
+        Logout
+      </button>
+    </div>
+  )}
+</div>
 
       </div>
     </header>
