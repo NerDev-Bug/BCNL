@@ -15,9 +15,10 @@ function CheckOutModal({
     contactNumber: "",
     email: "",
     notes: "",
+    address: "",
   })
 
-  const [deliveryMethod, setDeliveryMethod] = useState("pickup") // pickup | delivery
+  const [deliveryMethod, setDeliveryMethod] = useState("pickup")
   const [loadingUser, setLoadingUser] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -35,11 +36,17 @@ function CheckOutModal({
 
         const data = snap.data()
 
+        // ✅ FORMAT FULL ADDRESS
+        const fullAddress = data.address
+          ? `${data.address.streetName || ""} ${data.address.houseNumber || ""}, ${data.address.postalCode || ""} ${data.address.city || ""}, ${data.address.country || ""}`
+          : ""
+
         setForm((prev) => ({
           ...prev,
           receiverName: data.username || "",
           contactNumber: data.phone || "",
           email: user.email || "",
+          address: fullAddress.trim(),
         }))
       } catch (err) {
         console.error(err)
@@ -70,77 +77,45 @@ function CheckOutModal({
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleSaveChanges = async () => {
-    if (!form.receiverName || !form.contactNumber) {
-      toast.error("Please complete required fields.")
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      const user = auth.currentUser
-      if (!user) return
-
-      // Only update phone number — don't overwrite the Firestore username with receiverName
-      await updateDoc(doc(db, "users", user.uid), {
-        phone: form.contactNumber,
-      })
-
-      setIsEditing(false)
-      toast.success("Information updated successfully!")
-    } catch (err) {
-      console.error("Error saving changes:", err)
-      toast.error("Failed to save changes. Please try again.")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const handleSubmit = () => {
-    if (!form.receiverName || !form.contactNumber) {
-      toast.error("Please complete required fields.")
-      return
-    }
-
-    if (deliveryMethod === "delivery") {
-      toast.info("Delivery is coming soon. Please select pickup.")
-      return
-    }
-
-    onSaveOrder?.({
-      items: cartItems,
-      totalPrice,
-      receiverName: form.receiverName,
-      contactNumber: form.contactNumber,
-      email: form.email,
-      notes: form.notes.trim() || null,
-      method: deliveryMethod,
-    })
-
-    onClose()
+  if (!form.receiverName || !form.contactNumber) {
+    toast.error("Please complete required fields.")
+    return
   }
+
+  // 🚧 DELIVERY STILL BLOCKED
+  if (deliveryMethod === "delivery") {
+    toast.info("🚧 Delivery is coming soon. Please select pickup.")
+    return
+  }
+
+  onSaveOrder?.({
+    items: cartItems,
+    totalPrice,
+    receiverName: form.receiverName,
+    contactNumber: form.contactNumber,
+    email: form.email,
+    notes: form.notes.trim() || null,
+    address: null, // since delivery not active yet
+    method: deliveryMethod,
+  })
+
+  onClose()
+}
 
   const inputClass =
     "w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2220] disabled:bg-gray-100"
 
   return (
     <>
-      {/* Overlay */}
       <div onClick={onClose} className="fixed inset-0 bg-black/40 z-50" />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="bg-white w-[600px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl p-6 space-y-6">
 
-          {/* Header */}
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-[#7B2220]">
-              Checkout
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-sm text-gray-500 hover:text-black"
-            >
+            <h2 className="text-xl font-bold text-[#7B2220]">Checkout</h2>
+            <button onClick={onClose} className="text-sm text-gray-500 hover:text-black">
               ✕
             </button>
           </div>
@@ -153,112 +128,98 @@ function CheckOutModal({
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="radio"
-                  name="method"
                   checked={deliveryMethod === "pickup"}
                   onChange={() => setDeliveryMethod("pickup")}
                 />
                 Pickup
               </label>
 
-              <label className="flex items-center gap-2 text-sm cursor-pointer opacity-60">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="radio"
-                  name="method"
                   checked={deliveryMethod === "delivery"}
                   onChange={() => setDeliveryMethod("delivery")}
                 />
-                Delivery (Coming Soon)
+                Delivery
               </label>
             </div>
-
-            {deliveryMethod === "delivery" && (
-              <p className="text-xs text-orange-600">
-                🚧 Delivery is coming soon. Please select pickup for now.
-              </p>
-            )}
           </div>
 
           {/* Customer Info */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-sm">Customer Information</h3>
-              <button
-                onClick={() => {
-                  if (isEditing) {
-                    handleSaveChanges()
-                  } else {
-                    setIsEditing(true)
-                  }
-                }}
-                disabled={isSaving}
-                className="text-xs px-3 py-1 rounded-full border hover:bg-gray-100 disabled:opacity-60"
-              >
-                {isSaving ? "Saving..." : isEditing ? "Done" : "Edit"}
-              </button>
-            </div>
+            <h3 className="font-semibold text-sm">Customer Information</h3>
 
-            <div>
-              <label className="text-xs font-medium">Receiver Name</label>
-              <input
-                name="receiverName"
-                value={form.receiverName}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </div>
+            <input
+              name="receiverName"
+              value={form.receiverName}
+              onChange={handleChange}
+              className={inputClass}
+              placeholder="Receiver Name"
+            />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium">Contact Number</label>
-                <input
-                  name="contactNumber"
-                  value={form.contactNumber}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={inputClass}
-                />
-              </div>
+            <input
+              name="contactNumber"
+              value={form.contactNumber}
+              onChange={handleChange}
+              className={inputClass}
+              placeholder="Contact Number"
+            />
 
-              <div>
-                <label className="text-xs font-medium">Email</label>
-                <input
-                  value={form.email}
-                  disabled
-                  className={`${inputClass} bg-gray-100`}
-                />
-              </div>
-            </div>
+            <input
+              value={form.email}
+              disabled
+              className={`${inputClass} bg-gray-100`}
+            />
 
-            <div>
-              <label className="text-xs font-medium">Notes / Special Instructions <span className="text-gray-400 font-normal">(optional)</span></label>
-              <textarea
-                name="notes"
-                value={form.notes}
-                onChange={handleChange}
-                rows={2}
-                placeholder="e.g. Allergies, preferred pickup time, special requests..."
-                className={`${inputClass} resize-none`}
-              />
-            </div>
+            {deliveryMethod === "delivery" && (
+  <div>
+    <label className="text-xs font-medium">
+      Delivery Address
+    </label>
+
+    <textarea
+      name="address"
+      value={form.address}
+      onChange={handleChange}
+      rows={2}
+      className={`${inputClass} resize-none`}
+      placeholder="Delivery Address"
+    />
+
+    <p className="text-xs text-orange-600 mt-1">
+      🚧 Delivery service is not yet available.
+    </p>
+  </div>
+)}
+            <textarea
+              name="notes"
+              value={form.notes}
+              onChange={handleChange}
+              rows={2}
+              className={`${inputClass} resize-none`}
+              placeholder="Notes (optional)"
+            />
           </div>
 
           {/* Order Summary */}
           <div className="border rounded-xl p-4 space-y-2">
             <h3 className="font-semibold text-sm">Order Summary</h3>
+
             {cartItems.map((item) => (
               <div key={item.id} className="flex justify-between text-sm text-gray-600">
                 <span>{item.name} × {item.quantity}</span>
-                <span>€{(Number(item.price || 0) * item.quantity).toFixed(2)}</span>
+                <span>
+                  €{(Number(item.price || 0) * item.quantity).toFixed(2)}
+                </span>
               </div>
             ))}
+
             <div className="flex justify-between font-semibold border-t pt-2">
               <span>Total</span>
               <span>€{Number(totalPrice || 0).toFixed(2)}</span>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3">
             <button onClick={onClose} className="w-1/3 border rounded-lg py-3 text-sm">
               Cancel
