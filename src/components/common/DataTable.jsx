@@ -280,13 +280,17 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
             <tr>
               {columns.map(col => (
-                <th
-                  key={col.key}
-                  className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-center text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap"
-                >
-                  {col.header}
-                </th>
-              ))}
+                  <th
+                    key={col.key}
+                    className={
+                      `px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-center text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap ${
+                        col.thClass || ""
+                      }`
+                    }
+                  >
+                    {col.header}
+                  </th>
+                ))}
             </tr>
           </thead>
 
@@ -329,7 +333,7 @@ function DataTable({ columns, data, rowKey = "id", loading = false, getRowClassN
                       {columns.map(col => (
                         <td
                           key={col.key}
-                          className="px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-xs sm:text-sm text-gray-900"
+                          className={`px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 text-xs sm:text-sm text-gray-900 ${col.tdClass || ""}`}
                         >
                           {col.render
                             ? col.render(row, {

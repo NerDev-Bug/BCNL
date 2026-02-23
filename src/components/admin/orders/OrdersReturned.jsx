@@ -253,6 +253,8 @@ function OrdersReturned() {
     const columns = [
         {
           key: "expand-items",
+          thClass: "sticky left-0 z-10 bg-white",
+          tdClass: "sticky left-0 z-10 bg-white",
           render: (row, { isOpen, toggle }) => (
             <button
               onClick={toggle}
@@ -333,6 +335,8 @@ function OrdersReturned() {
         {
         key: "actions",
         header: "Action",
+        thClass: "sticky right-0 z-10 bg-white",
+        tdClass: "sticky right-0 z-10 bg-white",
         render: row => {
             // Show approve/reject buttons only for pending return requests
             if (row.paymentStatus === "return_requested") {

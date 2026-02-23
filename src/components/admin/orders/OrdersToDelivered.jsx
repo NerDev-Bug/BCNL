@@ -175,6 +175,8 @@ function OrdersToDelivered() {
   const columns = [
     {
       key: "expand-items",
+      thClass: "sticky left-0 z-10 bg-white",
+      tdClass: "sticky left-0 z-10 bg-white",
       render: (row, { isOpen, toggle }) => (
         <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
           <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -223,6 +225,8 @@ function OrdersToDelivered() {
     {
       key: "actions",
       header: "Action",
+      thClass: "sticky right-0 z-10 bg-white",
+      tdClass: "sticky right-0 z-10 bg-white",
       render: (row) => {
         // Open Map Route Location
         // const hasLocation =
