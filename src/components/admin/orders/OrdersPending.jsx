@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from "react";
 import {
-  collection, query, where, onSnapshot,
-  updateDoc, deleteDoc, doc, getDoc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+  orderBy,
 } from "firebase/firestore";
-import { createOrderPreparingNotification, createOrderCancelledNotification } from "../../../utils/notifications";
+import {
+  createOrderPreparingNotification,
+  createOrderCancelledNotification,
+} from "../../../utils/notifications";
 import { db } from "../../../firebase";
 
 import DataTable from "../../common/DataTable";
@@ -28,24 +38,22 @@ function OrdersPending() {
     order: null,
   });
 
-  // Real-time listener
+  // ✅ Real-time listener (Latest orders first)
   useEffect(() => {
-    const q = query(collection(db, "orders"), where("paymentStatus", "==", "paid"));
+    const q = query(
+      collection(db, "orders"),
+      where("paymentStatus", "==", "paid"),
+      orderBy("createdAt", "desc") // 🔥 latest first
+    );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const t = (ts) => {
-              if (!ts) return 0;
-              if (ts?.seconds) return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1e6;
-              if (ts instanceof Date) return ts.getTime();
-              return new Date(ts).getTime() || 0;
-            };
-            return t(a.createdAt) - t(b.createdAt);
-          });
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+
         setOrders(data);
         setLoading(false);
         setError(null);
@@ -67,7 +75,11 @@ function OrdersPending() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const formatTime = (timestamp) => {
@@ -76,7 +88,10 @@ function OrdersPending() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const handleCopyId = (id) => {
@@ -96,7 +111,10 @@ function OrdersPending() {
 
   const confirmAcceptOrder = async () => {
     const order = confirmModal.order;
-    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
 
     try {
       const orderRef = doc(db, "orders", order.id);
@@ -128,10 +146,12 @@ function OrdersPending() {
 
   const confirmDeleteOrder = async () => {
     const order = confirmModal.order;
-    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
 
     try {
-      // Fetch full order data for notification
       const orderRef = doc(db, "orders", order.id);
       const orderSnap = await getDoc(orderRef);
 
@@ -156,7 +176,10 @@ function OrdersPending() {
   };
 
   const totalPages = Math.ceil(orders.length / pageSize);
-  const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const columns = [
     {
@@ -164,8 +187,16 @@ function OrdersPending() {
       thClass: "sticky left-0 z-10 bg-white",
       tdClass: "sticky left-0 z-10 bg-white",
       render: (row, { isOpen, toggle }) => (
-        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <button
+          onClick={toggle}
+          className="flex items-center justify-center w-full"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </button>
       ),
     },
@@ -188,15 +219,37 @@ function OrdersPending() {
       render: (row) => (
         <div>
           <p className="text-xs">{formatDate(row.createdAt)}</p>
-          <p className="text-[0.65rem] text-gray-400">{formatTime(row.createdAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">
+            {formatTime(row.createdAt)}
+          </p>
         </div>
       ),
     },
-    { key: "receiverName", header: "Customer", render: (row) => row.orderData?.receiverName || "—" },
-    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
-    { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.paymentMethod} /> },
-    { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
-    { key: "method", header: "Delivery", render: (row) => row.orderData?.method ?? "N/A" },
+    {
+      key: "receiverName",
+      header: "Customer",
+      render: (row) => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: (row) => row.orderData?.contactNumber || "—",
+    },
+    {
+      key: "paymentMethod",
+      header: "Payment",
+      render: (row) => <StatusBadge value={row.paymentMethod} />,
+    },
+    {
+      key: "totalPrice",
+      header: "Total",
+      render: (row) => `€${Number(row.total || 0).toFixed(2)}`,
+    },
+    {
+      key: "method",
+      header: "Delivery",
+      render: (row) => row.orderData?.method ?? "N/A",
+    },
     {
       key: "delivery",
       header: "Address",
@@ -206,8 +259,16 @@ function OrdersPending() {
         return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
       },
     },
-    { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
-    { key: "status", header: "Status", render: (row) => <StatusBadge value={row.paymentStatus} /> },
+    {
+      key: "items",
+      header: "Items",
+      render: (row) => `${row.items?.length || 0} items`,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusBadge value={row.paymentStatus} />,
+    },
     {
       key: "actions",
       header: "Action",
@@ -227,19 +288,36 @@ function OrdersPending() {
 
   return (
     <div className="pt-4 w-full min-w-0">
-      <h2 className="mb-4 text-lg font-semibold text-left">Pending Orders</h2>
+      <h2 className="mb-4 text-lg font-semibold text-left">
+        Pending Orders
+      </h2>
+
       <div className="w-full min-w-0">
-        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+        <DataTable
+          columns={columns}
+          data={paginatedOrders}
+          loading={loading}
+        />
       </div>
-      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {confirmModal.type === "accept" && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onConfirm={confirmAcceptOrder}
-          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          onClose={() =>
+            setConfirmModal({ isOpen: false, type: null, order: null })
+          }
           title="Mark as Preparing"
-          message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as preparing? The customer will be notified.`}
+          message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(
+            0,
+            6
+          )} as preparing? The customer will be notified.`}
           confirmText="Mark as Preparing"
           cancelText="Cancel"
           confirmButtonColor="bg-green-600"
@@ -250,9 +328,14 @@ function OrdersPending() {
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onConfirm={confirmDeleteOrder}
-          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          onClose={() =>
+            setConfirmModal({ isOpen: false, type: null, order: null })
+          }
           title="Cancel Order"
-          message={`Are you sure you want to cancel order #${confirmModal.order?.id.slice(0, 6)}? The customer will be notified of the cancellation.`}
+          message={`Are you sure you want to cancel order #${confirmModal.order?.id.slice(
+            0,
+            6
+          )}? The customer will be notified of the cancellation.`}
           confirmText="Cancel Order"
           cancelText="Keep"
           confirmButtonColor="bg-red-600"

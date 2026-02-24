@@ -1,8 +1,13 @@
 // OrdersDelivered.jsx
 import React, { useEffect, useState } from "react";
 import {
-  collection, query, where, onSnapshot,
-  deleteDoc, doc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -22,26 +27,26 @@ function OrdersDelivered() {
   const [pageSize] = useState(10);
   const [copiedId, setCopiedId] = useState(null);
 
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, order: null });
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    order: null,
+  });
 
-  // Real-time listener
+  // ✅ Real-time listener (LATEST FIRST)
   useEffect(() => {
-    const q = query(collection(db, "orders"), where("paymentStatus", "==", "delivered"));
+    const q = query(
+      collection(db, "orders"),
+      where("paymentStatus", "==", "delivered"),
+      orderBy("createdAt", "desc") // 🔥 newest on top
+    );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const t = (ts) => {
-              if (!ts) return 0;
-              if (ts?.seconds) return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1e6;
-              if (ts instanceof Date) return ts.getTime();
-              return new Date(ts).getTime() || 0;
-            };
-            return t(a.createdAt) - t(b.createdAt);
-          });
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
         setOrders(data);
         setLoading(false);
         setError(null);
@@ -63,7 +68,11 @@ function OrdersDelivered() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const formatTime = (timestamp) => {
@@ -72,7 +81,10 @@ function OrdersDelivered() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const handleCopyId = (id) => {
@@ -88,7 +100,10 @@ function OrdersDelivered() {
 
   const confirmDeleteOrder = async () => {
     const order = confirmModal.order;
-    if (!order) { setConfirmModal({ isOpen: false, order: null }); return; }
+    if (!order) {
+      setConfirmModal({ isOpen: false, order: null });
+      return;
+    }
 
     try {
       await deleteDoc(doc(db, "orders", order.id));
@@ -102,7 +117,10 @@ function OrdersDelivered() {
   };
 
   const totalPages = Math.ceil(orders.length / pageSize);
-  const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const columns = [
     {
@@ -110,8 +128,16 @@ function OrdersDelivered() {
       thClass: "sticky left-0 z-10 bg-white",
       tdClass: "sticky left-0 z-10 bg-white",
       render: (row, { isOpen, toggle }) => (
-        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <button
+          onClick={toggle}
+          className="flex items-center justify-center w-full"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </button>
       ),
     },
@@ -134,7 +160,9 @@ function OrdersDelivered() {
       render: (row) => (
         <div>
           <p className="text-xs">{formatDate(row.createdAt)}</p>
-          <p className="text-[0.65rem] text-gray-400">{formatTime(row.createdAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">
+            {formatTime(row.createdAt)}
+          </p>
         </div>
       ),
     },
@@ -144,32 +172,66 @@ function OrdersDelivered() {
       render: (row) => (
         <div>
           <p className="text-xs">{formatDate(row.deliveredAt)}</p>
-          <p className="text-[0.65rem] text-gray-400">{formatTime(row.deliveredAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">
+            {formatTime(row.deliveredAt)}
+          </p>
         </div>
       ),
     },
-    { key: "receiverName", header: "Customer", render: (row) => row.orderData?.receiverName || "—" },
-    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
-    { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.paymentMethod} /> },
-    { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
-    { key: "method", header: "Delivery", render: (row) => row.orderData?.method ?? "N/A" },
+    {
+      key: "receiverName",
+      header: "Customer",
+      render: (row) => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: (row) => row.orderData?.contactNumber || "—",
+    },
+    {
+      key: "paymentMethod",
+      header: "Payment",
+      render: (row) => <StatusBadge value={row.paymentMethod} />,
+    },
+    {
+      key: "totalPrice",
+      header: "Total",
+      render: (row) => `€${Number(row.total || 0).toFixed(2)}`,
+    },
+    {
+      key: "method",
+      header: "Delivery",
+      render: (row) => row.orderData?.method ?? "N/A",
+    },
     {
       key: "delivery",
       header: "Address",
       render: (row) => {
         const c = row.orderData;
         if (!c) return "N/A";
-        return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
+        return `${c.streetName || ""}, ${c.postalCode || ""} ${
+          c.city || ""
+        }, ${c.country || ""}`.trim();
       },
     },
-    { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
-    { key: "status", header: "Status", render: (row) => <StatusBadge value={row.paymentStatus} /> },
+    {
+      key: "items",
+      header: "Items",
+      render: (row) => `${row.items?.length || 0} items`,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusBadge value={row.paymentStatus} />,
+    },
     {
       key: "actions",
       header: "Action",
       thClass: "sticky right-0 z-10 bg-white",
       tdClass: "sticky right-0 z-10 bg-white",
-      render: (row) => <RowActions onDelete={() => handleDeleteOrder(row)} />,
+      render: (row) => (
+        <RowActions onDelete={() => handleDeleteOrder(row)} />
+      ),
     },
   ];
 
@@ -177,18 +239,35 @@ function OrdersDelivered() {
 
   return (
     <div className="pt-4 w-full min-w-0">
-      <h2 className="mb-4 text-lg font-semibold text-left">Delivered Orders</h2>
+      <h2 className="mb-4 text-lg font-semibold text-left">
+        Delivered Orders
+      </h2>
+
       <div className="w-full min-w-0">
-        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
+        <DataTable
+          columns={columns}
+          data={paginatedOrders}
+          loading={loading}
+        />
       </div>
-      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onConfirm={confirmDeleteOrder}
-        onClose={() => setConfirmModal({ isOpen: false, order: null })}
+        onClose={() =>
+          setConfirmModal({ isOpen: false, order: null })
+        }
         title="Delete Order"
-        message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(0, 6)}? This action cannot be undone.`}
+        message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(
+          0,
+          6
+        )}? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonColor="bg-red-600"

@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import {
-  collection, query, where, onSnapshot,
-  updateDoc, deleteDoc, doc, getDoc, Timestamp,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+  Timestamp,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { createDeliveryNotifications } from "../../../utils/notifications";
@@ -12,19 +20,7 @@ import { RowActions } from "../../common/RowActions";
 import ConfirmationModal from "../../common/ConfirmationModal";
 import { toast } from "react-toastify";
 import Pagination from "../../common/Pagination";
-import { ChevronDown, LocateIcon } from "lucide-react";
-import LocationGMap from "../../common/LocationGMap";
-
-// Open Map Route Location
-// function getAdminLocation() {
-//   const lat = import.meta.env.VITE_ADMIN_LAT;
-//   const lng = import.meta.env.VITE_ADMIN_LNG;
-//   if (lat == null || lng == null) return null;
-//   const parsedLat = parseFloat(lat);
-//   const parsedLng = parseFloat(lng);
-//   if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng)) return null;
-//   return { lat: parsedLat, lng: parsedLng };
-// }
+import { ChevronDown } from "lucide-react";
 
 function OrdersToDelivered() {
   const [orders, setOrders] = useState([]);
@@ -34,33 +30,28 @@ function OrdersToDelivered() {
   const [pageSize] = useState(10);
   const [copiedId, setCopiedId] = useState(null);
 
-  // const [isMapOpen, setIsMapOpen] = useState(false);
-  // const [selectedOrder, setSelectedOrder] = useState(null);
-
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: null,
     order: null,
   });
 
-  // Real-time listener
+  // ✅ Real-time listener (Latest first)
   useEffect(() => {
-    const q = query(collection(db, "orders"), where("paymentStatus", "==", "to_delivered"));
+    const q = query(
+      collection(db, "orders"),
+      where("paymentStatus", "==", "to_delivered"),
+      orderBy("createdAt", "desc") // 🔥 latest first
+    );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const t = (ts) => {
-              if (!ts) return 0;
-              if (ts?.seconds) return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1e6;
-              if (ts instanceof Date) return ts.getTime();
-              return new Date(ts).getTime() || 0;
-            };
-            return t(a.createdAt) - t(b.createdAt);
-          });
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+
         setOrders(data);
         setLoading(false);
         setError(null);
@@ -82,7 +73,12 @@ function OrdersToDelivered() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const formatTime = (timestamp) => {
@@ -91,7 +87,11 @@ function OrdersToDelivered() {
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const handleCopyId = (id) => {
@@ -109,15 +109,12 @@ function OrdersToDelivered() {
     setConfirmModal({ isOpen: true, type: "delete", order });
   };
 
-  // Open Map Route Location
-  // const openMap = (order) => {
-  //   setSelectedOrder(order);
-  //   setIsMapOpen(true);
-  // };
-
   const confirmAcceptOrder = async () => {
     const order = confirmModal.order;
-    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
 
     try {
       const orderRef = doc(db, "orders", order.id);
@@ -141,7 +138,9 @@ function OrdersToDelivered() {
           await createDeliveryNotifications(orderData);
         } catch (notifErr) {
           console.error("Delivery notification error:", notifErr);
-          toast.error(`Order delivered but notification failed: ${notifErr.message}`);
+          toast.error(
+            `Order delivered but notification failed: ${notifErr.message}`
+          );
         }
       }
 
@@ -156,7 +155,10 @@ function OrdersToDelivered() {
 
   const confirmDeleteOrder = async () => {
     const order = confirmModal.order;
-    if (!order) { setConfirmModal({ isOpen: false, type: null, order: null }); return; }
+    if (!order) {
+      setConfirmModal({ isOpen: false, type: null, order: null });
+      return;
+    }
 
     try {
       await deleteDoc(doc(db, "orders", order.id));
@@ -170,7 +172,10 @@ function OrdersToDelivered() {
   };
 
   const totalPages = Math.ceil(orders.length / pageSize);
-  const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const columns = [
     {
@@ -178,8 +183,16 @@ function OrdersToDelivered() {
       thClass: "sticky left-0 z-10 bg-white",
       tdClass: "sticky left-0 z-10 bg-white",
       render: (row, { isOpen, toggle }) => (
-        <button onClick={toggle} className="flex items-center justify-center w-full" aria-expanded={isOpen}>
-          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <button
+          onClick={toggle}
+          className="flex items-center justify-center w-full"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </button>
       ),
     },
@@ -189,7 +202,6 @@ function OrdersToDelivered() {
       render: (row) => (
         <button
           onClick={() => handleCopyId(row.id)}
-          title={`Copy full ID: ${row.id}`}
           className="font-mono text-xs hover:text-[#7B2220] transition-colors"
         >
           {copiedId === row.id ? "✓ Copied" : `#${row.id.slice(0, 6)}`}
@@ -202,15 +214,37 @@ function OrdersToDelivered() {
       render: (row) => (
         <div>
           <p className="text-xs">{formatDate(row.createdAt)}</p>
-          <p className="text-[0.65rem] text-gray-400">{formatTime(row.createdAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">
+            {formatTime(row.createdAt)}
+          </p>
         </div>
       ),
     },
-    { key: "receiverName", header: "Customer", render: (row) => row.orderData?.receiverName || "—" },
-    { key: "contactnumber", header: "Contact", render: (row) => row.orderData?.contactNumber || "—" },
-    { key: "paymentMethod", header: "Payment", render: (row) => <StatusBadge value={row.paymentMethod} /> },
-    { key: "totalPrice", header: "Total", render: (row) => `€${Number(row.total || 0).toFixed(2)}` },
-    { key: "method", header: "Delivery", render: (row) => row.orderData?.method ?? "N/A" },
+    {
+      key: "receiverName",
+      header: "Customer",
+      render: (row) => row.orderData?.receiverName || "—",
+    },
+    {
+      key: "contactnumber",
+      header: "Contact",
+      render: (row) => row.orderData?.contactNumber || "—",
+    },
+    {
+      key: "paymentMethod",
+      header: "Payment",
+      render: (row) => <StatusBadge value={row.paymentMethod} />,
+    },
+    {
+      key: "totalPrice",
+      header: "Total",
+      render: (row) => `€${Number(row.total || 0).toFixed(2)}`,
+    },
+    {
+      key: "method",
+      header: "Delivery",
+      render: (row) => row.orderData?.method ?? "N/A",
+    },
     {
       key: "delivery",
       header: "Address",
@@ -220,43 +254,28 @@ function OrdersToDelivered() {
         return `${c.streetName || ""}, ${c.postalCode || ""} ${c.city || ""}, ${c.country || ""}`.trim();
       },
     },
-    { key: "items", header: "Items", render: (row) => `${row.items?.length || 0} items` },
-    { key: "status", header: "Status", render: (row) => <StatusBadge value={row.paymentStatus} /> },
+    {
+      key: "items",
+      header: "Items",
+      render: (row) => `${row.items?.length || 0} items`,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusBadge value={row.paymentStatus} />,
+    },
     {
       key: "actions",
       header: "Action",
       thClass: "sticky right-0 z-10 bg-white",
       tdClass: "sticky right-0 z-10 bg-white",
-      render: (row) => {
-        // Open Map Route Location
-        // const hasLocation =
-        //   row.orderData?.location ||
-        //   row.orderData?.streetName ||
-        //   row.orderData?.city;
-
-        return (
-          <div className="flex items-center gap-3">
-
-            {/* Open Map Route Location */}
-            {/* <LocateIcon
-              size={18}
-              title="View delivery location"
-              className={
-                hasLocation
-                  ? "cursor-pointer text-blue-600 hover:text-blue-800"
-                  : "text-gray-300 cursor-not-allowed"
-              }
-              onClick={() => hasLocation && openMap(row)}
-            /> */}
-
-            <RowActions
-              onAccept={() => handleAcceptOrder(row)}
-              onDelete={() => handleDeleteOrder(row)}
-              acceptLabel="Delivered"
-            />
-          </div>
-        );
-      },
+      render: (row) => (
+        <RowActions
+          onAccept={() => handleAcceptOrder(row)}
+          onDelete={() => handleDeleteOrder(row)}
+          acceptLabel="Delivered"
+        />
+      ),
     },
   ];
 
@@ -265,33 +284,33 @@ function OrdersToDelivered() {
   return (
     <div className="pt-4 w-full min-w-0">
       <h2 className="mb-4 text-lg font-semibold text-left">To Deliver</h2>
-      <div className="w-full min-w-0">
-        <DataTable columns={columns} data={paginatedOrders} loading={loading} />
-      </div>
-      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
-      {/* Open Map Route Location */}
-      {/* <LocationGMap
-        isOpen={isMapOpen}
-        onClose={() => setIsMapOpen(false)}
-        address={
-          selectedOrder
-            ? `${selectedOrder.orderData?.streetName || ""}, ${selectedOrder.orderData?.postalCode || ""} ${selectedOrder.orderData?.city || ""}, ${selectedOrder.orderData?.country || ""}`
-            : ""
-        }
-        location={selectedOrder?.orderData?.location}
-        adminLocation={getAdminLocation()}
-        adminLabel={import.meta.env.VITE_ADMIN_NAME || "BCNL"}
-        customerLabel={selectedOrder?.orderData?.receiverName || "Customer"}
-      /> */}
+      <div className="w-full min-w-0">
+        <DataTable
+          columns={columns}
+          data={paginatedOrders}
+          loading={loading}
+        />
+      </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {confirmModal.type === "accept" && (
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onConfirm={confirmAcceptOrder}
-          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          onClose={() =>
+            setConfirmModal({ isOpen: false, type: null, order: null })
+          }
           title="Mark as Delivered"
-          message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(0, 6)} as delivered? The customer will be notified.`}
+          message={`Are you sure you want to mark order #${confirmModal.order?.id.slice(
+            0,
+            6
+          )} as delivered? The customer will be notified.`}
           confirmText="Mark as Delivered"
           cancelText="Cancel"
           confirmButtonColor="bg-green-600"
@@ -302,9 +321,14 @@ function OrdersToDelivered() {
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onConfirm={confirmDeleteOrder}
-          onClose={() => setConfirmModal({ isOpen: false, type: null, order: null })}
+          onClose={() =>
+            setConfirmModal({ isOpen: false, type: null, order: null })
+          }
           title="Delete Order"
-          message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(0, 6)}? This action cannot be undone.`}
+          message={`Are you sure you want to delete order #${confirmModal.order?.id.slice(
+            0,
+            6
+          )}? This action cannot be undone.`}
           confirmText="Delete"
           cancelText="Cancel"
           confirmButtonColor="bg-red-600"
