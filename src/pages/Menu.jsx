@@ -38,6 +38,10 @@ export default function Menu() {
     if (!hasSeenMenuAd) setShowAd(true)
   }, [])
 
+  const filteredProducts = products
+    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => (category === "All Categories" ? true : p.category === category))
+
   const handleCloseAd = () => {
     localStorage.setItem("menuAdSeen", "true")
     setShowAd(false)
@@ -182,36 +186,28 @@ export default function Menu() {
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
             {loading ? (
               <ProductSkeleton count={3} />
-            ) : (() => {
-              const filtered = products
-                .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-                .filter((p) => category === "All Categories" ? true : p.category === category);
-
-              if (filtered.length === 0) {
-                return (
-                  <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center">
-                    <div className="text-6xl mb-4">🍰</div>
-                    <h3 className="text-xl font-bold text-[#502455] mb-2">
-                      {search || category !== "All Categories" ? "No products found" : "No products available today"}
-                    </h3>
-                    <p className="text-sm text-gray-500 max-w-xs">
-                      {search || category !== "All Categories"
-                        ? "Try a different search or category."
-                        : "Check back soon — the baker is working on something delicious!"}
-                    </p>
-                    {(search || category !== "All Categories") && (
-                      <button
-                        onClick={() => { setSearch(""); setCategory("All Categories"); }}
-                        className="mt-4 px-4 py-2 rounded-lg border border-[#7B2220] text-[#7B2220] text-sm hover:bg-[#7B2220] hover:text-white transition"
-                      >
-                        Clear filters
-                      </button>
-                    )}
-                  </div>
-                );
-              }
-
-              return filtered.map((product) => {
+            ) : filteredProducts.length === 0 ? (
+              <div className="col-span-3 flex flex-col items-center justify-center py-24 text-center bg-white border border-[#7B2220] rounded-md">
+                <div className="text-6xl mb-4">🍰</div>
+                <h3 className="text-xl font-bold text-[#502455] mb-2">
+                  {search || category !== "All Categories" ? "No products found" : "No products available today"}
+                </h3>
+                <p className="text-sm text-gray-500 max-w-xs">
+                  {search || category !== "All Categories"
+                    ? "Try a different search or category."
+                    : "Check back soon — the baker is working on something delicious!"}
+                </p>
+                {(search || category !== "All Categories") && (
+                  <button
+                    onClick={() => { setSearch(""); setCategory("All Categories"); }}
+                    className="mt-4 px-4 py-2 rounded-lg border border-[#7B2220] text-[#7B2220] text-sm hover:bg-[#7B2220] hover:text-white transition"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredProducts.map((product) => {
                   const isWishlisted = wishlistIds.includes(product.id)
 
                   return (
@@ -357,12 +353,13 @@ export default function Menu() {
                       </div>
                     </div>
                   )
-                });
-            })()}
+                })
+            )
+          }
           </div>
 
           {/* ── BUNDLES SECTION ── */}
-          {!bundlesLoading && bundles.length > 0 && (
+          {!bundlesLoading && bundles.length > 0 && filteredProducts.length > 0 && (
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-[#502455] font-cooper mb-4 flex items-center gap-2">
                 <span>🎁</span> Bundle Deals
