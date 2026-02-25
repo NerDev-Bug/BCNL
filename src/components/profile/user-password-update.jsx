@@ -16,6 +16,24 @@ function UserPasswordUpdate({ user }) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  // 🔐 Password validations
+  const validations = {
+    length: newPassword.length >= 8,
+    lowercase: /[a-z]/.test(newPassword),
+    uppercase: /[A-Z]/.test(newPassword),
+    number: /\d/.test(newPassword),
+    special: /[@$!%*?&.#_-]/.test(newPassword),
+  }
+
+  // 💪 Strength calculator
+  const getPasswordStrength = () => {
+    const passed = Object.values(validations).filter(Boolean).length
+
+    if (passed <= 2) return { label: "Weak", color: "text-red-500" }
+    if (passed <= 4) return { label: "Medium", color: "text-yellow-500" }
+    return { label: "Strong", color: "text-green-500" }
+  }
+
   const handleUpdatePassword = async () => {
     if (loading) return
 
@@ -24,8 +42,13 @@ function UserPasswordUpdate({ user }) {
       return
     }
 
-    if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters")
+    if (currentPassword === newPassword) {
+      toast.error("New password cannot be the same as current password")
+      return
+    }
+
+    if (!Object.values(validations).every(Boolean)) {
+      toast.error("Please create a stronger password")
       return
     }
 
@@ -36,7 +59,11 @@ function UserPasswordUpdate({ user }) {
 
     setLoading(true)
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword)
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      )
+
       await reauthenticateWithCredential(user, credential)
       await updatePassword(user, newPassword)
 
@@ -60,6 +87,7 @@ function UserPasswordUpdate({ user }) {
 
   return (
     <div>
+      {/* Current Password */}
       <label className="block font-semibold mb-1">Current Password:</label>
       <div className="relative">
         <input
@@ -83,7 +111,13 @@ function UserPasswordUpdate({ user }) {
         </button>
       </div>
 
-      <label className="block font-semibold mt-4 mb-1">New Password: <span className="text-xs text-gray-400 font-normal">(min. 6 characters)</span></label>
+      {/* New Password */}
+      <label className="block font-semibold mt-4 mb-1">
+        New Password:{" "}
+        <span className="text-xs text-gray-400 font-normal">
+          (min. 8 chars, upper, lower, number, special)
+        </span>
+      </label>
       <div className="relative">
         <input
           type={showNew ? "text" : "password"}
@@ -98,18 +132,55 @@ function UserPasswordUpdate({ user }) {
           className="absolute right-2 top-2"
           disabled={loading}
         >
-          {showNew ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+          {showNew ? (
+            <EyeSlashIcon className="w-5 h-5" />
+          ) : (
+            <EyeIcon className="w-5 h-5" />
+          )}
         </button>
       </div>
 
-      <label className="block font-semibold mt-4 mb-1">Confirm New Password:</label>
+      {/* Strength Indicator */}
+      {newPassword && (
+        <p className={`text-sm mt-1 font-semibold ${getPasswordStrength().color}`}>
+          Strength: {getPasswordStrength().label}
+        </p>
+      )}
+
+      {/* Checklist */}
+      {newPassword && (
+        <ul className="mt-2 space-y-1 text-xs">
+          <li className={validations.length ? "text-green-600" : "text-gray-400"}>
+            • At least 8 characters
+          </li>
+          <li className={validations.lowercase ? "text-green-600" : "text-gray-400"}>
+            • One lowercase letter
+          </li>
+          <li className={validations.uppercase ? "text-green-600" : "text-gray-400"}>
+            • One uppercase letter
+          </li>
+          <li className={validations.number ? "text-green-600" : "text-gray-400"}>
+            • One number
+          </li>
+          <li className={validations.special ? "text-green-600" : "text-gray-400"}>
+            • One special character
+          </li>
+        </ul>
+      )}
+
+      {/* Confirm Password */}
+      <label className="block font-semibold mt-4 mb-1">
+        Confirm New Password:
+      </label>
       <div className="relative">
         <input
           type={showConfirm ? "text" : "password"}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           className={`w-full border rounded px-3 py-2 ${
-            confirmPassword && confirmPassword !== newPassword ? "border-red-400" : ""
+            confirmPassword && confirmPassword !== newPassword
+              ? "border-red-400"
+              : ""
           }`}
           disabled={loading}
         />
@@ -119,13 +190,21 @@ function UserPasswordUpdate({ user }) {
           className="absolute right-2 top-2"
           disabled={loading}
         >
-          {showConfirm ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+          {showConfirm ? (
+            <EyeSlashIcon className="w-5 h-5" />
+          ) : (
+            <EyeIcon className="w-5 h-5" />
+          )}
         </button>
       </div>
+
       {confirmPassword && confirmPassword !== newPassword && (
-        <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+        <p className="text-xs text-red-500 mt-1">
+          Passwords do not match
+        </p>
       )}
 
+      {/* Submit Button */}
       <button
         onClick={handleUpdatePassword}
         disabled={loading}

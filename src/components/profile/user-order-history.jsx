@@ -6,6 +6,7 @@ import { StatusBadge } from "../common/StatusBadge"
 export default function UserOrderHistory({ user }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState("")
 
   useEffect(() => {
     if (!user) {
@@ -16,7 +17,7 @@ export default function UserOrderHistory({ user }) {
     const fetchOrders = async () => {
       try {
         setLoading(true)
-        // ✅ Fetch only delivered and returned orders
+
         const q = query(
           collection(db, "orders"),
           where("userId", "==", user.uid),
@@ -24,16 +25,18 @@ export default function UserOrderHistory({ user }) {
         )
 
         const snap = await getDocs(q)
+
         const data = snap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }))
 
-        // Sort by createdAt descending (newest first)
+        // Sort newest first
         data.sort((a, b) => {
           const getTime = (timestamp) => {
             if (!timestamp) return 0
-            if (timestamp?.seconds) return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
+            if (timestamp?.seconds)
+              return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000
             if (timestamp instanceof Date) return timestamp.getTime()
             return new Date(timestamp).getTime() || 0
           }
@@ -53,10 +56,12 @@ export default function UserOrderHistory({ user }) {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "—"
+
     const date =
       typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp)
+
     return date.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "short",
@@ -65,6 +70,21 @@ export default function UserOrderHistory({ user }) {
       minute: "2-digit",
     })
   }
+
+  // ✅ Filter orders by selected calendar date
+  const filteredOrders = selectedDate
+    ? orders.filter((order) => {
+        if (!order.createdAt) return false
+
+        const date =
+          typeof order.createdAt === "object" && order.createdAt.seconds
+            ? new Date(order.createdAt.seconds * 1000)
+            : new Date(order.createdAt)
+
+        const orderDate = date.toISOString().split("T")[0]
+        return orderDate === selectedDate
+      })
+    : orders
 
   if (loading) {
     return (
@@ -86,12 +106,35 @@ export default function UserOrderHistory({ user }) {
     )
   }
 
-  if (orders.length === 0) {
+  if (filteredOrders.length === 0) {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4">Order History</h2>
+
+        {/* Date Picker */}
+        <div className="flex items-center gap-2 mb-4">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate("")}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
         <div className="border rounded-lg p-8 text-center bg-gray-50">
-          <p className="text-gray-500 mb-2">No delivered or returned orders found.</p>
+          <p className="text-gray-500 mb-2">
+            {selectedDate
+              ? "No orders found for selected date."
+              : "No delivered or returned orders found."}
+          </p>
           <p className="text-sm text-gray-400">
             Your completed orders will appear here once they are delivered or returned.
           </p>
@@ -103,12 +146,35 @@ export default function UserOrderHistory({ user }) {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">Order History</h2>
-      <p className="text-sm text-gray-500 mb-4">
-        Showing {orders.length} order{orders.length !== 1 ? "s" : ""} (delivered and returned)
-      </p>
+
+      {/* Header with count + date filter */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+        <p className="text-sm text-gray-500">
+          Showing {filteredOrders.length} order
+          {filteredOrders.length !== 1 ? "s" : ""}
+          {selectedDate && ` on ${selectedDate}`}
+        </p>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate("")}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="space-y-3">
-        {orders.map((order) => {
+        {filteredOrders.map((order) => {
           const isReturned = order.paymentStatus === "returned"
           const isDelivered = order.paymentStatus === "delivered"
 
@@ -145,57 +211,26 @@ export default function UserOrderHistory({ user }) {
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Payment Method</p>
                   <p className="text-sm text-gray-700">
-                    {order.orderData?.paymentMethod || order.paymentMethod || "—"}
+                    {order.orderData?.paymentMethod ||
+                      order.paymentMethod ||
+                      "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Items</p>
                   <p className="text-sm text-gray-700">
-                    {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
+                    {order.items?.length || 0} item
+                    {order.items?.length !== 1 ? "s" : ""}
                   </p>
                 </div>
-                {order.orderData?.receiverName && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Recipient</p>
-                    <p className="text-sm text-gray-700">
-                      {order.orderData.receiverName}
-                    </p>
-                  </div>
-                )}
               </div>
 
               {order.returnReason && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-xs text-gray-500 mb-1">Return Reason</p>
-                  <p className="text-sm text-gray-700">{order.returnReason}</p>
-                  {order.returnRequestedAt && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Requested: {formatDate(order.returnRequestedAt)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {order.items && order.items.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 mb-2">Order Items</p>
-                  <div className="space-y-1">
-                    {order.items.slice(0, 3).map((item, idx) => (
-                      <p key={idx} className="text-sm text-gray-700">
-                        • {item.name} × {item.quantity}
-                        {item.price && (
-                          <span className="text-gray-500 ml-2">
-                            (€{Number(item.price * item.quantity).toFixed(2)})
-                          </span>
-                        )}
-                      </p>
-                    ))}
-                    {order.items.length > 3 && (
-                      <p className="text-xs text-gray-400">
-                        +{order.items.length - 3} more item{order.items.length - 3 !== 1 ? "s" : ""}
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-sm text-gray-700">
+                    {order.returnReason}
+                  </p>
                 </div>
               )}
             </div>
