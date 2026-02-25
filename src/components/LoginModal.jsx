@@ -255,13 +255,13 @@ function LoginModal({ isOpen, onClose, onSwitchToRegister }) {
                 {loading ? "Logging in..." : "Login"}
               </button>
 
-              <button
+              {/* <button
                 type="button"
                 onClick={handleGuestOrder}
                 className="w-full border border-[#7B2220] text-[#7B2220] py-2 rounded font-semibold hover:bg-[#7B2220] hover:text-white transition"
               >
                 Order as Guest
-              </button>
+              </button>  */}
             </form>
           )}
 
