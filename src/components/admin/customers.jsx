@@ -76,26 +76,27 @@ function CustomersPage() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "—";
-
     const date =
-      typeof timestamp === "object" && timestamp?.seconds
+      typeof timestamp === "object" && timestamp.seconds
         ? new Date(timestamp.seconds * 1000)
         : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
-    if (Number.isNaN(date.getTime())) return "—";
-
-    return (
-      date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }) +
-      " " +
-      date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    );
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "—";
+    const date =
+      typeof timestamp === "object" && timestamp.seconds
+        ? new Date(timestamp.seconds * 1000)
+        : new Date(timestamp);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const roles = useMemo(
@@ -249,7 +250,14 @@ function CustomersPage() {
     {
       key: "createdAt",
       header: "Joined At",
-      render: (row) => formatDate(row.createdAt),
+      render: (row) => (
+        <div>
+          <p className="text-xs">{formatDate(row.createdAt)}</p>
+          <p className="text-[0.65rem] text-gray-400">
+            {formatTime(row.createdAt)}
+          </p>
+        </div>
+      ),
     },
     {
       key: "actions",
