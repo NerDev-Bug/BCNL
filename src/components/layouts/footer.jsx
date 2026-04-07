@@ -7,13 +7,13 @@ function FooterNavbar() {
           {/* LEFT SECTIONS */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
             {/* SECTION 1 */}
-<div className="flex items-start">
-  <img
-    src="/images/bcnl_logo.png"
-    alt="Bake Corner NL Logo"
-    className="h-20 w-auto"
-  />
-</div>
+            <div className="flex items-start">
+              <img
+                src="/images/bcnl_logo.png"
+                alt="Bake Corner NL Logo"
+                className="h-20 w-auto"
+              />
+            </div>
             {/* SECTION 2 */}
             <div>
               <h1 className="text-sm font-bold tracking-wide mb-4 uppercase">
@@ -63,61 +63,61 @@ function FooterNavbar() {
             </div>
 
             {/* SOCIAL ICONS */}
-<div className="flex gap-6 mt-6 items-center">
-  {/* Facebook */}
-<a
-  href="https://www.facebook.com/BakeCorner.NL.Pinoydessert"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="relative w-7 h-7 cursor-pointer group"
->
-  <img
-    src="./images/black_fb.png"
-    alt="Facebook"
-    className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
-  />
-  <img
-    src="./images/color_fb.png"
-    alt="Facebook"
-    className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-  />
-</a>
+            <div className="flex gap-6 mt-6 items-center">
+              {/* Facebook */}
+            <a
+              href="https://www.facebook.com/BakeCorner.NL.Pinoydessert"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative w-7 h-7 cursor-pointer group"
+            >
+              <img
+                src="./images/black_fb.png"
+                alt="Facebook"
+                className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+              />
+              <img
+                src="./images/color_fb.png"
+                alt="Facebook"
+                className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              />
+            </a>
 
-  {/* Instagram */}
-  <div className="relative w-7 h-7 cursor-pointer group">
-    <img
-      src="./images/black_ig.png"
-      alt="Instagram"
-      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
-    />
-    <img
-      src="./images/color_ig.png"
-      alt="Instagram"
-      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-    />
-  </div>
+              {/* Instagram */}
+              <div className="relative w-7 h-7 cursor-pointer group">
+                <img
+                  src="./images/black_ig.png"
+                  alt="Instagram"
+                  className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+                />
+                <img
+                  src="./images/color_ig.png"
+                  alt="Instagram"
+                  className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                />
+              </div>
 
-  {/* TikTok */}
-  <div className="relative w-7 h-7 cursor-pointer group">
-    <img
-      src="./images/black_tiktok.png"
-      alt="TikTok"
-      className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
-    />
-    <img
-      src="./images/color_tiktok.png"
-      alt="TikTok"
-      className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-    />
-  </div>
-</div>
+              {/* TikTok */}
+              <div className="relative w-7 h-7 cursor-pointer group">
+                <img
+                  src="./images/black_tiktok.png"
+                  alt="TikTok"
+                  className="absolute inset-0 w-full h-full group-hover:opacity-0 transition-opacity duration-200"
+                />
+                <img
+                  src="./images/color_tiktok.png"
+                  alt="TikTok"
+                  className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* BOTTOM */}
         <div className="border-t border-gray-300 mt-12 pt-4 flex justify-center text-sm text-gray-700">
-  © 2025 Bake Corner NL.
-</div>
+          © 2025 Bake Corner NL.
+        </div>
       </div>
     </footer>
   )

@@ -1,5 +1,13 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
-import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  setDoc,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { toast } from "react-toastify";
@@ -10,78 +18,112 @@ function MonthlyRatingModal() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   };
 
-  // Check if enough time has passed since "Maybe Later" was clicked
-  const shouldShowModal = () => {
-    if (typeof window === "undefined") return false;
-    
-    const monthKey = getMonthKey();
-    const alreadyRated = localStorage.getItem(`rating-${monthKey}`);
-    
-    // If already rated this month, don't show
-    if (alreadyRated) return false;
-    
-    // Check if "Maybe Later" was clicked and if enough time has passed
-    const maybeLaterData = localStorage.getItem(`rating-maybe-later-${monthKey}`);
-    
-    if (!maybeLaterData) {
-      // No "Maybe Later" clicked, show the modal
-      return true;
-    }
-    
-    // Parse the stored data (could be old format timestamp or new format object)
-    let lastDismissed, hoursToWait;
-    try {
-      const parsed = JSON.parse(maybeLaterData);
-      // New format: { timestamp, hoursToWait }
-      lastDismissed = parsed.timestamp;
-      hoursToWait = parsed.hoursToWait || 4; // Default to 4 if not found
-    } catch {
-      // Old format: just timestamp string
-      lastDismissed = parseInt(maybeLaterData, 10);
-      hoursToWait = 4; // Default to 4 hours for old format
-    }
-    
-    // Calculate time difference
-    const millisecondsToWait = hoursToWait * 60 * 60 * 1000;
-    const timeSinceDismissed = typeof window !== "undefined" ? Date.now() - lastDismissed : 0;
-    
-    // Show modal if enough time has passed
-    return timeSinceDismissed >= millisecondsToWait;
-  };
+  const [userId, setUserId] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [userCreatedAt, setUserCreatedAt] = useState(null);
 
-  const [show, setShow] = useState(() => shouldShowModal());
+  const [show, setShow] = useState(false);
   const [visible, setVisible] = useState(false);
+
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [userId, setUserId] = useState(null);
 
-  // Listen to auth to get userId for Firestore dedup
+  // ✅ AUTH
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUserId(u?.uid || null));
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUserId(u?.uid || null);
+      setAuthChecked(true);
+    });
     return () => unsub();
   }, []);
 
-  // If logged in, also check Firestore for already-rated-this-month
+  // ✅ USER CREATION DATE
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchUserCreationDate = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          const createdAt = userDoc.data().createdAt?.toDate() || null;
+          setUserCreatedAt(createdAt);
+        }
+      } catch (err) {
+        console.error("Error fetching user creation date:", err);
+      }
+    };
+
+    fetchUserCreationDate();
+  }, [userId]);
+
+  // ✅ Determine if modal should show
+  const shouldShowModal = () => {
+    if (typeof window === "undefined") return false;
+    if (!userId) return false;
+
+    const monthKey = getMonthKey();
+    const alreadyRated = localStorage.getItem(`rating-${monthKey}`);
+    if (alreadyRated) return false;
+
+    // Handle "maybe later"
+    const maybeLaterData = localStorage.getItem(`rating-maybe-later-${monthKey}`);
+    if (maybeLaterData) {
+      let lastDismissed = 0, hoursToWait = 4;
+      try {
+        const parsed = JSON.parse(maybeLaterData);
+        lastDismissed = parsed.timestamp || 0;
+        hoursToWait = parsed.hoursToWait || 4;
+      } catch {
+        lastDismissed = parseInt(maybeLaterData, 10) || 0;
+      }
+      const timeSinceDismissed = Date.now() - lastDismissed;
+      const millisecondsToWait = hoursToWait * 60 * 60 * 1000;
+      if (timeSinceDismissed < millisecondsToWait) return false;
+    }
+
+    // ✅ If userCreatedAt exists, only show after 1 month
+    if (userCreatedAt) {
+      const now = new Date();
+      const oneMonthLater = new Date(userCreatedAt);
+      oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+      if (now < oneMonthLater) return false;
+    } else {
+      // If missing (old users), assume eligible
+      console.warn("User has no creation date, assuming eligible to show rating modal.");
+    }
+
+    return true;
+  };
+
+  // ✅ Show control
+  useEffect(() => {
+    if (!authChecked) return;
+    setShow(shouldShowModal());
+  }, [authChecked, userId, userCreatedAt]);
+
+  // ✅ Firestore dedup check
   useEffect(() => {
     if (!userId || !show) return;
+
     const monthKey = getMonthKey();
-    getDoc(doc(db, "ratings_by_user", `${userId}_${monthKey}`)).then((snap) => {
-      if (snap.exists()) {
-        // Already rated this month in Firestore — hide modal and update localStorage
-        localStorage.setItem(`rating-${monthKey}`, "true");
-        setVisible(false);
-        setShow(false);
-      }
-    }).catch(() => {});
+    getDoc(doc(db, "ratings_by_user", `${userId}_${monthKey}`))
+      .then((snap) => {
+        if (snap.exists()) {
+          localStorage.setItem(`rating-${monthKey}`, "true");
+          setVisible(false);
+          setShow(false);
+        }
+      })
+      .catch((err) => console.error(err));
   }, [userId, show]);
 
+  // ✅ Animation
   useEffect(() => {
     if (show) {
-      // Trigger fade-in animation after mount
-      const timer = setTimeout(() => setVisible(true), 50);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setVisible(true), 50);
+      return () => clearTimeout(t);
     }
   }, [show]);
 
@@ -92,80 +134,53 @@ function MonthlyRatingModal() {
     }
 
     setSubmitting(true);
+
     try {
       const monthKey = getMonthKey();
+      const dedupRef = doc(db, "ratings_by_user", `${userId}_${monthKey}`);
+      const existing = await getDoc(dedupRef);
 
-      // If logged in, check Firestore dedup before submitting
-      if (userId) {
-        const dedupRef = doc(db, "ratings_by_user", `${userId}_${monthKey}`);
-        const existing = await getDoc(dedupRef);
-        if (existing.exists()) {
-          localStorage.setItem(`rating-${monthKey}`, "true");
-          toast.info("You have already rated this month. Thank you! 😊");
-          setVisible(false);
-          setTimeout(() => setShow(false), 300);
-          return;
-        }
-        // Write dedup record atomically with the rating
-        await setDoc(dedupRef, { userId, monthKey, submittedAt: serverTimestamp() });
+      if (existing.exists()) {
+        localStorage.setItem(`rating-${monthKey}`, "true");
+        toast.info("You have already rated this month. Thank you! 😊");
+        setVisible(false);
+        setTimeout(() => setShow(false), 300);
+        return;
       }
 
+      await setDoc(dedupRef, { userId, monthKey, submittedAt: serverTimestamp() });
       await addDoc(collection(db, "ratings"), {
         rating,
         comment: comment.trim() || null,
         monthKey,
-        userId: userId || null,
+        userId,
         createdAt: serverTimestamp(),
       });
+
       localStorage.setItem(`rating-${monthKey}`, "true");
       toast.success("Thank you for your feedback! 💝");
-      
-      // Fade out animation
+
       setVisible(false);
-      setTimeout(() => {
-        setShow(false);
-      }, 300);
-    } catch (error) {
-      console.error(error);
-      toast.error("Error submitting rating. Please try again.");
+      setTimeout(() => setShow(false), 300);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error submitting rating.");
       setSubmitting(false);
     }
   };
 
   const handleMaybeLater = () => {
-    // Save current timestamp to localStorage with random delay (3-5 hours)
     const monthKey = getMonthKey();
-    const timestamp = Date.now();
-    
-    // Randomize between 3-5 hours (in milliseconds)
-    const minHours = 3;
-    const maxHours = 5;
-    const randomHours = minHours + Math.random() * (maxHours - minHours);
-    const delayData = {
-      timestamp: timestamp,
-      hoursToWait: randomHours
-    };
-    
+    const delayData = { timestamp: Date.now(), hoursToWait: 3 + Math.random() * 2 };
     localStorage.setItem(`rating-maybe-later-${monthKey}`, JSON.stringify(delayData));
-    
-    // Close the modal
     setVisible(false);
-    setTimeout(() => {
-      setShow(false);
-    }, 300);
-    
-    toast.info("We'll ask again later. Thank you! 😊");
+    setTimeout(() => setShow(false), 300);
+    toast.info("We'll ask again later 😊");
   };
 
-  if (!show) return null;
+  if (!authChecked || !userId || !show) return null;
 
-  const ratingLabels = {
-    1: "Poor",
-    2: "Fair",
-    3: "Good",
-    4: "Very Good",
-    5: "Excellent",
-  };
+  const ratingLabels = { 1: "Poor", 2: "Fair", 3: "Good", 4: "Very Good", 5: "Excellent" };
 
   return (
     <div
@@ -182,20 +197,12 @@ function MonthlyRatingModal() {
         {/* Header */}
         <div className="bg-gradient-to-r from-[#7B2220] to-[#502455] rounded-t-2xl p-6 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-1">
-            Rate Your Experience
-          </h2>
-          <p className="text-white/90 text-sm">
-            Help us improve by sharing your feedback
-          </p>
+          <h2 className="text-2xl font-bold text-white mb-1">Rate Your Experience</h2>
+          <p className="text-white/90 text-sm">Help us improve by sharing your feedback</p>
         </div>
 
         {/* Content */}
@@ -231,18 +238,13 @@ function MonthlyRatingModal() {
               ))}
             </div>
             {rating > 0 && (
-              <p className="text-center text-sm font-medium text-[#7B2220] mt-2">
-                {ratingLabels[rating]}
-              </p>
+              <p className="text-center text-sm font-medium text-[#7B2220] mt-2">{ratingLabels[rating]}</p>
             )}
           </div>
 
           {/* Comment Textarea */}
           <div className="mb-6">
-            <label
-              htmlFor="rating-comment"
-              className="block text-sm font-semibold text-gray-700 mb-2"
-            >
+            <label htmlFor="rating-comment" className="block text-sm font-semibold text-gray-700 mb-2">
               Share your thoughts (optional)
             </label>
             <textarea
@@ -255,12 +257,8 @@ function MonthlyRatingModal() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B2220] focus:border-transparent resize-none transition-all duration-200"
             />
             <div className="flex justify-between items-center mt-1">
-              <p className="text-xs text-gray-500">
-                Your feedback helps us serve you better
-              </p>
-              <p className="text-xs text-gray-400">
-                {comment.length}/500
-              </p>
+              <p className="text-xs text-gray-500">Your feedback helps us serve you better</p>
+              <p className="text-xs text-gray-400">{comment.length}/500</p>
             </div>
           </div>
 
@@ -280,33 +278,7 @@ function MonthlyRatingModal() {
               disabled={rating === 0 || submitting}
               className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-[#7B2220] to-[#502455] text-white font-semibold hover:from-[#8B3230] hover:to-[#602465] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              {submitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Submitting...
-                </span>
-              ) : (
-                "Submit Rating"
-              )}
+              {submitting ? "Submitting..." : "Submit Rating"}
             </button>
           </div>
         </div>
