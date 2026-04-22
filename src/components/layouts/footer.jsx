@@ -22,7 +22,7 @@ function FooterNavbar() {
               <div className="text-sm space-y-2 text-gray-700">
                 <p>Terms and conditions</p>
                 <p>Privacy Policy</p>
-                <p>Careers</p>
+                {/* <p>Careers</p> */}
               </div>
             </div>
 

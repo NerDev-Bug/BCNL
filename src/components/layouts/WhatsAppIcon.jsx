@@ -3,7 +3,7 @@ import { useState } from "react"
 function WhatsAppWidget() {
   const [open, setOpen] = useState(false)
 
-  const phone = "639105171791" // international format, no +
+  const phone = "" // international format, no + ex.(63912345678)
   const waUrl = `https://wa.me/${phone}?text=Hi%20I%20need%20help`
 
   return (

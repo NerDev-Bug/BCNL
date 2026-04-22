@@ -117,17 +117,17 @@ function OrderReturn() {
       key: "returnReason",
       header: "Return Reason",
       render: (row) => (
-        <div className="max-w-xs">
+        <div className="max-w-xs px-2 py-1.5 bg-red-50 border border-red-100 rounded">
           <p className="text-sm text-gray-700" title={row.returnReason || "—"}>
             {row.returnReason || "—"}
           </p>
           {row.returnRequestedAt && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-500 mt-1">
               Requested: {formatDateTime(row.returnRequestedAt)}
             </p>
           )}
           {row.returnApprovedAt && (
-            <p className="text-xs text-green-600 mt-1">
+            <p className="text-[10px] text-green-600 mt-1">
               Approved: {formatDateTime(row.returnApprovedAt)}
             </p>
           )}

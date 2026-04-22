@@ -55,7 +55,7 @@ function PolicyAdsModal({ onClose }) {
       bg-black/60`}
     >
       <div
-        className={`bg-white rounded-lg p-6 max-w-md w-full text-center
+        className={`bg-white rounded-lg p-6 max-w-lg w-full text-center
         transform transition-all duration-300
         ${visible ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
       >

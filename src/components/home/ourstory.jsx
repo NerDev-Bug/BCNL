@@ -165,54 +165,54 @@ function OurStory() {
       
 
       {/* Feedback / Testimonial Carousel */}
-<div
-  className="
-    rounded-2xl text-center w-full max-w-5xl mx-auto relative overflow-hidden
-    bg-cover bg-center bg-no-repeat
-    p-5 sm:p-8 md:p-10
-  "
-  style={{ backgroundImage: "url('./images/rippednotes.jpg')" }}
->
-  {/* Slides */}
-  <div className="relative min-h-[220px] sm:min-h-[240px] md:min-h-[260px]">
-    {testimonials.map((item, index) => (
       <div
-        key={index}
-        className={`
-          absolute inset-0 transition-opacity duration-500
-          flex flex-col items-center justify-center
-          px-3 sm:px-10
-          ${current === index ? "opacity-100" : "opacity-0"}
-        `}
+        className="
+          rounded-2xl text-center w-full max-w-5xl mx-auto relative overflow-hidden
+          bg-cover bg-center bg-no-repeat
+          p-5 sm:p-8 md:p-10
+        "
+        style={{ backgroundImage: "url('./images/rippednotes.jpg')" }}
       >
-       <span className="text-6xl sm:text-7xl block mb-4 sm:mb-6 leading-none font-cooper">
-  “
-</span>
+        {/* Slides */}
+        <div className="relative min-h-[220px] sm:min-h-[240px] md:min-h-[260px]">
+          {testimonials.map((item, index) => (
+            <div
+              key={index}
+              className={`
+                absolute inset-0 transition-opacity duration-500
+                flex flex-col items-center justify-center
+                px-3 sm:px-10
+                ${current === index ? "opacity-100" : "opacity-0"}
+              `}
+            >
+              <span className="text-6xl sm:text-7xl block mb-4 sm:mb-6 leading-none font-cooper">
+                “
+              </span>
 
-<p className="text-black text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mb-4 sm:mb-6 leading-relaxed">
-  {item.text}
-</p>
+              <p className="text-black text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mb-4 sm:mb-6 leading-relaxed">
+                {item.text}
+              </p>
 
-<p className="font-semibold text-sm sm:text-base md:text-lg font-cooper">
-  {item.author}
-</p>
+              <p className="font-semibold text-sm sm:text-base md:text-lg font-cooper">
+                {item.author}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Dots */}
+        <div className="flex justify-center gap-2 mt-6 sm:mt-8">
+          {testimonials.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrent(index)}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${
+                current === index ? "bg-gray-700 scale-110" : "bg-gray-300"
+              }`}
+            />
+          ))}
+        </div>
       </div>
-    ))}
-  </div>
-
-  {/* Dots */}
-  <div className="flex justify-center gap-2 mt-6 sm:mt-8">
-    {testimonials.map((_, index) => (
-      <button
-        key={index}
-        onClick={() => setCurrent(index)}
-        className={`w-2.5 h-2.5 rounded-full transition-all ${
-          current === index ? "bg-gray-700 scale-110" : "bg-gray-300"
-        }`}
-      />
-    ))}
-  </div>
-</div>
     </section>
   )
 }

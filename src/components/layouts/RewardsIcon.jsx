@@ -133,7 +133,7 @@ function RewardsIcon() {
                   }}
                   className="mt-3 w-full bg-[#5B1E5D] text-white text-sm font-semibold py-2 rounded-lg hover:opacity-95 transition"
                 >
-                  Log in
+                  Log in or Sign up
                 </button>
               </div>
             ) : (

@@ -189,7 +189,7 @@ function UserInfo({ user }) {
         {!isEditing && (
           <button
             onClick={() => setShowEditConfirm(true)}
-            className="text-sm text-[#7B2220] underline disabled:opacity-60"
+            className="bg-[#7B2220] hover:opacity-90 text-sm text-white px-4 py-2 rounded disabled:opacity-60"
             disabled={busy}
           >
             Edit
